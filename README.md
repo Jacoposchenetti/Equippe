@@ -1,36 +1,123 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Equippe MVP
 
-## Getting Started
+Piattaforma per collaborazione tra professionisti sociosanitari
 
-First, run the development server:
+## Stack Tecnologico
+
+- **Frontend**: Next.js 14+ (App Router)
+- **Styling**: Tailwind CSS
+- **Backend**: Firebase (Auth, Firestore, Cloud Functions, FCM)
+- **PWA**: next-pwa + Workbox
+
+## Setup Iniziale
+
+### 1. Installa le dipendenze
+
+```bash
+npm install
+```
+
+### 2. Configura Firebase
+
+1. Crea un progetto Firebase su [Firebase Console](https://console.firebase.google.com/)
+2. Attiva Authentication (Email/Password)
+3. Crea un database Firestore (regione EU per GDPR)
+4. Copia le credenziali del progetto
+
+### 3. Configura le variabili d'ambiente
+
+Copia `.env.local.example` in `.env.local` e inserisci le tue credenziali Firebase:
+
+```bash
+cp .env.local.example .env.local
+```
+
+Modifica `.env.local` con i tuoi valori:
+
+```env
+NEXT_PUBLIC_FIREBASE_API_KEY=your_api_key
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
+NEXT_PUBLIC_FIREBASE_PROJECT_ID=your_project_id
+NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=your_project.appspot.com
+NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
+NEXT_PUBLIC_FIREBASE_APP_ID=your_app_id
+```
+
+### 4. Configura Firestore Security Rules
+
+Nel Firebase Console, vai su Firestore Database > Rules e copia il contenuto del file `firestore.rules`
+
+### 5. Configura Firestore Indexes
+
+Nel Firebase Console, vai su Firestore Database > Indexes e crea gli indici dal file `firestore.indexes.json`
+
+### 6. Avvia il server di sviluppo
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Struttura del Progetto
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```
+equippe-mvp/
+├── src/
+│   ├── app/                    # Next.js App Router
+│   │   ├── dashboard/          # Dashboard principale
+│   │   ├── login/              # Pagina login
+│   │   ├── register/           # Pagina registrazione
+│   │   ├── onboarding/         # Completamento profilo
+│   │   └── page.tsx            # Homepage
+│   ├── components/             # Componenti React riutilizzabili
+│   ├── contexts/               # React Contexts (Auth, etc.)
+│   │   └── AuthContext.tsx     # Context autenticazione
+│   ├── lib/                    # Librerie e utilità
+│   │   └── firebase.ts         # Configurazione Firebase
+│   └── types/                  # TypeScript types
+│       └── equippe.ts          # Types del dominio
+├── public/
+│   └── manifest.json           # PWA manifest
+├── firestore.rules             # Firestore security rules
+├── firestore.indexes.json      # Firestore indexes
+└── firebase.json               # Firebase configuration
+```
 
-## Learn More
+## Funzionalità Implementate (MVP Fase 1)
 
-To learn more about Next.js, take a look at the following resources:
+### ✅ Autenticazione e Onboarding
+- Registrazione con email/password
+- Login
+- Completamento profilo professionale
+- Verifica albo (manuale)
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### ✅ Dashboard Ricerca
+- Ricerca professionisti per città, specializzazione, tematica, parole chiave
+- Visualizzazione risultati con filtri
+- Card professionista con dettagli
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### ✅ Configurazione PWA
+- Manifest per installazione app
+- Service Worker per offline support
+- Ottimizzazione mobile
 
-## Deploy on Vercel
+## Prossimi Step (Fase 2)
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### 🔜 Gestione Equipé
+- Creazione equipé private
+- Invito membri
+- Configurazione SLA (24h/48h/72h)
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### 🔜 Sistema Referral
+- Form referral strutturato
+- Stati workflow (draft → sent → accepted → closed)
+- Notifiche push (FCM)
+- Encryption PHI client-side
+
+## Note di Sicurezza
+
+- **PHI**: Dati sensibili dei pazienti crittografati client-side
+- **Firestore Rules**: Accesso basato su team membership
+- **GDPR**: Progetto Firebase in regione EU
+- **Verifica Albo**: Verifica manuale del numero di albo

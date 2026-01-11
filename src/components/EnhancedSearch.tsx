@@ -1,0 +1,193 @@
+'use client';
+
+import { useState } from 'react';
+import { CITTA_ITALIANE, PROVINCE_ITALIANE } from '@/lib/comuni';
+
+export type SearchType = 'professionista' | 'equipé';
+
+export interface SearchFilters {
+  type: SearchType;
+  specializzazione?: string;
+  città?: string;
+  provincia?: string;
+  remoto: boolean;
+}
+
+interface EnhancedSearchProps {
+  onSearch: (filters: SearchFilters) => void;
+  availableSpecializations?: string[];
+}
+
+export default function EnhancedSearch({ onSearch, availableSpecializations = [] }: EnhancedSearchProps) {
+  const [searchType, setSearchType] = useState<SearchType>('professionista');
+  const [specializzazione, setSpecializzazione] = useState<string>('');
+  const [città, setCittà] = useState<string>('');
+  const [provincia, setProvincia] = useState<string>('');
+  const [remoto, setRemoto] = useState<boolean>(false);
+
+  const handleSearch = () => {
+    onSearch({
+      type: searchType,
+      specializzazione: specializzazione || undefined,
+      città: città || undefined,
+      provincia: provincia || undefined,
+      remoto,
+    });
+  };
+
+  // Specializzazioni per professionisti
+  const professionistaSpecs = [
+    'Avvocato',
+    'Commercialista',
+    'Consulente del Lavoro',
+    'Notaio',
+    'Architetto',
+    'Ingegnere',
+    'Geometra',
+    'Medico',
+    'Psicologo',
+    'Consulente Finanziario',
+    'Altro',
+  ];
+
+  // Tipologie di equipé (basate sulle specializzazioni dei membri)
+  const equipéSpecs = [
+    'Legale-Fiscale',
+    'Tecnico-Progettuale',
+    'Sanitaria',
+    'Finanziaria',
+    'Multidisciplinare',
+    'Altro',
+  ];
+
+  const currentSpecs = searchType === 'professionista' 
+    ? professionistaSpecs 
+    : equipéSpecs;
+
+  return (
+    <div className="bg-white p-6 rounded-lg shadow-md">
+      <h2 className="text-xl font-bold mb-4">Ricerca Avanzata</h2>
+
+      {/* Toggle Professionista/Equipé */}
+      <div className="flex gap-2 mb-4">
+        <button
+          onClick={() => {
+            setSearchType('professionista');
+            setSpecializzazione('');
+          }}
+          className={`flex-1 py-2 px-4 rounded-lg font-medium transition-colors ${
+            searchType === 'professionista'
+              ? 'bg-blue-600 text-white'
+              : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+          }`}
+        >
+          Cerca Professionista
+        </button>
+        <button
+          onClick={() => {
+            setSearchType('equipé');
+            setSpecializzazione('');
+          }}
+          className={`flex-1 py-2 px-4 rounded-lg font-medium transition-colors ${
+            searchType === 'equipé'
+              ? 'bg-blue-600 text-white'
+              : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+          }`}
+        >
+          Cerca Equipé
+        </button>
+      </div>
+
+      {/* Specializzazione */}
+      <div className="mb-4">
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          {searchType === 'professionista' ? 'Specializzazione' : 'Tipologia Equipé'}
+        </label>
+        <select
+          value={specializzazione}
+          onChange={(e) => setSpecializzazione(e.target.value)}
+          className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        >
+          <option value="">Tutte</option>
+          {currentSpecs.map((spec) => (
+            <option key={spec} value={spec}>
+              {spec}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {/* Località */}
+      <div className="mb-4">
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          Località
+        </label>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <select
+              value={città}
+              onChange={(e) => {
+                setCittà(e.target.value);
+                const selected = CITTA_ITALIANE.find(c => c.nome === e.target.value);
+                if (selected) {
+                  setProvincia(selected.provincia);
+                }
+              }}
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">Tutte le città</option>
+              {CITTA_ITALIANE.map((città) => (
+                <option key={città.nome} value={città.nome}>
+                  {città.nome}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <select
+              value={provincia}
+              onChange={(e) => setProvincia(e.target.value)}
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">Tutte le province</option>
+              {PROVINCE_ITALIANE.map((prov) => (
+                <option key={prov} value={prov}>
+                  {prov}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+      </div>
+
+      {/* Remoto */}
+      <div className="mb-4">
+        <label className="flex items-center">
+          <input
+            type="checkbox"
+            checked={remoto}
+            onChange={(e) => setRemoto(e.target.checked)}
+            className="mr-2 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+          />
+          <span className="text-sm font-medium text-gray-700">
+            Include lavoro da remoto
+          </span>
+        </label>
+      </div>
+
+      {/* Bottone Cerca */}
+      <button
+        onClick={handleSearch}
+        className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg font-medium hover:bg-blue-700 transition-colors"
+      >
+        Cerca
+      </button>
+
+      {searchType === 'equipé' && (
+        <p className="text-sm text-gray-500 mt-2">
+          * Vengono mostrate solo le equipé con posti disponibili
+        </p>
+      )}
+    </div>
+  );
+}

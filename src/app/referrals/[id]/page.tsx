@@ -8,6 +8,7 @@ import { db } from '@/lib/firebase';
 import { User } from '@/types/equippe';
 import { importKey, decryptData } from '@/lib/encryption';
 import Link from 'next/link';
+import { notifyReferralAccepted } from '@/lib/notifications';
 
 interface Referral {
   id: string;
@@ -113,6 +114,17 @@ export default function ReferralDetailPage() {
         status: newStatus,
         updatedAt: Timestamp.now(),
       });
+
+      // Notifica il mittente se il referral è stato accettato
+      if (newStatus === 'accepted' && decryptedData && user) {
+        const receiverName = user.displayName || user.email || 'Un professionista';
+        await notifyReferralAccepted(
+          referral.senderUid,
+          receiverName,
+          decryptedData.patient.name,
+          referralId
+        );
+      }
 
       await loadReferralData();
       alert('Stato aggiornato con successo');

@@ -176,3 +176,41 @@ export async function notifyReferralAccepted(senderId: string, recipientName: st
     console.error('Errore notifyReferralAccepted:', error);
   }
 }
+
+export async function notifyTeamMemberLeft(adminIds: string[], memberName: string, teamId: string, teamName: string) {
+  try {
+    // Notifica tutti gli admin dell'équipe
+    await Promise.all(
+      adminIds.map(adminId =>
+        createNotification({
+          userId: adminId,
+          type: 'team_removed',
+          title: 'Membro uscito dall\'\u00e9quipe',
+          message: `${memberName} ha lasciato "${teamName}"`,
+          teamId,
+          teamName,
+          senderName: memberName
+        })
+      )
+    );
+  } catch (error) {
+    console.error('Errore notifyTeamMemberLeft:', error);
+  }
+}
+
+export async function notifyTeamInviteReceived(recipientId: string, teamId: string, teamName: string, senderName: string, inviteId: string) {
+  try {
+    await createNotification({
+      userId: recipientId,
+      type: 'team_invite_response',
+      title: 'Invito a équipe',
+      message: `${senderName} ti ha invitato a unirti a "${teamName}"`,
+      teamId,
+      teamName,
+      senderName,
+      inviteId
+    });
+  } catch (error) {
+    console.error('Errore notifyTeamInviteReceived:', error);
+  }
+}

@@ -7,6 +7,7 @@ import { collection, query, where, getDocs, doc, getDoc, updateDoc, Timestamp, a
 import { db } from '@/lib/firebase';
 import { User, Team } from '@/types/equippe';
 import Header from '@/components/Header';
+import { notifyTeamInviteResponse } from '@/lib/notifications';
 
 interface TeamInvite {
   id: string;
@@ -140,6 +141,18 @@ export default function InvitesPage() {
         updatedAt: Timestamp.now(),
       });
 
+      // Notifica il mittente dell'invito
+      if (invite.fromUserId && invite.team?.name && user) {
+        const userName = user.displayName || user.email || 'Un utente';
+        await notifyTeamInviteResponse(
+          invite.fromUserId,
+          userName,
+          invite.team.name,
+          true,
+          invite.id
+        );
+      }
+
       alert('Invito accettato! Ora fai parte dell\'Equipé');
       await loadInvites();
     } catch (error) {
@@ -157,6 +170,18 @@ export default function InvitesPage() {
         respondedAt: Timestamp.now(),
         updatedAt: Timestamp.now(),
       });
+
+      // Notifica il mittente dell'invito
+      if (invite.fromUserId && invite.team?.name && user) {
+        const userName = user.displayName || user.email || 'Un utente';
+        await notifyTeamInviteResponse(
+          invite.fromUserId,
+          userName,
+          invite.team.name,
+          false,
+          invite.id
+        );
+      }
 
       alert('Invito rifiutato');
       await loadInvites();

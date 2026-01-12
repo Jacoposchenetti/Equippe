@@ -3,11 +3,12 @@
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
-import { collection, addDoc, getDocs, query, where, Timestamp } from 'firebase/firestore';
+import { collection, addDoc, getDocs, query, where, Timestamp, getDoc, doc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { User } from '@/types/equippe';
 import { generateEncryptionKey, exportKey, encryptData } from '@/lib/encryption';
 import Link from 'next/link';
+import { notifyReferralReceived } from '@/lib/notifications';
 
 export default function CreateReferralPage() {
   const { user } = useAuth();
@@ -98,7 +99,17 @@ export default function CreateReferralPage() {
         updatedAt: Timestamp.now(),
       };
 
-      await addDoc(collection(db, 'referrals'), referralData);
+      const referralRef = await addDoc(collection(db, 'referrals'), referralData);
+
+      // Notifica il destinatario del nuovo referral
+      const senderName = user.displayName || user.email || 'Un professionista';
+      await notifyReferralReceived(
+        formData.receiverId,
+        user.uid,
+        senderName,
+        formData.patientName,
+        referralRef.id
+      );
 
       router.push('/referrals');
     } catch (err: any) {

@@ -9,7 +9,7 @@ import { Team, User } from '@/types/equippe';
 import Link from 'next/link';
 import Header from '@/components/Header';
 import MapSelector from '@/components/MapSelector';
-import { notifyTeamRequest, notifyTeamRequestAccepted, notifyTeamRemoval, notifyTeamAdminPromotion } from '@/lib/notifications';
+import { notifyTeamRequest, notifyTeamRequestAccepted, notifyTeamRemoval, notifyTeamAdminPromotion, notifyTeamMemberLeft, notifyTeamInviteReceived } from '@/lib/notifications';
 
 export default function TeamDetailPage() {
   const { user } = useAuth();
@@ -144,6 +144,19 @@ export default function TeamDetailPage() {
           updatedAt: Timestamp.now(),
         });
 
+        // Notifica tutti gli admin che il membro ha lasciato
+        if (team?.name && user) {
+          const adminIds = team.members
+            .filter(m => (m.role === 'admin' || m.ruolo === 'admin') && (m.userId || m.uid) !== user.uid)
+            .map(m => m.userId || m.uid)
+            .filter(Boolean) as string[];
+          
+          if (adminIds.length > 0) {
+            const userName = user.displayName || user.email || 'Un membro';
+            await notifyTeamMemberLeft(adminIds, userName, teamId, team.name);
+          }
+        }
+
         router.push('/teams');
       } catch (error) {
         console.error('Errore uscita dal team:', error);
@@ -224,8 +237,8 @@ export default function TeamDetailPage() {
 
     try {
       // Crea inviti invece di aggiungere direttamente
-      const invitePromises = selectedUsers.map(userId => 
-        addDoc(collection(db, 'teamInvites'), {
+      const invitePromises = selectedUsers.map(async (userId) => {
+        const inviteRef = await addDoc(collection(db, 'teamInvites'), {
           teamId,
           type: 'invite',
           fromUserId: user?.uid,
@@ -233,8 +246,14 @@ export default function TeamDetailPage() {
           status: 'pending',
           createdAt: Timestamp.now(),
           updatedAt: Timestamp.now(),
-        })
-      );
+        });
+
+        // Notifica l'utente invitato
+        if (team?.name && user) {
+          const senderName = user.displayName || user.email || 'Un professionista';
+          await notifyTeamInviteReceived(userId, teamId, team.name, senderName, inviteRef.id);
+        }
+      });
 
       await Promise.all(invitePromises);
 

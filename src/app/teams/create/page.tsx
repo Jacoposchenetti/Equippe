@@ -8,8 +8,6 @@ import { db } from '@/lib/firebase';
 import { User, RoleCercato } from '@/types/equippe';
 import Link from 'next/link';
 import Header from '@/components/Header';
-import { CITTA_ITALIANE, PROVINCE_ITALIANE } from '@/lib/comuni';
-import { getZonePerCitta } from '@/lib/zone-roma';
 import MapSelector from '@/components/MapSelector';
 
 const SPECIALIZZAZIONI = [
@@ -26,13 +24,9 @@ export default function CreateTeamPage() {
   const [formData, setFormData] = useState({
     name: '',
     description: '',
-    città: '',
-    provincia: '',
-    zona: '',
     remoto: false,
-    locationMode: 'zone' as 'zone' | 'address' | 'map',
     indirizzo: '',
-    raggioKm: 5,
+    raggioKm: 10,
     coordinate: null as { lat: number; lng: number } | null,
     selectedMembers: [] as string[],
     ruoliCercati: [] as RoleCercato[],
@@ -117,8 +111,8 @@ export default function CreateTeamPage() {
       return;
     }
 
-    if (!formData.città.trim()) {
-      setError('Specifica la città dove opera l\'Equipé');
+    if (!formData.coordinate || !formData.indirizzo) {
+      setError('Seleziona la zona operativa sulla mappa');
       return;
     }
 
@@ -158,7 +152,20 @@ export default function CreateTeamPage() {
       // Estrai specializzazioni dai ruoli cercati
       const specializations = [...new Set(formData.ruoliCercati.map(r => r.specializzazione))];
 
-      // Crea il team su Firestore - solo campi definiti
+      // Pulisci ruoli cercati da campi undefined
+      const ruoliCercatiPuliti = formData.ruoliCercati.map(ruolo => {
+        const ruoloPulito: any = {
+          specializzazione: ruolo.specializzazione,
+          numero: ruolo.numero,
+          occupati: 0
+        };
+        if (ruolo.descrizione) {
+          ruoloPulito.descrizione = ruolo.descrizione;
+        }
+        return ruoloPulito;
+      });
+
+      // Crea il team su Firestore - includi solo campi definiti
       const teamData: any = {
         name: formData.name,
         nome: formData.name,
@@ -168,12 +175,11 @@ export default function CreateTeamPage() {
         memberIds: [user.uid, ...formData.selectedMembers],
         createdBy: user.uid,
         adminUid: user.uid,
-        città: formData.città,
         remoto: formData.remoto,
         createdAt: Timestamp.now(),
         updatedAt: Timestamp.now(),
         status: 'active',
-        ruoliCercati: formData.ruoliCercati,
+        ruoliCercati: ruoliCercatiPuliti,
         completato: totaleOccupati >= totaleRichiesti + 1,
         settings: {
           slaRisposta: '48h',
@@ -183,20 +189,17 @@ export default function CreateTeamPage() {
       };
 
       // Aggiungi campi opzionali solo se definiti
-      if (formData.provincia) teamData.provincia = formData.provincia;
-      if (formData.zona) teamData.zona = formData.zona;
-      
-      // Aggiungi dati location in base alla modalità
-      teamData.locationMode = formData.locationMode;
-      
-      if (formData.locationMode === 'address') {
-        if (formData.indirizzo) teamData.indirizzo = formData.indirizzo;
-        if (formData.coordinate) {
-          teamData.coordinate = formData.coordinate;
-          teamData.raggioKm = formData.raggioKm;
-        }
+      if (formData.indirizzo) {
+        teamData.indirizzo = formData.indirizzo;
+      }
+      if (formData.coordinate) {
+        teamData.coordinate = formData.coordinate;
+      }
+      if (formData.raggioKm) {
+        teamData.raggioKm = formData.raggioKm;
       }
 
+      console.log('📤 Salvando team con dati:', teamData);
       await addDoc(collection(db, 'teams'), teamData);
 
       router.push('/teams');
@@ -263,84 +266,36 @@ export default function CreateTeamPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
               </svg>
-              Località e Zona Operativa *
+              Zona Operativa *
             </h3>
             <p className="text-sm text-gray-600 mb-4">
-              Specifica dove opera l'Equipé per facilitare le ricerche e il coordinamento
+              Cerca il tuo studio o la zona dove opera l'Equipé e definisci il raggio di copertura
             </p>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-              <div>
-                <label className="block text-sm font-medium mb-1">Città *</label>
-                <select
-                  value={formData.città}
-                  onChange={(e) => setFormData({ ...formData, città: e.target.value, zona: '' })}
-                  className="w-full border rounded px-3 py-2"
-                  required
-                >
-                  <option value="">Seleziona città...</option>
-                  {CITTA_ITALIANE.map(città => (
-                    <option key={città.nome} value={città.nome}>{città.nome}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-1">Provincia</label>
-                <select
-                  value={formData.provincia}
-                  onChange={(e) => setFormData({ ...formData, provincia: e.target.value })}
-                  className="w-full border rounded px-3 py-2"
-                >
-                  <option value="">Seleziona provincia...</option>
-                  {PROVINCE_ITALIANE.map(prov => (
-                    <option key={prov} value={prov}>{prov}</option>
-                  ))}
-                </select>
-              </div>
+            <div className="mb-4 p-4 bg-gray-50 rounded-lg">
+              <MapSelector
+                coordinate={formData.coordinate}
+                raggioKm={formData.raggioKm}
+                indirizzo={formData.indirizzo}
+                onCoordinateChange={(coord) => {
+                  console.log('📝 onCoordinateChange chiamato con:', coord);
+                  setFormData(prev => {
+                    console.log('📝 Aggiornando formData da:', prev.coordinate, 'a:', coord);
+                    return { ...prev, coordinate: coord };
+                  });
+                }}
+                onIndirizzoChange={(addr) => {
+                  console.log('📝 onIndirizzoChange chiamato con:', addr);
+                  setFormData(prev => ({ ...prev, indirizzo: addr }));
+                }}
+                onRaggioChange={(raggio) => {
+                  console.log('📝 onRaggioChange chiamato con:', raggio);
+                  setFormData(prev => ({ ...prev, raggioKm: raggio }));
+                }}
+              />
             </div>
 
-            {/* Zona - varia in base alla città */}
-            <div className="mb-4">
-              <label className="block text-sm font-medium mb-1">
-                Zona / Municipio / Quartiere
-                {formData.città && getZonePerCitta(formData.città).length > 0 && <span className="text-blue-600 ml-1">(disponibili zone predefinite)</span>}
-              </label>
-              
-              {formData.città && getZonePerCitta(formData.città).length > 0 ? (
-                <select
-                  value={formData.zona}
-                  onChange={(e) => setFormData({ ...formData, zona: e.target.value })}
-                  className="w-full border rounded px-3 py-2"
-                >
-                  <option value="">Seleziona zona...</option>
-                  {getZonePerCitta(formData.città).map(zona => (
-                    <option key={zona} value={zona}>{zona}</option>
-                  ))}
-                  <option value="custom">Altra zona (specifica sotto)</option>
-                </select>
-              ) : (
-                <input
-                  type="text"
-                  value={formData.zona}
-                  onChange={(e) => setFormData({ ...formData, zona: e.target.value })}
-                  className="w-full border rounded px-3 py-2"
-                  placeholder="es. Centro, Periferia Nord, Zona industriale..."
-                />
-              )}
-
-              {formData.zona === 'custom' && (
-                <input
-                  type="text"
-                  value={formData.zona}
-                  onChange={(e) => setFormData({ ...formData, zona: e.target.value })}
-                  className="w-full border rounded px-3 py-2 mt-2"
-                  placeholder="Specifica la zona..."
-                />
-              )}
-            </div>
-
-            <label className="flex items-center text-sm mb-4">
+            <label className="flex items-center text-sm">
               <input
                 type="checkbox"
                 checked={formData.remoto}
@@ -349,52 +304,6 @@ export default function CreateTeamPage() {
               />
               <span>L'Equipé opera anche da remoto</span>
             </label>
-
-            {/* Modalità di selezione area */}
-            <div className="mb-4">
-              <label className="block text-sm font-medium mb-2">Modalità di definizione area operativa</label>
-              <div className="flex gap-4">
-                <label className="flex items-center">
-                  <input
-                    type="radio"
-                    checked={formData.locationMode === 'zone'}
-                    onChange={() => setFormData({ ...formData, locationMode: 'zone' })}
-                    className="mr-2"
-                  />
-                  <span>Zone predefinite</span>
-                </label>
-                <label className="flex items-center">
-                  <input
-                    type="radio"
-                    checked={formData.locationMode === 'address'}
-                    onChange={() => setFormData({ ...formData, locationMode: 'address' })}
-                    className="mr-2"
-                  />
-                  <span>Indirizzo + Raggio</span>
-                </label>
-              </div>
-            </div>
-
-            {/* Mappa interattiva per indirizzo + raggio */}
-            {formData.locationMode === 'address' && (
-              <div className="mb-4 p-4 bg-gray-50 rounded-lg">
-                <h4 className="font-medium mb-3">Definisci l'area di servizio sulla mappa</h4>
-                <MapSelector
-                  coordinate={formData.coordinate}
-                  raggioKm={formData.raggioKm}
-                  indirizzo={formData.indirizzo}
-                  onCoordinateChange={(coord) => setFormData({ ...formData, coordinate: coord })}
-                  onIndirizzoChange={(addr) => setFormData({ ...formData, indirizzo: addr })}
-                  onRaggioChange={(raggio) => setFormData({ ...formData, raggioKm: raggio })}
-                />
-              </div>
-            )}
-
-            <div className="mt-3 p-3 bg-blue-50 rounded-lg text-sm text-blue-800">
-              <strong>💡 Suggerimento:</strong> {formData.locationMode === 'zone' 
-                ? 'La zona aiuta altri professionisti della stessa area a trovarti nelle ricerche'
-                : 'Cerca il tuo studio o la zona dove operi e definisci il raggio di copertura'}
-            </div>
           </div>
 
           {/* Ruoli Cercati */}

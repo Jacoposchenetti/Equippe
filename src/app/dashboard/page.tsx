@@ -49,12 +49,15 @@ export default function Dashboard() {
       try {
         // Forza refresh del token
         if (user) {
-          await user.getIdToken(true);
+          const token = await user.getIdToken(true);
           console.log('🔄 Token refreshed');
+          console.log('🔐 Token claims:', await user.getIdTokenResult());
         }
         
         const teamsRef = collection(db, 'teams');
         console.log('🔄 Caricamento teams...');
+        console.log('🔍 DB instance:', db.app.options.projectId);
+        console.log('🔍 User UID:', user?.uid);
         const teamsSnapshot = await getDocs(teamsRef);
         const teamsData = await Promise.all(teamsSnapshot.docs.map(async (teamDoc) => {
           const teamData = {
@@ -68,7 +71,9 @@ export default function Dashboard() {
             const membersData = await Promise.all(
               teamData.members.map(async (member) => {
                 try {
-                  const memberDocRef = doc(db, 'users', member.userId);
+                  const userId = member.userId || member.uid;
+                  if (!userId) return member;
+                  const memberDocRef = doc(db, 'users', userId);
                   const memberDoc = await getDoc(memberDocRef);
                   if (memberDoc.exists()) {
                     return {
@@ -106,6 +111,19 @@ export default function Dashboard() {
     setCurrentFilters(filters);
   };
 
+  // Funzione per calcolare la distanza tra due coordinate (formula di Haversine)
+  const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
+    const R = 6371; // Raggio della Terra in km
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c; // Distanza in km
+  };
+
   // Filtra professionisti
   const filteredProfessionisti = professionisti.filter(p => {
     // Specializzazione
@@ -113,19 +131,23 @@ export default function Dashboard() {
       return false;
     }
 
-    // Location - controlla tutti gli studi
-    if (currentFilters.città || currentFilters.provincia) {
-      const hasMatchingStudio = p.profile.studi?.some(studio => {
-        if (currentFilters.città && studio.città !== currentFilters.città) return false;
-        if (currentFilters.provincia && studio.provincia !== currentFilters.provincia) return false;
-        return true;
+    // Location - verifica distanza dagli studi se ci sono coordinate
+    if (currentFilters.coordinate && currentFilters.raggioKm) {
+      const hasStudioInRange = p.profile.studi?.some(studio => {
+        if (studio.coordinate) {
+          const distance = calculateDistance(
+            currentFilters.coordinate!.lat,
+            currentFilters.coordinate!.lng,
+            studio.coordinate.lat,
+            studio.coordinate.lng
+          );
+          return distance <= currentFilters.raggioKm!;
+        }
+        return false;
       });
 
-      // Se non ha studi, controlla location legacy
-      if (!hasMatchingStudio) {
-        if (currentFilters.città && p.profile.location?.città !== currentFilters.città) return false;
-        if (currentFilters.provincia && p.profile.location?.provincia !== currentFilters.provincia) return false;
-      }
+      // Se non ha studi con coordinate nel raggio, escludi
+      if (!hasStudioInRange) return false;
     }
 
     // Remoto
@@ -156,8 +178,36 @@ export default function Dashboard() {
       if (!hasSpecialization) return false;
     }
 
-    // Location - controlla il creatore del team
-    // TODO: potremmo aggiungere location anche ai team se necessario
+    // Location - verifica distanza se ci sono coordinate del filtro E dell'équipe
+    if (currentFilters.coordinate && currentFilters.raggioKm) {
+      // Se l'équipe non ha coordinate, mostrala solo se è remota o se il filtro remoto è attivo
+      if (!t.coordinate) {
+        if (!t.remoto && currentFilters.remoto === false) {
+          return false;
+        }
+      } else {
+        // L'équipe ha coordinate, calcola la distanza
+        const distance = calculateDistance(
+          currentFilters.coordinate.lat,
+          currentFilters.coordinate.lng,
+          t.coordinate.lat,
+          t.coordinate.lng
+        );
+        
+        // Se l'équipe non è nel raggio, escludi (a meno che non lavori anche da remoto)
+        if (distance > currentFilters.raggioKm) {
+          // Se l'équipe non è remota o non è richiesto remoto, escludi
+          if (!t.remoto && !currentFilters.remoto) {
+            return false;
+          }
+        }
+      }
+    }
+
+    // Se il filtro remoto è attivo, mostra solo équipe remote
+    if (currentFilters.remoto && !t.remoto) {
+      return false;
+    }
 
     return true;
   });
@@ -353,6 +403,29 @@ export default function Dashboard() {
                         </div>
                       )}
                     </div>
+
+                    {/* Zona Operativa */}
+                    {team.coordinate && team.indirizzo && (
+                      <div className="mb-4 border-t border-gray-200 pt-3">
+                        <div className="flex items-start gap-2 text-xs">
+                          <svg className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                          </svg>
+                          <div className="flex-1 min-w-0">
+                            <div className="text-gray-700 font-medium mb-1" style={{ fontSize: '11px', lineHeight: '1.3' }}>
+                              {team.indirizzo}
+                            </div>
+                            <div className="text-gray-500">
+                              Raggio: <span className="font-semibold text-blue-600">{team.raggioKm} km</span>
+                              {team.remoto && (
+                                <span className="ml-2 text-green-600">• Remoto</span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
 
                     {/* Button */}
                     <button 

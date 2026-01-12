@@ -7,6 +7,7 @@ import { collection, query, where, orderBy, onSnapshot, addDoc, updateDoc, doc, 
 import { db } from '@/lib/firebase';
 import { Conversation, Message } from '@/types/equippe';
 import Header from '@/components/Header';
+import { notifyNewMessage } from '@/lib/notifications';
 
 export default function MessagesPage() {
   const { user, userProfile } = useAuth();
@@ -246,7 +247,7 @@ export default function MessagesPage() {
       const receiverId = conversation.participants.find(id => id !== user.uid)!;
 
       // Crea messaggio
-      await addDoc(collection(db, 'messages'), {
+      const messageDoc = await addDoc(collection(db, 'messages'), {
         conversationId: selectedConversation,
         senderId: user.uid,
         senderName: userProfile.profile.nome,
@@ -268,6 +269,16 @@ export default function MessagesPage() {
           [receiverId]: (currentUnreadCount[receiverId] || 0) + 1
         }
       });
+
+      // Invia notifica al destinatario
+      await notifyNewMessage(
+        selectedConversation,
+        messageDoc.id,
+        user.uid,
+        userProfile.profile.nome,
+        [receiverId],
+        messageText.trim()
+      );
 
       setMessageText('');
     } catch (err) {

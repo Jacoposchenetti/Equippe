@@ -1,17 +1,16 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
-import { MapContainer, TileLayer, Circle, Marker, useMapEvents, useMap } from 'react-leaflet';
+import { useEffect, useState } from 'react';
 import 'leaflet/dist/leaflet.css';
-import L from 'leaflet';
 
-// Fix per i marker di Leaflet in Next.js
-delete (L.Icon.Default.prototype as any)._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
-  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-});
+// Import dinamici per evitare SSR
+let MapContainer: any;
+let TileLayer: any;
+let Circle: any;
+let Marker: any;
+let useMapEvents: any;
+let useMap: any;
+let L: any;
 
 interface MapSelectorProps {
   coordinate: { lat: number; lng: number } | null;
@@ -29,39 +28,6 @@ interface AddressSuggestion {
   place_id: number;
 }
 
-function MapClickHandler({ onLocationSelect }: { onLocationSelect: (lat: number, lng: number) => void }) {
-  useMapEvents({
-    click: (e) => {
-      onLocationSelect(e.latlng.lat, e.latlng.lng);
-    },
-  });
-  return null;
-}
-
-// Componente per centrare la mappa quando cambiano le coordinate
-function MapUpdater({ coordinate, raggioKm }: { coordinate: { lat: number; lng: number } | null; raggioKm: number }) {
-  const map = useMap();
-  
-  useEffect(() => {
-    if (coordinate) {
-      // Calcola lo zoom in base al raggio
-      let zoom = 13;
-      if (raggioKm <= 2) zoom = 15;
-      else if (raggioKm <= 5) zoom = 14;
-      else if (raggioKm <= 10) zoom = 13;
-      else if (raggioKm <= 20) zoom = 12;
-      else zoom = 11;
-      
-      map.setView([coordinate.lat, coordinate.lng], zoom, {
-        animate: true,
-        duration: 1
-      });
-    }
-  }, [coordinate, raggioKm, map]);
-  
-  return null;
-}
-
 export default function MapSelector({
   coordinate,
   raggioKm,
@@ -71,6 +37,7 @@ export default function MapSelector({
   onRaggioChange,
 }: MapSelectorProps) {
   const [isClient, setIsClient] = useState(false);
+  const [isMapReady, setIsMapReady] = useState(false);
   const [searchAddress, setSearchAddress] = useState(indirizzo);
   const [isGeocoding, setIsGeocoding] = useState(false);
   const [suggestions, setSuggestions] = useState<AddressSuggestion[]>([]);
@@ -79,6 +46,30 @@ export default function MapSelector({
 
   useEffect(() => {
     setIsClient(true);
+    
+    // Carica dinamicamente react-leaflet e leaflet
+    Promise.all([
+      import('react-leaflet'),
+      import('leaflet')
+    ]).then(([reactLeaflet, leaflet]) => {
+      MapContainer = reactLeaflet.MapContainer;
+      TileLayer = reactLeaflet.TileLayer;
+      Circle = reactLeaflet.Circle;
+      Marker = reactLeaflet.Marker;
+      useMapEvents = reactLeaflet.useMapEvents;
+      useMap = reactLeaflet.useMap;
+      L = leaflet.default;
+      
+      // Fix per i marker di Leaflet in Next.js
+      delete (L.Icon.Default.prototype as any)._getIconUrl;
+      L.Icon.Default.mergeOptions({
+        iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
+        iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+      });
+      
+      setIsMapReady(true);
+    });
   }, []);
 
   // Debounced autocomplete con Mapbox
@@ -88,6 +79,7 @@ export default function MapSelector({
         fetchMapboxSuggestions(searchAddress);
       } else {
         setSuggestions([]);
+        setShowSuggestions(false);
       }
     }, 300);
 
@@ -128,6 +120,7 @@ export default function MapSelector({
     onIndirizzoChange(suggestion.display_name);
     setShowSuggestions(false);
     setSuggestions([]);
+    setSelectedSuggestionIndex(-1);
   };
 
   const geocodeAddress = async () => {
@@ -148,8 +141,9 @@ export default function MapSelector({
       
       if (data.features && data.features.length > 0) {
         const feature = data.features[0];
-        const [lon, lat] = feature.center;
-        onCoordinateChange({ lat, lng: lon });
+        const [lng, lat] = feature.center;
+        console.log('📍 Geocoding trovato:', { lat, lng, address: feature.place_name });
+        onCoordinateChange({ lat, lng });
         onIndirizzoChange(feature.place_name);
         setSearchAddress(feature.place_name);
       } else {
@@ -186,7 +180,41 @@ export default function MapSelector({
 
   const defaultCenter = coordinate || { lat: 41.9028, lng: 12.4964 }; // Roma di default
 
-  if (!isClient) {
+  // Componenti per la mappa (definiti qui per accedere agli hooks)
+  const MapClickHandler = ({ onLocationSelect }: { onLocationSelect: (lat: number, lng: number) => void }) => {
+    if (!useMapEvents) return null;
+    const events = useMapEvents({
+      click: (e: any) => {
+        onLocationSelect(e.latlng.lat, e.latlng.lng);
+      },
+    });
+    return null;
+  };
+
+  const MapUpdater = ({ coordinate, raggioKm }: { coordinate: { lat: number; lng: number } | null; raggioKm: number }) => {
+    if (!useMap) return null;
+    const map = useMap();
+    
+    useEffect(() => {
+      if (coordinate && map) {
+        let zoom = 13;
+        if (raggioKm <= 2) zoom = 15;
+        else if (raggioKm <= 5) zoom = 14;
+        else if (raggioKm <= 10) zoom = 13;
+        else if (raggioKm <= 20) zoom = 12;
+        else zoom = 11;
+        
+        map.setView([coordinate.lat, coordinate.lng], zoom, {
+          animate: true,
+          duration: 1
+        });
+      }
+    }, [coordinate, raggioKm, map]);
+    
+    return null;
+  };
+
+  if (!isClient || !isMapReady) {
     return (
       <div className="w-full h-96 bg-gray-100 rounded-lg flex items-center justify-center">
         <div className="text-gray-500">Caricamento mappa...</div>
@@ -264,6 +292,7 @@ export default function MapSelector({
 
       {/* Map */}
       <div className="w-full h-96 border rounded-lg overflow-hidden relative">
+        {console.log('🗺️ Rendering map with coordinate:', coordinate, 'raggio:', raggioKm)}
         <MapContainer
           center={[defaultCenter.lat, defaultCenter.lng]}
           zoom={13}
@@ -275,10 +304,14 @@ export default function MapSelector({
           />
           <MapUpdater coordinate={coordinate} raggioKm={raggioKm} />
           <MapClickHandler
-            onLocationSelect={(lat, lng) => onCoordinateChange({ lat, lng })}
+            onLocationSelect={(lat, lng) => {
+              console.log('🖱️ Click sulla mappa:', { lat, lng });
+              onCoordinateChange({ lat, lng });
+            }}
           />
-          {coordinate && (
+          {coordinate ? (
             <>
+              {console.log('✅ Rendering marker at:', coordinate)}
               <Marker position={[coordinate.lat, coordinate.lng]} />
               <Circle
                 center={[coordinate.lat, coordinate.lng]}
@@ -286,6 +319,8 @@ export default function MapSelector({
                 pathOptions={{ color: 'blue', fillColor: 'blue', fillOpacity: 0.1 }}
               />
             </>
+          ) : (
+            console.log('❌ No coordinate, no marker')
           )}
         </MapContainer>
         

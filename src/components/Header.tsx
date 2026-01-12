@@ -7,6 +7,7 @@ import { useState, useEffect } from 'react';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Conversation } from '@/types/equippe';
+import NotificationBell from './NotificationBell';
 
 export default function Header() {
   const { user, userProfile, signOut } = useAuth();
@@ -77,19 +78,24 @@ export default function Header() {
             ))}
           </nav>
 
-          {/* User Avatar */}
-          <div className="relative">
-            <button
-              onClick={() => setShowDropdown(!showDropdown)}
-              className="flex items-center gap-2 hover:opacity-80 transition"
-            >
-              <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center font-bold text-sm">
-                {getInitials()}
-              </div>
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
-            </button>
+          {/* User Avatar and Notifications */}
+          <div className="flex items-center gap-4">
+            {/* Notification Bell */}
+            <NotificationBell />
+            
+            {/* User Dropdown */}
+            <div className="relative">
+              <button
+                onClick={() => setShowDropdown(!showDropdown)}
+                className="flex items-center gap-2 hover:opacity-80 transition"
+              >
+                <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center font-bold text-sm">
+                  {getInitials()}
+                </div>
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
 
             {/* Dropdown */}
             {showDropdown && (
@@ -109,6 +115,7 @@ export default function Header() {
                 </div>
               </>
             )}
+            </div>
           </div>
         </div>
       </div>

@@ -4,31 +4,44 @@ service cloud.firestore {
     function isAuthenticated() {
       return request.auth != null;
     }
-    
     function isOwner(uid) {
       return request.auth.uid == uid;
     }
-    
     match /users/{userId} {
       allow read: if isAuthenticated();
       allow write: if isAuthenticated() && isOwner(userId);
     }
-    
     match /teams/{teamId} {
-      allow read: if isAuthenticated() && request.auth.uid in resource.data.memberIds;
-      allow create: if isAuthenticated();
-      allow update: if isAuthenticated() && (request.auth.uid == resource.data.createdBy || request.auth.uid in resource.data.memberIds);
-      allow delete: if isAuthenticated() && request.auth.uid == resource.data.createdBy;
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated();
     }
-    
-    match /teamInvites/{inviteId} {
-      allow read, write: if isAuthenticated() && (request.auth.uid == resource.data.fromUserId || request.auth.uid == resource.data.toUserId);
-      allow create: if isAuthenticated() && request.auth.uid == request.resource.data.fromUserId;
-    }
-    
     match /referrals/{refId} {
-      allow read, write: if isAuthenticated() && (request.auth.uid == resource.data.senderUid || request.auth.uid == resource.data.receiverUid);
-      allow create: if isAuthenticated() && request.auth.uid == request.resource.data.senderUid;
+      allow read: if isAuthenticated() && (request.auth.uid == resource.data.senderUid || request.auth.uid == resource.data.receiverUid);
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() && (request.auth.uid == resource.data.senderUid || request.auth.uid == resource.data.receiverUid);
+      allow delete: if isAuthenticated() && request.auth.uid == resource.data.senderUid;
+    }
+    match /teamInvites/{inviteId} {
+      allow list: if isAuthenticated();
+      allow get: if isAuthenticated() && (request.auth.uid == resource.data.fromUserId || request.auth.uid == resource.data.toUserId);
+      allow create: if isAuthenticated() && request.auth.uid == request.resource.data.fromUserId;
+      allow update: if isAuthenticated() && (request.auth.uid == resource.data.fromUserId || request.auth.uid == resource.data.toUserId);
+      allow delete: if isAuthenticated() && request.auth.uid == resource.data.fromUserId;
+    }
+    match /teamRequests/{requestId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && request.auth.uid == request.resource.data.userId;
+      allow update: if isAuthenticated();
+      allow delete: if isAuthenticated();
+    }
+    match /notifications/{notificationId} {
+      allow read, write: if isAuthenticated();
+    }
+    match /conversations/{conversationId} {
+      allow read, write: if isAuthenticated();
+    }
+    match /messages/{messageId} {
+      allow read, write: if isAuthenticated();
     }
   }
 }

@@ -1,15 +1,16 @@
 'use client';
 
 import { useState } from 'react';
-import { CITTA_ITALIANE, PROVINCE_ITALIANE } from '@/lib/comuni';
+import MapSelector from './MapSelector';
 
 export type SearchType = 'professionista' | 'equipé';
 
 export interface SearchFilters {
   type: SearchType;
   specializzazione?: string;
-  città?: string;
-  provincia?: string;
+  coordinate?: { lat: number; lng: number } | null;
+  raggioKm?: number;
+  indirizzo?: string;
   remoto: boolean;
 }
 
@@ -21,16 +22,18 @@ interface EnhancedSearchProps {
 export default function EnhancedSearch({ onSearch, availableSpecializations = [] }: EnhancedSearchProps) {
   const [searchType, setSearchType] = useState<SearchType>('professionista');
   const [specializzazione, setSpecializzazione] = useState<string>('');
-  const [città, setCittà] = useState<string>('');
-  const [provincia, setProvincia] = useState<string>('');
+  const [coordinate, setCoordinate] = useState<{ lat: number; lng: number } | null>(null);
+  const [raggioKm, setRaggioKm] = useState<number>(10);
+  const [indirizzo, setIndirizzo] = useState<string>('');
   const [remoto, setRemoto] = useState<boolean>(false);
 
   const handleSearch = () => {
     onSearch({
       type: searchType,
       specializzazione: specializzazione || undefined,
-      città: città || undefined,
-      provincia: provincia || undefined,
+      coordinate,
+      raggioKm,
+      indirizzo: indirizzo || undefined,
       remoto,
     });
   };
@@ -117,47 +120,19 @@ export default function EnhancedSearch({ onSearch, availableSpecializations = []
         </select>
       </div>
 
-      {/* Località */}
+      {/* Località con Mappa */}
       <div className="mb-4">
         <label className="block text-sm font-medium text-gray-700 mb-2">
-          Località
+          📍 Zona di interesse
         </label>
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <select
-              value={città}
-              onChange={(e) => {
-                setCittà(e.target.value);
-                const selected = CITTA_ITALIANE.find(c => c.nome === e.target.value);
-                if (selected) {
-                  setProvincia(selected.provincia);
-                }
-              }}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="">Tutte le città</option>
-              {CITTA_ITALIANE.map((città) => (
-                <option key={città.nome} value={città.nome}>
-                  {città.nome}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <select
-              value={provincia}
-              onChange={(e) => setProvincia(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="">Tutte le province</option>
-              {PROVINCE_ITALIANE.map((prov) => (
-                <option key={prov} value={prov}>
-                  {prov}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
+        <MapSelector
+          coordinate={coordinate}
+          raggioKm={raggioKm}
+          indirizzo={indirizzo}
+          onCoordinateChange={setCoordinate}
+          onIndirizzoChange={setIndirizzo}
+          onRaggioChange={setRaggioKm}
+        />
       </div>
 
       {/* Remoto */}

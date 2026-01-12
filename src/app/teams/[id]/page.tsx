@@ -8,6 +8,8 @@ import { db } from '@/lib/firebase';
 import { Team, User } from '@/types/equippe';
 import Link from 'next/link';
 import Header from '@/components/Header';
+import MapSelector from '@/components/MapSelector';
+import { notifyTeamRequest, notifyTeamRequestAccepted, notifyTeamRemoval, notifyTeamAdminPromotion } from '@/lib/notifications';
 
 export default function TeamDetailPage() {
   const { user } = useAuth();
@@ -19,9 +21,13 @@ export default function TeamDetailPage() {
   const [members, setMembers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isMember, setIsMember] = useState(false);
   const [showInviteModal, setShowInviteModal] = useState(false);
+  const [showRequestModal, setShowRequestModal] = useState(false);
+  const [requestMessage, setRequestMessage] = useState('');
   const [availableUsers, setAvailableUsers] = useState<User[]>([]);
   const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
+  const [pendingRequests, setPendingRequests] = useState<any[]>([]);
 
   useEffect(() => {
     if (!user) {
@@ -43,9 +49,10 @@ export default function TeamDetailPage() {
       const teamData = { id: teamDoc.id, ...teamDoc.data() } as Team;
       setTeam(teamData);
 
-      // Verifica se l'utente è admin
-      const userMember = teamData.members.find(m => m.userId === user?.uid);
+      // Verifica se l'utente è admin o membro
+      const userMember = teamData.members.find(m => m.userId === user?.uid || m.uid === user?.uid);
       setIsAdmin(userMember?.role === 'admin');
+      setIsMember(!!userMember);
 
       // Carica dati membri
       const memberPromises = teamData.members.map(async (member) => {
@@ -71,6 +78,24 @@ export default function TeamDetailPage() {
           !teamData.memberIds?.includes(u.uid)
         );
         setAvailableUsers(available);
+
+        // Carica richieste di adesione pendenti
+        const requestsSnapshot = await getDocs(collection(db, 'teamRequests'));
+        const requests = requestsSnapshot.docs
+          .map(doc => ({ id: doc.id, ...doc.data() }))
+          .filter((req: any) => req.teamId === teamId && req.status === 'pending');
+        
+        // Carica dati utenti per le richieste
+        const requestsWithUserData = await Promise.all(
+          requests.map(async (req: any) => {
+            const userDoc = await getDoc(doc(db, 'users', req.userId));
+            return {
+              ...req,
+              userData: userDoc.exists() ? { uid: userDoc.id, ...userDoc.data() } : null
+            };
+          })
+        );
+        setPendingRequests(requestsWithUserData);
       }
     } catch (error) {
       console.error('Errore caricamento team:', error);
@@ -91,6 +116,11 @@ export default function TeamDetailPage() {
         memberIds: arrayRemove(userId),
         updatedAt: Timestamp.now(),
       });
+
+      // Notifica l'utente rimosso
+      if (team?.name) {
+        await notifyTeamRemoval(userId, teamId, team.name);
+      }
 
       await loadTeamData();
     } catch (error) {
@@ -223,6 +253,101 @@ export default function TeamDetailPage() {
         ? prev.filter(id => id !== userId)
         : [...prev, userId]
     );
+  };
+
+  const handleJoinRequest = async () => {
+    if (!requestMessage.trim()) {
+      alert('Inserisci un messaggio per la tua richiesta');
+      return;
+    }
+
+    try {
+      // Crea la richiesta di adesione
+      await addDoc(collection(db, 'teamRequests'), {
+        teamId,
+        teamName: team?.name,
+        userId: user?.uid,
+        userName: user?.displayName || user?.email,
+        message: requestMessage,
+        status: 'pending',
+        createdAt: Timestamp.now(),
+        updatedAt: Timestamp.now(),
+      });
+
+      // Invia notifiche a tutti gli admin
+      const adminIds = team?.members
+        .filter(m => m.role === 'admin' || m.ruolo === 'admin')
+        .map(m => m.userId || m.uid)
+        .filter(Boolean) as string[];
+      
+      if (adminIds.length > 0 && team?.name && user?.uid) {
+        const userName = user?.displayName || user?.email || 'Un utente';
+        await notifyTeamRequest(teamId, team.name, adminIds, user.uid, userName);
+      }
+
+      setShowRequestModal(false);
+      setRequestMessage('');
+      alert('Richiesta inviata! L\'amministratore riceverà una notifica.');
+    } catch (error) {
+      console.error('Errore invio richiesta:', error);
+      alert('Errore durante l\'invio della richiesta');
+    }
+  };
+
+  const handleAcceptRequest = async (requestId: string, userId: string) => {
+    try {
+      // Aggiungi l'utente al team
+      const newMember = {
+        uid: userId,
+        userId: userId,
+        ruolo: 'member' as const,
+        role: 'member' as const,
+        joinedAt: Timestamp.now(),
+      };
+
+      await updateDoc(doc(db, 'teams', teamId), {
+        members: arrayUnion(newMember),
+        memberIds: arrayUnion(userId),
+        updatedAt: Timestamp.now(),
+      });
+
+      // Aggiorna lo stato della richiesta
+      await updateDoc(doc(db, 'teamRequests', requestId), {
+        status: 'accepted',
+        updatedAt: Timestamp.now(),
+      });
+
+      // Notifica l'utente dell'accettazione
+      if (team?.name) {
+        await notifyTeamRequestAccepted(userId, teamId, team.name);
+      }
+
+      // Ricarica i dati
+      await loadTeamData();
+      alert('Richiesta accettata! Il membro è stato aggiunto all\'équipe.');
+    } catch (error) {
+      console.error('Errore accettazione richiesta:', error);
+      alert('Errore durante l\'accettazione della richiesta');
+    }
+  };
+
+  const handleRejectRequest = async (requestId: string) => {
+    if (!confirm('Sei sicuro di voler rifiutare questa richiesta?')) return;
+
+    try {
+      // Aggiorna lo stato della richiesta
+      await updateDoc(doc(db, 'teamRequests', requestId), {
+        status: 'rejected',
+        updatedAt: Timestamp.now(),
+      });
+
+      // Ricarica i dati
+      await loadTeamData();
+      alert('Richiesta rifiutata.');
+    } catch (error) {
+      console.error('Errore rifiuto richiesta:', error);
+      alert('Errore durante il rifiuto della richiesta');
+    }
   };
 
   if (loading) {
@@ -358,6 +483,128 @@ export default function TeamDetailPage() {
           </div>
         )}
 
+        {/* Sezione Richieste di Adesione (solo per admin) */}
+        {isAdmin && pendingRequests.length > 0 && (
+          <div className="bg-white rounded-xl shadow-sm mb-6 overflow-hidden">
+            <div className="px-8 py-6 border-b border-gray-200">
+              <h3 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+                <svg className="w-6 h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                </svg>
+                Richieste di Adesione
+                <span className="ml-2 bg-orange-500 text-white px-3 py-1 rounded-full text-sm font-bold">
+                  {pendingRequests.length}
+                </span>
+              </h3>
+            </div>
+            <div className="p-6 space-y-4">
+              {pendingRequests.map((request: any) => (
+                <div key={request.id} className="border border-orange-200 rounded-xl p-5 bg-orange-50/30">
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex items-start gap-4 flex-1">
+                      <div className="w-12 h-12 bg-orange-500 rounded-full flex items-center justify-center text-white font-bold text-lg flex-shrink-0">
+                        {request.userData?.profile?.nome?.charAt(0).toUpperCase() || 'U'}
+                      </div>
+                      <div className="flex-1">
+                        <h4 className="font-bold text-lg text-gray-900 mb-1">
+                          {request.userData?.profile?.nome || request.userName || 'Utente'}
+                        </h4>
+                        {request.userData?.profile?.specializzazioni && (
+                          <div className="flex flex-wrap gap-2 mb-2">
+                            {request.userData.profile.specializzazioni.map((spec: string) => (
+                              <span key={spec} className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">
+                                {spec}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                        <p className="text-sm text-gray-600 mb-2">
+                          <strong>Messaggio:</strong>
+                        </p>
+                        <p className="text-sm text-gray-700 bg-white p-3 rounded-lg border border-gray-200">
+                          "{request.message}"
+                        </p>
+                        <p className="text-xs text-gray-500 mt-2">
+                          Richiesta inviata il {new Date(request.createdAt?.toDate()).toLocaleDateString('it-IT')}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex gap-3 mt-4">
+                    <button
+                      onClick={() => handleAcceptRequest(request.id, request.userId)}
+                      className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium transition flex items-center justify-center gap-2"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                      Accetta
+                    </button>
+                    <button
+                      onClick={() => handleRejectRequest(request.id)}
+                      className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium transition flex items-center justify-center gap-2"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                      Rifiuta
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Sezione Zona Operativa */}
+        {team.coordinate && team.indirizzo && (
+          <div className="bg-white rounded-xl shadow-sm mb-6 overflow-hidden">
+            <div className="px-8 py-6 border-b border-gray-200">
+              <h3 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+                <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                Zona Operativa
+              </h3>
+            </div>
+            <div className="p-6">
+              <div className="mb-4 p-4 bg-blue-50 rounded-lg">
+                <div className="flex items-start gap-3">
+                  <svg className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                  <div className="flex-1">
+                    <p className="font-semibold text-gray-900 mb-1">📍 {team.indirizzo}</p>
+                    <p className="text-sm text-gray-600">
+                      Raggio di copertura: <span className="font-bold text-blue-600">{team.raggioKm} km</span>
+                      {' • '}
+                      Area coperta: circa <span className="font-bold">{(Math.PI * (team.raggioKm || 0) * (team.raggioKm || 0)).toFixed(1)} km²</span>
+                    </p>
+                    {team.remoto && (
+                      <p className="text-sm text-green-600 font-medium mt-1">
+                        ✓ Disponibile anche per lavoro da remoto
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+              
+              <div style={{ position: 'relative', zIndex: 1 }}>
+                <MapSelector
+                  coordinate={team.coordinate}
+                  raggioKm={team.raggioKm || 10}
+                  indirizzo={team.indirizzo}
+                  onCoordinateChange={() => {}}
+                  onIndirizzoChange={() => {}}
+                  onRaggioChange={() => {}}
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="bg-white rounded-xl shadow-sm overflow-hidden">
           <div className="px-8 py-6 border-b border-gray-200 flex justify-between items-center">
             <h3 className="text-2xl font-bold text-gray-900">Membri ({members.length})</h3>
@@ -420,21 +667,50 @@ export default function TeamDetailPage() {
                     </div>
                   </div>
 
-                  {isAdmin && !isCurrentUser && (
-                    <button
-                      onClick={() => handleRemoveMember(member.uid)}
-                      className="ml-4 px-4 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg font-medium transition"
-                    >
-                      Rimuovi
-                    </button>
-                  )}
+                  <div className="flex items-center gap-2 ml-4">
+                    {!isCurrentUser && (
+                      <button
+                        onClick={() => router.push(`/messages?userId=${member.uid}`)}
+                        className="p-3 text-blue-600 hover:bg-blue-50 rounded-lg font-medium transition flex items-center gap-2"
+                        title="Invia messaggio"
+                      >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                        </svg>
+                      </button>
+                    )}
+                    {isAdmin && !isCurrentUser && (
+                      <button
+                        onClick={() => handleRemoveMember(member.uid)}
+                        className="px-4 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg font-medium transition"
+                      >
+                        Rimuovi
+                      </button>
+                    )}
+                  </div>
                 </div>
               );
             })}
           </div>
         </div>
 
-        {!isAdmin && (
+        {/* Pulsanti azioni per non membri */}
+        {!isMember && (
+          <div className="bg-white rounded-xl shadow-sm p-6">
+            <button
+              onClick={() => setShowRequestModal(true)}
+              className="w-full px-6 py-3 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition shadow-sm flex items-center justify-center gap-2"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+              </svg>
+              Fai Richiesta per Aderire
+            </button>
+          </div>
+        )}
+
+        {/* Pulsante lascia équipe per membri non admin */}
+        {isMember && !isAdmin && (
           <div className="bg-white rounded-xl shadow-sm p-6">
             <button
               onClick={handleLeaveTeam}
@@ -445,6 +721,51 @@ export default function TeamDetailPage() {
               </svg>
               Lascia Equipé
             </button>
+          </div>
+        )}
+
+        {/* Modal Richiesta Adesione */}
+        {showRequestModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4" style={{ zIndex: 9999 }}>
+            <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden" style={{ zIndex: 10000 }}>
+              <div className="px-8 py-6 border-b border-gray-200">
+                <h3 className="text-2xl font-bold text-gray-900">Richiesta di Adesione</h3>
+                <p className="text-sm text-gray-600 mt-1">Invia una richiesta per entrare nell'équipe</p>
+              </div>
+              
+              <div className="p-6">
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Messaggio per l'amministratore *
+                  </label>
+                  <textarea
+                    value={requestMessage}
+                    onChange={(e) => setRequestMessage(e.target.value)}
+                    placeholder="Presentati brevemente e spiega perché vorresti far parte di questa équipe..."
+                    className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-green-500"
+                    rows={6}
+                  />
+                </div>
+              </div>
+
+              <div className="px-8 py-6 bg-gray-50 border-t border-gray-200 flex gap-3">
+                <button
+                  onClick={() => {
+                    setShowRequestModal(false);
+                    setRequestMessage('');
+                  }}
+                  className="flex-1 px-6 py-3 border border-gray-300 rounded-lg hover:bg-gray-100 font-medium transition"
+                >
+                  Annulla
+                </button>
+                <button
+                  onClick={handleJoinRequest}
+                  className="flex-1 px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium transition"
+                >
+                  Invia Richiesta
+                </button>
+              </div>
+            </div>
           </div>
         )}
 

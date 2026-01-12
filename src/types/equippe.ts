@@ -13,6 +13,8 @@ export interface Studio {
   città: string;
   provincia: string;
   remoto: boolean;
+  coordinate?: { lat: number; lng: number }; // Coordinate geografiche dello studio
+  raggioKm?: number; // Raggio di copertura in km
 }
 
 export interface UserProfile {
@@ -81,6 +83,7 @@ export interface Team {
   adminUid: string;
   createdBy?: string; // Alias per compatibilità
   members: TeamMember[];
+  membersWithData?: any[]; // Membri con dati utente caricati (runtime only)
   memberIds?: string[]; // Lista semplice di UID per query veloci
   settings: TeamSettings;
   status?: 'active' | 'inactive';
@@ -164,18 +167,6 @@ export interface ApiResponse<T> {
   error?: string;
 }
 
-// Notification Types
-export interface Notification {
-  id: string;
-  userId: string;
-  type: 'referral_received' | 'referral_accepted' | 'team_invite' | 'system';
-  title: string;
-  message: string;
-  read: boolean;
-  link?: string;
-  createdAt: Timestamp;
-}
-
 // Chat/Messaging Types
 export interface Message {
   id: string;
@@ -202,4 +193,37 @@ export interface Conversation {
     [userId: string]: number;
   };
   createdAt: Timestamp;
+}
+
+// Notification Types
+export type NotificationType = 
+  | 'team_request'           // Richiesta adesione équipe
+  | 'message'                // Nuovo messaggio
+  | 'team_request_accepted'  // Richiesta adesione accettata
+  | 'team_removed'           // Rimosso da équipe
+  | 'team_admin'             // Promosso ad admin
+  | 'team_invite_response'   // Invito accettato/rifiutato
+  | 'referral_received'      // Referral ricevuta
+  | 'referral_accepted';     // Referral accettata
+
+export interface Notification {
+  id: string;
+  userId: string;              // Destinatario della notifica
+  type: NotificationType;
+  title: string;
+  message: string;
+  read: boolean;
+  createdAt: Timestamp;
+  
+  // Dati specifici per tipo di notifica
+  teamId?: string;             // Per notifiche legate a team
+  teamName?: string;
+  requestId?: string;          // Per team_request
+  messageId?: string;          // Per message
+  conversationId?: string;     // Per message
+  senderId?: string;           // Chi ha generato la notifica
+  senderName?: string;
+  referralId?: string;         // Per referral
+  inviteId?: string;           // Per team_invite_response
+  accepted?: boolean;          // Per team_invite_response e referral_accepted
 }

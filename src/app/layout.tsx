@@ -7,6 +7,12 @@ import 'leaflet/dist/leaflet.css';
 export const metadata: Metadata = {
   title: 'Equippe - Piattaforma per professionisti sociosanitari',
   description: 'Trova colleghi, forma equipé multidisciplinari e collabora',
+  viewport: {
+    width: 'device-width',
+    initialScale: 1,
+    maximumScale: 1,
+    userScalable: false,
+  },
 };
 
 export default function RootLayout({

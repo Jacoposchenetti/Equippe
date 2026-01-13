@@ -174,14 +174,14 @@ export default function NotificationBell() {
             onClick={() => setShowDropdown(false)}
           />
           
-          <div className="absolute right-0 mt-2 w-96 bg-white rounded-lg shadow-xl z-20 max-h-[80vh] overflow-hidden flex flex-col">
+          <div className="absolute right-0 mt-2 w-72 sm:w-96 bg-white rounded-lg shadow-xl z-20 max-h-[70vh] sm:max-h-[80vh] overflow-hidden flex flex-col">
             {/* Header */}
-            <div className="p-4 border-b border-gray-200 flex justify-between items-center">
-              <h3 className="text-lg font-semibold text-gray-900">Notifiche</h3>
+            <div className="p-3 sm:p-4 border-b border-gray-200 flex justify-between items-center">
+              <h3 className="text-base sm:text-lg font-semibold text-gray-900">Notifiche</h3>
               {unreadCount > 0 && (
                 <button
                   onClick={markAllAsRead}
-                  className="text-sm text-blue-600 hover:text-blue-800"
+                  className="text-xs sm:text-sm text-blue-600 hover:text-blue-800"
                 >
                   Segna tutte come lette
                 </button>
@@ -191,8 +191,8 @@ export default function NotificationBell() {
             {/* Lista Notifiche */}
             <div className="overflow-y-auto flex-1">
               {notifications.length === 0 ? (
-                <div className="p-8 text-center text-gray-500">
-                  <p>Nessuna notifica</p>
+                <div className="p-6 sm:p-8 text-center text-gray-500">
+                  <p className="text-sm">Nessuna notifica</p>
                 </div>
               ) : (
                 <div className="divide-y divide-gray-100">
@@ -200,27 +200,27 @@ export default function NotificationBell() {
                     <button
                       key={notification.id}
                       onClick={() => handleNotificationClick(notification)}
-                      className={`w-full p-4 text-left hover:bg-gray-50 transition-colors ${
+                      className={`w-full p-3 sm:p-4 text-left hover:bg-gray-50 transition-colors ${
                         !notification.read ? 'bg-blue-50' : ''
                       }`}
                     >
-                      <div className="flex gap-3">
-                        <span className="text-2xl flex-shrink-0">
+                      <div className="flex gap-2 sm:gap-3">
+                        <span className="text-lg sm:text-2xl flex-shrink-0">
                           {getNotificationIcon(notification.type)}
                         </span>
                         <div className="flex-1 min-w-0">
-                          <p className={`text-sm ${!notification.read ? 'font-semibold' : 'font-medium'} text-gray-900`}>
+                          <p className={`text-xs sm:text-sm ${!notification.read ? 'font-semibold' : 'font-medium'} text-gray-900`}>
                             {notification.title}
                           </p>
-                          <p className="text-sm text-gray-600 mt-1">
+                          <p className="text-xs sm:text-sm text-gray-600 mt-1 line-clamp-2">
                             {notification.message}
                           </p>
-                          <p className="text-xs text-gray-400 mt-2">
+                          <p className="text-xs text-gray-400 mt-1 sm:mt-2">
                             {formatTimestamp(notification.createdAt)}
                           </p>
                         </div>
                         {!notification.read && (
-                          <div className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0 mt-2" />
+                          <div className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0 mt-1 sm:mt-2" />
                         )}
                       </div>
                     </button>

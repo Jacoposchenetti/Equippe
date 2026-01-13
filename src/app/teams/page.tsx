@@ -57,26 +57,26 @@ export default function TeamsPage() {
     <div className="min-h-screen bg-gray-50">
       <Header />
 
-      <div className="max-w-7xl mx-auto px-6 py-8">
-        <div className="flex justify-between items-center mb-8">
-          <h1 className="text-4xl font-bold text-gray-900">Le Mie Equipé</h1>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6 sm:mb-8">
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900">Le Mie Equipé</h1>
           <Link
             href="/teams/create"
-            className="px-6 py-3 bg-amber-500 text-white rounded-lg font-medium hover:bg-amber-600 transition shadow-sm"
+            className="w-full sm:w-auto px-4 sm:px-6 py-3 bg-amber-500 text-white rounded-lg font-medium hover:bg-amber-600 transition shadow-sm text-center touch-friendly"
           >
             + Crea Nuova Equipé
           </Link>
         </div>
 
         {myTeams.length === 0 ? (
-          <div className="bg-white p-12 rounded-lg shadow text-center">
-            <h3 className="text-xl font-semibold mb-4">Non fai parte di nessuna Equipé</h3>
-            <p className="text-gray-600 mb-6">
+          <div className="bg-white p-6 sm:p-8 lg:p-12 rounded-lg shadow text-center">
+            <h3 className="text-lg sm:text-xl font-semibold mb-4">Non fai parte di nessuna Equipé</h3>
+            <p className="text-sm sm:text-base text-gray-600 mb-6">
               Crea la tua prima Equipé per iniziare a collaborare con altri professionisti
             </p>
             <Link
               href="/teams/create"
-              className="inline-block px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              className="inline-block w-full sm:w-auto px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 touch-friendly"
             >
               Crea la tua Equipé
             </Link>

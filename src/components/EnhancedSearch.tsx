@@ -71,17 +71,17 @@ export default function EnhancedSearch({ onSearch, availableSpecializations = []
     : equipéSpecs;
 
   return (
-    <div className="bg-white p-6 rounded-lg shadow-md">
-      <h2 className="text-xl font-bold mb-4">Ricerca Avanzata</h2>
+    <div className="bg-white p-4 sm:p-6 rounded-lg shadow-md">
+      <h2 className="text-lg sm:text-xl font-bold mb-4">Ricerca Avanzata</h2>
 
       {/* Toggle Professionista/Equipé */}
-      <div className="flex gap-2 mb-4">
+      <div className="flex flex-col sm:flex-row gap-2 mb-4">
         <button
           onClick={() => {
             setSearchType('professionista');
             setSpecializzazione('');
           }}
-          className={`flex-1 py-2 px-4 rounded-lg font-medium transition-colors ${
+          className={`flex-1 py-3 px-4 rounded-lg font-medium transition-colors text-sm sm:text-base ${
             searchType === 'professionista'
               ? 'bg-blue-600 text-white'
               : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
@@ -94,7 +94,7 @@ export default function EnhancedSearch({ onSearch, availableSpecializations = []
             setSearchType('equipé');
             setSpecializzazione('');
           }}
-          className={`flex-1 py-2 px-4 rounded-lg font-medium transition-colors ${
+          className={`flex-1 py-3 px-4 rounded-lg font-medium transition-colors text-sm sm:text-base ${
             searchType === 'equipé'
               ? 'bg-blue-600 text-white'
               : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
@@ -112,7 +112,7 @@ export default function EnhancedSearch({ onSearch, availableSpecializations = []
         <select
           value={specializzazione}
           onChange={(e) => setSpecializzazione(e.target.value)}
-          className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-full border border-gray-300 rounded-lg px-3 py-3 text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
           <option value="">Tutte</option>
           {currentSpecs.map((spec) => (
@@ -128,26 +128,28 @@ export default function EnhancedSearch({ onSearch, availableSpecializations = []
         <label className="block text-sm font-medium text-gray-700 mb-2">
           📍 Zona di interesse
         </label>
-        <MapSelector
-          coordinate={coordinate}
-          raggioKm={raggioKm}
-          indirizzo={indirizzo}
-          onCoordinateChange={setCoordinate}
-          onIndirizzoChange={setIndirizzo}
-          onRaggioChange={setRaggioKm}
-        />
+        <div className="overflow-hidden rounded-lg">
+          <MapSelector
+            coordinate={coordinate}
+            raggioKm={raggioKm}
+            indirizzo={indirizzo}
+            onCoordinateChange={setCoordinate}
+            onIndirizzoChange={setIndirizzo}
+            onRaggioChange={setRaggioKm}
+          />
+        </div>
       </div>
 
       {/* Remoto */}
-      <div className="mb-4">
+      <div className="mb-6">
         <label className="flex items-center">
           <input
             type="checkbox"
             checked={remoto}
             onChange={(e) => setRemoto(e.target.checked)}
-            className="mr-2 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+            className="mr-3 h-5 w-5 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
           />
-          <span className="text-sm font-medium text-gray-700">
+          <span className="text-sm sm:text-base font-medium text-gray-700">
             Include lavoro da remoto
           </span>
         </label>
@@ -156,13 +158,13 @@ export default function EnhancedSearch({ onSearch, availableSpecializations = []
       {/* Bottone Cerca */}
       <button
         onClick={handleSearch}
-        className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg font-medium hover:bg-blue-700 transition-colors"
+        className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-blue-700 transition-colors text-base"
       >
         Cerca
       </button>
 
       {searchType === 'equipé' && (
-        <p className="text-sm text-gray-500 mt-2">
+        <p className="text-xs sm:text-sm text-gray-500 mt-2">
           * Vengono mostrate solo le equipé con posti disponibili
         </p>
       )}

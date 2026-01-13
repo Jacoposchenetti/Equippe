@@ -2,10 +2,10 @@
 
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter, useParams } from 'next/navigation';
-import { useEffect, useState } from 'react';
-import { doc, getDoc, updateDoc, arrayUnion, arrayRemove, Timestamp, collection, getDocs, addDoc, deleteDoc } from 'firebase/firestore';
+import { useEffect, useState, useRef } from 'react';
+import { doc, getDoc, updateDoc, arrayUnion, arrayRemove, Timestamp, collection, getDocs, addDoc, deleteDoc, query, where, onSnapshot, orderBy } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { Team, User } from '@/types/equippe';
+import { Team, User, Conversation, Message, ConversationType } from '@/types/equippe';
 import Link from 'next/link';
 import Header from '@/components/Header';
 import MapSelector from '@/components/MapSelector';
@@ -29,6 +29,12 @@ export default function TeamDetailPage() {
   const [availableUsers, setAvailableUsers] = useState<User[]>([]);
   const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
   const [pendingRequests, setPendingRequests] = useState<any[]>([]);
+  const [teamConversation, setTeamConversation] = useState<Conversation | null>(null);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [messageText, setMessageText] = useState('');
+  const [showChat, setShowChat] = useState(false);
+  const [sending, setSending] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!user) {
@@ -98,12 +104,22 @@ export default function TeamDetailPage() {
         );
         setPendingRequests(requestsWithUserData);
       }
+
+      // Carica o crea chat di équipe
+      await loadTeamChat();
     } catch (error) {
       console.error('Errore caricamento team:', error);
     } finally {
       setLoading(false);
     }
   };
+
+  // Auto-scroll ai nuovi messaggi
+  useEffect(() => {
+    if (showChat) {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [messages, showChat]);
 
   const handleRemoveMember = async (userId: string) => {
     if (!confirm('Sei sicuro di voler rimuovere questo membro?')) return;
@@ -385,6 +401,177 @@ export default function TeamDetailPage() {
       alert('Errore durante il rifiuto della richiesta');
     }
   };
+
+  // Team Chat Functions
+  const loadTeamChat = async () => {
+    if (!teamId || !user) return;
+
+    try {
+      // Cerca una conversazione esistente per questo team
+      const conversationsRef = collection(db, 'conversations');
+      const conversationQuery = query(
+        conversationsRef,
+        where('type', '==', 'team'),
+        where('teamId', '==', teamId)
+      );
+      
+      const conversationSnapshot = await getDocs(conversationQuery);
+      
+      if (!conversationSnapshot.empty) {
+        // Conversazione esistente trovata
+        const conversationDoc = conversationSnapshot.docs[0];
+        const conversationData = { id: conversationDoc.id, ...conversationDoc.data() } as Conversation;
+        setTeamConversation(conversationData);
+        
+        // Carica messaggi
+        loadMessages(conversationDoc.id);
+      } else {
+        // Nessuna conversazione trovata - sarà creata al primo messaggio
+        setTeamConversation(null);
+        setMessages([]);
+      }
+    } catch (error) {
+      console.error('Errore caricamento chat team:', error);
+    }
+  };
+
+  const createTeamChat = async (): Promise<string | null> => {
+    if (!team || !user) return null;
+
+    try {
+      // Crea i dati dei partecipanti
+      const participantsData: { [key: string]: { name: string; photoURL?: string } } = {};
+      const participants: string[] = [];
+
+      for (const member of team.members) {
+        const memberId = member.userId || member.uid;
+        if (memberId) {
+          participants.push(memberId);
+          
+          // Trova i dati del membro
+          const memberData = members.find(m => m.uid === memberId);
+          if (memberData) {
+            participantsData[memberId] = {
+              name: memberData.profile.nome,
+              photoURL: memberData.profile.photoURL
+            };
+          }
+        }
+      }
+
+      // Crea la conversazione
+      const newConversationRef = await addDoc(collection(db, 'conversations'), {
+        type: 'team' as ConversationType,
+        teamId: team.id || teamId,
+        teamName: team.nome || team.name,
+        participants,
+        participantsData,
+        lastMessage: '',
+        lastMessageTime: Timestamp.now(),
+        unreadCount: participants.reduce((acc, participantId) => ({ ...acc, [participantId]: 0 }), {}),
+        createdAt: Timestamp.now(),
+      });
+
+      const newConversation: Conversation = {
+        id: newConversationRef.id,
+        type: 'team',
+        teamId: team.id || teamId,
+        teamName: team.nome || team.name,
+        participants,
+        participantsData,
+        lastMessage: '',
+        lastMessageTime: Timestamp.now(),
+        unreadCount: participants.reduce((acc, participantId) => ({ ...acc, [participantId]: 0 }), {}),
+        createdAt: Timestamp.now(),
+      };
+
+      setTeamConversation(newConversation);
+      return newConversationRef.id;
+    } catch (error) {
+      console.error('Errore creazione chat team:', error);
+      return null;
+    }
+  };
+
+  const loadMessages = (conversationId: string) => {
+    const messagesRef = collection(db, 'messages');
+    const messagesQuery = query(
+      messagesRef,
+      where('conversationId', '==', conversationId),
+      orderBy('createdAt', 'asc')
+    );
+
+    const unsubscribe = onSnapshot(messagesQuery, (snapshot) => {
+      const messagesList = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      } as Message));
+      
+      setMessages(messagesList);
+      
+      // Scroll automatico verso il basso
+      setTimeout(() => {
+        if (messagesEndRef.current) {
+          messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+        }
+      }, 100);
+    });
+
+    // Cleanup function
+    return unsubscribe;
+  };
+
+  const handleSendMessage = async () => {
+    if (!messageText.trim() || !user || sending) return;
+
+    setSending(true);
+
+    try {
+      let conversationId: string | null = teamConversation?.id || null;
+
+      // Se non esiste una conversazione, creala
+      if (!conversationId) {
+        conversationId = await createTeamChat();
+        if (!conversationId) {
+          throw new Error('Impossibile creare la chat');
+        }
+      }
+
+      // Crea il messaggio
+      await addDoc(collection(db, 'messages'), {
+        conversationId,
+        senderId: user.uid,
+        senderName: user.displayName || user.email || 'Anonimo',
+        senderPhotoURL: user.photoURL,
+        content: messageText.trim(),
+        read: false,
+        createdAt: Timestamp.now(),
+      });
+
+      // Aggiorna la conversazione con l'ultimo messaggio
+      if (conversationId) {
+        await updateDoc(doc(db, 'conversations', conversationId), {
+          lastMessage: messageText.trim(),
+          lastMessageTime: Timestamp.now(),
+          // TODO: Aggiorna unreadCount per gli altri partecipanti
+        });
+      }
+
+      setMessageText('');
+    } catch (error) {
+      console.error('Errore invio messaggio:', error);
+      alert('Errore durante l\'invio del messaggio');
+    } finally {
+      setSending(false);
+    }
+  };
+
+  // Load team chat when component mounts and user/team changes
+  useEffect(() => {
+    if (team && user && isMember) {
+      loadTeamChat();
+    }
+  }, [team, user, isMember]);
 
   if (loading) {
     return (
@@ -967,6 +1154,106 @@ export default function TeamDetailPage() {
             </div>
           </div>
         )}
+
+        {/* Sezione Chat Equipé */}
+        <div className="bg-white rounded-xl shadow-sm overflow-hidden mt-6">
+          <div className="px-4 sm:px-8 py-6 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-xl sm:text-2xl font-bold text-gray-900 flex items-center gap-2">
+                  <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                  </svg>
+                  Chat di Gruppo
+                </h3>
+                <p className="text-sm text-gray-600 mt-1">Comunica con tutti i membri dell'equipé</p>
+              </div>
+              <button
+                onClick={() => setShowChat(!showChat)}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition shadow-sm"
+              >
+                {showChat ? 'Nascondi Chat' : 'Apri Chat'}
+              </button>
+            </div>
+          </div>
+
+          {showChat && (
+            <div className="border-t border-gray-200">
+              {/* Area Messaggi */}
+              <div 
+                ref={messagesEndRef}
+                className="h-96 overflow-y-auto p-4 space-y-3 bg-gray-50"
+              >
+                {messages.length === 0 ? (
+                  <div className="text-center py-8 text-gray-500">
+                    <p className="mb-2">💬</p>
+                    <p>Nessun messaggio ancora. Inizia la conversazione!</p>
+                  </div>
+                ) : (
+                  messages.map((message) => (
+                    <div key={message.id} className="bg-white rounded-lg p-3 shadow-sm border">
+                      <div className="flex items-start gap-3">
+                        <div className="flex-shrink-0">
+                          {message.senderPhotoURL ? (
+                            <img
+                              src={message.senderPhotoURL}
+                              alt={message.senderName}
+                              className="w-8 h-8 rounded-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-8 h-8 rounded-full bg-blue-500 text-white flex items-center justify-center text-sm font-bold">
+                              {message.senderName?.charAt(0).toUpperCase()}
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="font-medium text-gray-900 text-sm">
+                              {message.senderName}
+                            </span>
+                            <span className="text-xs text-gray-500">
+                              {message.createdAt?.toDate().toLocaleString()}
+                            </span>
+                          </div>
+                          <p className="text-gray-700 text-sm break-words">{message.content}</p>
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              {/* Area Input Messaggio */}
+              <div className="p-4 border-t border-gray-200 bg-white">
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={messageText}
+                    onChange={(e) => setMessageText(e.target.value)}
+                    onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+                    placeholder="Scrivi un messaggio..."
+                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                  <button
+                    onClick={handleSendMessage}
+                    disabled={!messageText.trim() || sending}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition shadow-sm"
+                  >
+                    {sending ? (
+                      <svg className="w-5 h-5 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                      </svg>
+                    ) : (
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                      </svg>
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
 
         {/* Sezione Azioni Admin */}
         {isAdmin && (

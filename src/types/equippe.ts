@@ -174,12 +174,15 @@ export interface ApiResponse<T> {
 }
 
 // Chat/Messaging Types
+export type ConversationType = 'private' | 'team';
+
 export interface Message {
   id: string;
   conversationId: string;
   senderId: string;
   senderName: string;
-  receiverId: string;
+  senderPhotoURL?: string;
+  receiverId?: string; // Solo per chat private
   content: string;
   read: boolean;
   createdAt: Timestamp;
@@ -187,12 +190,18 @@ export interface Message {
 
 export interface Conversation {
   id: string;
+  type: ConversationType; // 'private' o 'team'
   participants: string[]; // Array di userId
   participantsData: {
     [userId: string]: {
       name: string;
+      photoURL?: string;
     };
   };
+  // Per chat di team
+  teamId?: string;
+  teamName?: string;
+  // Per chat private
   lastMessage?: string;
   lastMessageTime?: Timestamp;
   unreadCount: {

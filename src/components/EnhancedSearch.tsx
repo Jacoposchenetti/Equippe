@@ -40,17 +40,20 @@ export default function EnhancedSearch({ onSearch, availableSpecializations = []
 
   // Specializzazioni per professionisti
   const professionistaSpecs = [
-    'Avvocato',
-    'Commercialista',
-    'Consulente del Lavoro',
-    'Notaio',
-    'Architetto',
-    'Ingegnere',
-    'Geometra',
-    'Medico',
     'Psicologo',
-    'Consulente Finanziario',
-    'Altro',
+    'Psicoterapeuta',
+    'Psichiatra',
+    'Nutrizionista',
+    'Dietista',
+    'Dietologo',
+    'Assistente Sociale',
+    'Educatore Professionale',
+    'Logopedista',
+    'Fisioterapista',
+    'Terapista Occupazionale',
+    'Infermiere',
+    'Medico di Base',
+    'Medico Specialista'
   ];
 
   // Tipologie di equipé (basate sulle specializzazioni dei membri)

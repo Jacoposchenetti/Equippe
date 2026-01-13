@@ -10,13 +10,37 @@ import { Studio } from '@/types/equippe';
 import { CITTA_ITALIANE, PROVINCE_ITALIANE } from '@/lib/comuni';
 
 const SPECIALIZZAZIONI = [
-  'Psicologo', 'Psicoterapeuta', 'Psichiatra', 'Nutrizionista', 'Dietologo', 'Fisioterapista',
-  'Logopedista', 'Terapista occupazionale', 'Assistente sociale', 'Educatore professionale'
+  'Psicologo',
+  'Psicoterapeuta',
+  'Psichiatra',
+  'Nutrizionista',
+  'Dietista',
+  'Dietologo',
+  'Assistente Sociale',
+  'Educatore Professionale',
+  'Logopedista',
+  'Fisioterapista',
+  'Terapista Occupazionale',
+  'Infermiere',
+  'Medico di Base',
+  'Medico Specialista'
 ];
 
 const TEMATICHE = [
-  'DCA (Disturbi del Comportamento Alimentare)', 'Ansia e stress', 'Depressione',
-  'Dolore cronico', 'Riabilitazione motoria', 'Obesità', 'Diabete', 'Geriatria', 'Pediatria'
+  'Disturbi d\'ansia',
+  'Depressione',
+  'Disturbi alimentari',
+  'Trauma e PTSD',
+  'Dipendenze',
+  'Disturbi di personalità',
+  'Autismo',
+  'ADHD',
+  'Disturbi dell\'umore',
+  'Terapia di coppia',
+  'Terapia familiare',
+  'Neuropsicologia',
+  'Psicologia dello sport',
+  'Psicologia giuridica'
 ];
 
 export default function RegisterPage() {

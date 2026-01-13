@@ -216,7 +216,7 @@ export default function MapSelector({
 
   if (!isClient || !isMapReady) {
     return (
-      <div className="w-full h-96 bg-gray-100 rounded-lg flex items-center justify-center">
+      <div className="w-full h-64 bg-gray-100 rounded-lg flex items-center justify-center">
         <div className="text-gray-500">Caricamento mappa...</div>
       </div>
     );
@@ -291,7 +291,7 @@ export default function MapSelector({
       </div>
 
       {/* Map */}
-      <div className="w-full h-96 border rounded-lg overflow-hidden relative">
+      <div className="w-full h-64 border rounded-lg overflow-hidden relative">
         {console.log('🗺️ Rendering map with coordinate:', coordinate, 'raggio:', raggioKm)}
         <MapContainer
           center={[defaultCenter.lat, defaultCenter.lng]}

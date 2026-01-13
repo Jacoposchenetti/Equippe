@@ -17,6 +17,8 @@ export const MUNICIPI_ROMA = [
   'Municipio XV - Cassia/Flaminia',
 ] as const;
 
+export const ZONE_ROMA = MUNICIPI_ROMA;
+
 export const QUARTIERI_MILANO = [
   'Centro Storico',
   'Porta Romana/Corvetto',

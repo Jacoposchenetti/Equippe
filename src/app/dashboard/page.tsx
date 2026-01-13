@@ -20,6 +20,25 @@ export default function Dashboard() {
     remoto: false,
   });
 
+  // Funzione per normalizzare i vecchi nomi delle discipline nei nomi dei professionisti
+  const normalizeSpecialization = (spec: string): string => {
+    const normalizationMap: Record<string, string> = {
+      'Psicologia': 'Psicologo',
+      'Psicoterapia': 'Psicoterapeuta',
+      'Psichiatria': 'Psichiatra',
+      'Nutrizione': 'Nutrizionista',
+      'Dietetica': 'Dietista',
+      'Assistenza Sociale': 'Assistente Sociale',
+      'Educazione Professionale': 'Educatore Professionale',
+      'Logopedia': 'Logopedista',
+      'Fisioterapia': 'Fisioterapista',
+      'Terapia Occupazionale': 'Terapista Occupazionale',
+      'Infermieristica': 'Infermiere',
+      'Medicina': 'Medico Specialista',
+    };
+    return normalizationMap[spec] || spec;
+  };
+
   useEffect(() => {
     if (!user) {
       router.push('/login');
@@ -264,37 +283,43 @@ export default function Dashboard() {
                     </div>
 
                     {/* Nome */}
-                    <h3 className="text-center font-bold text-lg text-gray-900 mb-3">
-                      Dr. {p.profile.nome}
+                    <h3 className="text-center font-bold text-xl text-gray-900 mb-2">
+                      {p.profile.nome}
                     </h3>
 
-                    {/* Badge Specializzazione */}
-                    <div className="flex justify-center mb-4">
-                      <span className="inline-block px-3 py-1 text-sm font-medium bg-blue-100 text-blue-700 rounded-lg">
-                        {p.profile.specializzazioni[0]}
-                      </span>
+                    {/* Badge Specializzazioni */}
+                    <div className="flex flex-wrap justify-center gap-2 mb-4">
+                      {[...new Set(p.profile.specializzazioni.map(spec => normalizeSpecialization(spec)))].slice(0, 2).map((spec, i) => (
+                        <span key={i} className="inline-block px-3 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">
+                          {spec}
+                        </span>
+                      ))}
+                      {[...new Set(p.profile.specializzazioni.map(spec => normalizeSpecialization(spec)))].length > 2 && (
+                        <span className="inline-block px-3 py-1 text-xs font-medium bg-gray-100 text-gray-600 rounded-full">
+                          +{[...new Set(p.profile.specializzazioni.map(spec => normalizeSpecialization(spec)))].length - 2}
+                        </span>
+                      )}
                     </div>
 
-                    {/* Studi/Location */}
-                    <div className="text-center text-sm text-gray-500 mb-4">
-                      {p.profile.studi && p.profile.studi.length > 0 ? (
-                        <>
-                          {p.profile.studi.map((studio, i) => (
-                            <p key={i}>
-                              {studio.città} ({studio.provincia})
-                              {studio.remoto && ' - Remoto'}
-                            </p>
-                          ))}
-                        </>
+                    {/* Location */}
+                    <div className="text-center text-sm text-gray-600 mb-4">
+                      {p.profile.location?.indirizzo ? (
+                        <p className="flex items-center justify-center gap-1">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                          </svg>
+                          <span className="truncate">{p.profile.location.città || 'Italia'}</span>
+                        </p>
                       ) : (
-                        <p>{p.profile.location?.città || 'Non specificato'}</p>
+                        <p>{p.profile.location?.città || 'Italia'}</p>
                       )}
                     </div>
 
                     {/* Button */}
                     <button 
                       onClick={() => router.push(`/profile/${p.uid}`)}
-                      className="w-full py-3 bg-blue-500 text-white font-medium rounded-lg hover:bg-blue-600 transition"
+                      className="w-full py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition"
                     >
                       Vedi Profilo
                     </button>

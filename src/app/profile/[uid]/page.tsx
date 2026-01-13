@@ -18,6 +18,41 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(true);
   const [startingConversation, setStartingConversation] = useState(false);
 
+  // Funzione per normalizzare i vecchi nomi delle discipline nei nomi dei professionisti
+  const normalizeSpecialization = (spec: string): string => {
+    const normalizationMap: Record<string, string> = {
+      'Psicologia': 'Psicologo',
+      'Psicoterapia': 'Psicoterapeuta',
+      'Psichiatria': 'Psichiatra',
+      'Nutrizione': 'Nutrizionista',
+      'Dietetica': 'Dietista',
+      'Assistenza Sociale': 'Assistente Sociale',
+      'Educazione Professionale': 'Educatore Professionale',
+      'Logopedia': 'Logopedista',
+      'Fisioterapia': 'Fisioterapista',
+      'Terapia Occupazionale': 'Terapista Occupazionale',
+      'Infermieristica': 'Infermiere',
+      'Medicina': 'Medico Specialista',
+    };
+    return normalizationMap[spec] || spec;
+  };
+
+  // Funzione per normalizzare le vecchie tematiche
+  const normalizeTematica = (tema: string): string => {
+    // Prima filtra esplicitamente le tematiche da rimuovere
+    if (tema === 'Dolore cronico' || tema === 'Riabilitazione' || tema === 'Riabilitazione motoria' || tema === 'Geriatria' || tema === 'Pediatria') {
+      return '';
+    }
+    
+    const normalizationMap: Record<string, string> = {
+      'DCA (Disturbi del Comportamento Alimentare)': 'Disturbi alimentari',
+      'Ansia e stress': 'Disturbi d\'ansia',
+      'Obesità': 'Disturbi alimentari',
+      'Diabete': 'Disturbi alimentari',
+    };
+    return normalizationMap[tema] || tema;
+  };
+
   useEffect(() => {
     if (!currentUser) {
       router.push('/login');
@@ -150,10 +185,30 @@ export default function ProfilePage() {
               {/* Nome e info base */}
               <div>
                 <h1 className="text-3xl font-bold text-gray-900">{profileUser.profile.nome}</h1>
-                <p className="text-gray-600 mt-1">
-                  {profileUser.profile.location.città}, {profileUser.profile.location.provincia}
-                </p>
-                <p className="text-gray-500 text-sm">{profileUser.email}</p>
+                <div className="mt-2 space-y-1">
+                  {profileUser.profile.location.indirizzo && (
+                    <p className="text-gray-600 flex items-center gap-1">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                      </svg>
+                      {profileUser.profile.location.indirizzo}
+                    </p>
+                  )}
+                  {profileUser.profile.location.zonaRoma && (
+                    <p className="text-gray-600 text-sm">
+                      📍 {profileUser.profile.location.zonaRoma}
+                    </p>
+                  )}
+                  {!profileUser.profile.location.indirizzo && (
+                    <p className="text-gray-600">
+                      {profileUser.profile.location.città}, {profileUser.profile.location.provincia}
+                    </p>
+                  )}
+                </div>
+                {profileUser.email && (
+                  <p className="text-gray-500 text-sm mt-1">{profileUser.email}</p>
+                )}
               </div>
             </div>
 
@@ -172,7 +227,7 @@ export default function ProfilePage() {
         <div className="bg-white rounded-lg shadow-md p-6 mb-6">
           <h2 className="text-xl font-bold text-gray-900 mb-4">Specializzazioni</h2>
           <div className="flex flex-wrap gap-2">
-            {profileUser.profile.specializzazioni.map((spec, index) => (
+            {[...new Set(profileUser.profile.specializzazioni.map(spec => normalizeSpecialization(spec)))].map((spec, index) => (
               <span
                 key={index}
                 className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm"
@@ -187,7 +242,10 @@ export default function ProfilePage() {
         <div className="bg-white rounded-lg shadow-md p-6 mb-6">
           <h2 className="text-xl font-bold text-gray-900 mb-4">Tematiche di Interesse</h2>
           <div className="flex flex-wrap gap-2">
-            {profileUser.profile.tematiche.map((tema, index) => (
+            {[...new Set(profileUser.profile.tematiche
+              .map(tema => normalizeTematica(tema))
+              .filter(t => t !== '')
+            )].map((tema, index) => (
               <span
                 key={index}
                 className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm"

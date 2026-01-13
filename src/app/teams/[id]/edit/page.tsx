@@ -11,22 +11,20 @@ import Header from '@/components/Header';
 import MapSelector from '@/components/MapSelector';
 
 const SPECIALIZZAZIONI = [
-  'Avvocato',
-  'Commercialista',
-  'Consulente del Lavoro',
-  'Notaio',
-  'Architetto',
-  'Ingegnere',
-  'Geometra',
-  'Medico',
   'Psicologo',
-  'Psichiatra',
   'Psicoterapeuta',
+  'Psichiatra',
   'Nutrizionista',
-  'Fisioterapista',
+  'Dietista',
+  'Dietologo',
+  'Assistente Sociale',
+  'Educatore Professionale',
   'Logopedista',
-  'Consulente Finanziario',
-  'Altro',
+  'Fisioterapista',
+  'Terapista Occupazionale',
+  'Infermiere',
+  'Medico di Base',
+  'Medico Specialista'
 ];
 
 export default function EditTeamPage() {

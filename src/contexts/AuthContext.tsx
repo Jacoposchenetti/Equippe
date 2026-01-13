@@ -22,6 +22,7 @@ interface AuthContextType {
   signUp: (email: string, password: string, displayName: string) => Promise<void>;
   signOut: () => Promise<void>;
   refreshUserProfile: () => Promise<void>;
+  refreshProfile: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({} as AuthContextType);
@@ -101,6 +102,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     signUp,
     signOut,
     refreshUserProfile,
+    refreshProfile: refreshUserProfile, // Alias per compatibilità
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

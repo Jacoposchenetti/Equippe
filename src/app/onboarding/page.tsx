@@ -5,15 +5,40 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { doc, setDoc, Timestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import LocationAutocomplete from '@/components/LocationAutocomplete';
 
 const SPECIALIZZAZIONI = [
-  'Psicologo', 'Psicoterapeuta', 'Nutrizionista', 'Dietologo', 'Fisioterapista',
-  'Logopedista', 'Terapista occupazionale', 'Assistente sociale', 'Educatore professionale'
+  'Psicologo',
+  'Psicoterapeuta',
+  'Psichiatra',
+  'Nutrizionista',
+  'Dietista',
+  'Dietologo',
+  'Assistente Sociale',
+  'Educatore Professionale',
+  'Logopedista',
+  'Fisioterapista',
+  'Terapista Occupazionale',
+  'Infermiere',
+  'Medico di Base',
+  'Medico Specialista'
 ];
 
 const TEMATICHE = [
-  'DCA (Disturbi del Comportamento Alimentare)', 'Ansia e stress', 'Depressione',
-  'Dolore cronico', 'Riabilitazione motoria', 'Obesità', 'Diabete', 'Geriatria', 'Pediatria'
+  'Disturbi d\'ansia',
+  'Depressione',
+  'Disturbi alimentari',
+  'Trauma e PTSD',
+  'Dipendenze',
+  'Disturbi di personalità',
+  'Autismo',
+  'ADHD',
+  'Disturbi dell\'umore',
+  'Terapia di coppia',
+  'Terapia familiare',
+  'Neuropsicologia',
+  'Psicologia dello sport',
+  'Psicologia giuridica'
 ];
 
 export default function OnboardingPage() {
@@ -26,7 +51,7 @@ export default function OnboardingPage() {
     specializzazioni: [] as string[],
     tematiche: [] as string[],
     esperienza: '',
-    città: '',
+    indirizzo: '',
     disponibilità: '',
   });
 
@@ -48,9 +73,26 @@ export default function OnboardingPage() {
       setError('Seleziona almeno una tematica');
       return;
     }
+    if (!formData.indirizzo.trim()) {
+      setError('L\'indirizzo è obbligatorio');
+      return;
+    }
 
     setLoading(true);
     try {
+      // Estrai città e provincia dall'indirizzo
+      let città = '';
+      let provincia = '';
+      const parts = formData.indirizzo.split(',');
+      if (parts.length >= 2) {
+        città = parts[parts.length - 2].trim();
+        const lastPart = parts[parts.length - 1].trim();
+        const provinciaMatch = lastPart.match(/\b([A-Z]{2})\b/);
+        if (provinciaMatch) {
+          provincia = provinciaMatch[1];
+        }
+      }
+      
       await setDoc(doc(db, 'users', user!.uid), {
         uid: user!.uid,
         email: user!.email,
@@ -60,7 +102,13 @@ export default function OnboardingPage() {
           specializzazioni: formData.specializzazioni,
           tematiche: formData.tematiche,
           esperienza: formData.esperienza,
-          location: { lat: 0, lng: 0, città: formData.città },
+          location: { 
+            lat: 0, 
+            lng: 0, 
+            città: città, 
+            provincia: provincia,
+            indirizzo: formData.indirizzo 
+          },
           disponibilità: formData.disponibilità,
           verified: false,
         },
@@ -151,15 +199,17 @@ export default function OnboardingPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">Città *</label>
-            <input
-              type="text"
-              required
-              className="w-full px-3 py-2 border rounded"
-              placeholder="es. Roma"
-              value={formData.città}
-              onChange={(e) => setFormData({ ...formData, città: e.target.value })}
+            <LocationAutocomplete
+              value={formData.indirizzo}
+              onChange={(address) => {
+                setFormData({ ...formData, indirizzo: address });
+              }}
+              placeholder="Via, Città, Zona..."
+              label="Indirizzo o Zona di Lavoro *"
             />
+            <p className="text-xs text-gray-500 mt-1">
+              Inserisci l'indirizzo o la zona principale dove lavori
+            </p>
           </div>
 
           <div>

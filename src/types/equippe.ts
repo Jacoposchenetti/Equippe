@@ -6,6 +6,8 @@ export interface Location {
   lng: number;
   città: string;
   provincia?: string;
+  indirizzo?: string;
+  zonaRoma?: string;
 }
 
 export interface Studio {

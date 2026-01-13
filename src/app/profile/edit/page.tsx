@@ -4,7 +4,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { doc, updateDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { db, storage } from '@/lib/firebase';
 import Header from '@/components/Header';
 import LocationAutocomplete from '@/components/LocationAutocomplete';
 
@@ -48,6 +49,7 @@ export default function EditProfilePage() {
 
   const [loading, setLoading] = useState(false);
   const [nome, setNome] = useState('');
+  const [dataNascita, setDataNascita] = useState('');
   const [specializzazioni, setSpecializzazioni] = useState<string[]>([]);
   const [tematiche, setTematiche] = useState<string[]>([]);
   const [bio, setBio] = useState('');
@@ -55,6 +57,8 @@ export default function EditProfilePage() {
   const [website, setWebsite] = useState('');
   const [telefono, setTelefono] = useState('');
   const [indirizzo, setIndirizzo] = useState('');
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string>('');
 
   useEffect(() => {
     if (!user) {
@@ -101,6 +105,8 @@ export default function EditProfilePage() {
       setWebsite(userProfile.profile.website || '');
       setTelefono(userProfile.profile.telefono || '');
       setIndirizzo(userProfile.profile.location?.indirizzo || '');
+      setPhotoPreview(userProfile.profile.photoURL || '');
+      setDataNascita(userProfile.profile.dataNascita || '');
     }
   }, [user, userProfile]);
 
@@ -130,6 +136,11 @@ export default function EditProfilePage() {
       return;
     }
 
+    if (!dataNascita) {
+      alert('La data di nascita è obbligatoria');
+      return;
+    }
+
     if (!indirizzo.trim()) {
       alert('L\'indirizzo è obbligatorio');
       return;
@@ -145,6 +156,22 @@ export default function EditProfilePage() {
     try {
       const userRef = doc(db, 'users', user.uid);
       
+      // Upload foto profilo se presente
+      let photoURL = userProfile.profile.photoURL || '';
+      if (photoFile) {
+        try {
+          console.log('Inizio upload foto profilo...');
+          const photoRef = ref(storage, `profile-photos/${user.uid}`);
+          await uploadBytes(photoRef, photoFile);
+          photoURL = await getDownloadURL(photoRef);
+          console.log('Foto caricata con successo:', photoURL);
+        } catch (uploadError) {
+          console.error('Errore upload foto:', uploadError);
+          alert('Errore durante il caricamento della foto. Il profilo verrà salvato senza foto.');
+          // Continua comunque con il salvataggio del resto
+        }
+      }
+      
       // Estrai città e provincia dall'indirizzo per salvarle in background
       let città = '';
       let provincia = '';
@@ -158,8 +185,9 @@ export default function EditProfilePage() {
         }
       }
       
-      await updateDoc(userRef, {
+      const updateData: any = {
         'profile.nome': nome.trim(),
+        'profile.dataNascita': dataNascita,
         'profile.specializzazioni': specializzazioni,
         'profile.tematiche': tematiche,
         'profile.bio': bio.trim(),
@@ -170,14 +198,22 @@ export default function EditProfilePage() {
         'profile.location.città': città,
         'profile.location.provincia': provincia,
         updatedAt: new Date()
-      });
+      };
+      
+      // Aggiungi photoURL solo se esiste
+      if (photoURL) {
+        updateData['profile.photoURL'] = photoURL;
+      }
+      
+      console.log('Salvataggio profilo...', updateData);
+      await updateDoc(userRef, updateData);
 
       await refreshProfile();
       alert('Profilo aggiornato con successo!');
       router.push('/dashboard');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Errore aggiornamento profilo:', error);
-      alert('Errore durante l\'aggiornamento del profilo');
+      alert(`Errore durante l'aggiornamento del profilo: ${error.message || error}`);
     } finally {
       setLoading(false);
     }
@@ -209,12 +245,62 @@ export default function EditProfilePage() {
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Foto Profilo
+                </label>
+                <div className="flex items-center gap-6">
+                  <div className="w-32 h-32 rounded-full overflow-hidden bg-gray-200 flex items-center justify-center">
+                    {photoPreview ? (
+                      <img src={photoPreview} alt="Foto profilo" className="w-full h-full object-cover" />
+                    ) : (
+                      <svg className="w-16 h-16 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
+                      </svg>
+                    )}
+                  </div>
+                  <div className="flex-1">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          setPhotoFile(file);
+                          const reader = new FileReader();
+                          reader.onloadend = () => {
+                            setPhotoPreview(reader.result as string);
+                          };
+                          reader.readAsDataURL(file);
+                        }
+                      }}
+                      className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                    />
+                    <p className="text-xs text-gray-500 mt-2">JPG, PNG o GIF. Max 5MB.</p>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
                   Nome Completo *
                 </label>
                 <input
                   type="text"
                   value={nome}
                   onChange={(e) => setNome(e.target.value)}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Data di Nascita *
+                </label>
+                <input
+                  type="date"
+                  value={dataNascita}
+                  onChange={(e) => setDataNascita(e.target.value)}
+                  max={new Date().toISOString().split('T')[0]}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   required
                 />

@@ -33,6 +33,8 @@ export interface UserProfile {
   telefono?: string;
   linkedin?: string;
   website?: string;
+  photoURL?: string;
+  dataNascita?: string;
 }
 
 export interface UserStats {

@@ -466,9 +466,17 @@ export default function TeamDetailPage() {
                   return (
                     <div key={member.uid} className="border border-gray-200 rounded-lg p-4 hover:border-blue-300 hover:bg-blue-50/30 transition">
                       <div className="flex items-start gap-3">
-                        <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white font-bold text-lg flex-shrink-0">
-                          {member.profile.nome.charAt(0).toUpperCase()}
-                        </div>
+                        {member.profile.photoURL ? (
+                          <img 
+                            src={member.profile.photoURL} 
+                            alt={member.profile.nome} 
+                            className="w-12 h-12 rounded-full object-cover border-2 border-gray-300 flex-shrink-0"
+                          />
+                        ) : (
+                          <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white font-bold text-lg flex-shrink-0">
+                            {member.profile.nome.charAt(0).toUpperCase()}
+                          </div>
+                        )}
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-1">
                             <h4 className="font-bold text-base text-gray-900">{member.profile.nome}</h4>
@@ -740,9 +748,17 @@ export default function TeamDetailPage() {
               return (
                 <div key={member.uid} className="flex items-start justify-between p-5 border border-gray-200 rounded-xl hover:border-blue-200 hover:bg-blue-50/30 transition">
                   <div className="flex gap-4 flex-1">
-                    <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center text-white font-bold text-lg flex-shrink-0">
-                      {member.profile.nome.charAt(0).toUpperCase()}
-                    </div>
+                    {member.profile.photoURL ? (
+                      <img 
+                        src={member.profile.photoURL} 
+                        alt={member.profile.nome} 
+                        className="w-12 h-12 rounded-full object-cover border-2 border-gray-300 flex-shrink-0"
+                      />
+                    ) : (
+                      <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center text-white font-bold text-lg flex-shrink-0">
+                        {member.profile.nome.charAt(0).toUpperCase()}
+                      </div>
+                    )}
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1">
                         <h4 className="font-bold text-lg text-gray-900">{member.profile.nome}</h4>

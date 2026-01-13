@@ -178,9 +178,17 @@ export default function ProfilePage() {
           <div className="flex items-start justify-between">
             <div className="flex items-center gap-4">
               {/* Avatar */}
-              <div className="w-20 h-20 rounded-full bg-blue-300 flex items-center justify-center text-white text-2xl font-bold">
-                {profileUser.profile.nome.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)}
-              </div>
+              {profileUser.profile.photoURL ? (
+                <img 
+                  src={profileUser.profile.photoURL} 
+                  alt={profileUser.profile.nome} 
+                  className="w-20 h-20 rounded-full object-cover border-4 border-blue-300"
+                />
+              ) : (
+                <div className="w-20 h-20 rounded-full bg-blue-300 flex items-center justify-center text-white text-2xl font-bold">
+                  {profileUser.profile.nome.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)}
+                </div>
+              )}
               
               {/* Nome e info base */}
               <div>

@@ -83,7 +83,8 @@ export default function MessagesPage() {
                   if (userDoc.exists()) {
                     const userData = userDoc.data();
                     conv.participantsData[participantId] = {
-                      name: userData.profile?.nome || 'Utente'
+                      name: userData.profile?.nome || 'Utente',
+                      photoURL: userData.profile?.photoURL || ''
                     };
                   }
                 } catch (error) {
@@ -338,9 +339,17 @@ export default function MessagesPage() {
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-1">
-                            <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center text-white font-bold">
-                              {otherName.charAt(0).toUpperCase()}
-                            </div>
+                            {otherId && conv.participantsData?.[otherId]?.photoURL ? (
+                              <img 
+                                src={conv.participantsData[otherId].photoURL} 
+                                alt={otherName} 
+                                className="w-10 h-10 rounded-full object-cover border-2 border-gray-300"
+                              />
+                            ) : (
+                              <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center text-white font-bold">
+                                {otherName.charAt(0).toUpperCase()}
+                              </div>
+                            )}
                             <div className="flex-1">
                               <h3 className="font-bold text-gray-900">{otherName}</h3>
                               {conv.lastMessage && (

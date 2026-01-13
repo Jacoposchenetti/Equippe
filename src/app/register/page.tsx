@@ -5,7 +5,8 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { doc, setDoc, Timestamp } from 'firebase/firestore';
-import { db, auth } from '@/lib/firebase';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { db, auth, storage } from '@/lib/firebase';
 import { Studio } from '@/types/equippe';
 import { CITTA_ITALIANE, PROVINCE_ITALIANE } from '@/lib/comuni';
 
@@ -50,6 +51,7 @@ export default function RegisterPage() {
     password: '',
     confirmPassword: '',
     nome: '',
+    dataNascita: '',
     albo: '',
     specializzazioni: [] as string[],
     tematiche: [] as string[],
@@ -58,6 +60,8 @@ export default function RegisterPage() {
     disponibilità: '',
     studi: [] as Studio[],
   });
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string>('');
   const [currentStudio, setCurrentStudio] = useState<Studio>({
     indirizzo: '',
     città: '',
@@ -141,12 +145,28 @@ export default function RegisterPage() {
         throw new Error('User not authenticated after signup');
       }
       
+      // Upload foto profilo se presente
+      let photoURL = '';
+      if (photoFile) {
+        try {
+          console.log('Inizio upload foto profilo...');
+          const photoRef = ref(storage, `profile-photos/${currentUser.uid}`);
+          await uploadBytes(photoRef, photoFile);
+          photoURL = await getDownloadURL(photoRef);
+          console.log('Foto caricata con successo');
+        } catch (uploadError) {
+          console.error('Errore upload foto:', uploadError);
+          // Continua la registrazione senza foto
+        }
+      }
+      
       // Salva profilo completo in Firestore
-      await setDoc(doc(db, 'users', currentUser.uid), {
+      const profileData: any = {
         uid: currentUser.uid,
         email: formData.email,
         profile: {
           nome: formData.nome,
+          dataNascita: formData.dataNascita,
           albo: formData.albo,
           specializzazioni: formData.specializzazioni,
           tematiche: formData.tematiche,
@@ -160,7 +180,14 @@ export default function RegisterPage() {
         stats: { referralsSent: 0, referralsReceived: 0 },
         createdAt: Timestamp.now(),
         updatedAt: Timestamp.now(),
-      });
+      };
+      
+      // Aggiungi photoURL solo se presente
+      if (photoURL) {
+        profileData.profile.photoURL = photoURL;
+      }
+      
+      await setDoc(doc(db, 'users', currentUser.uid), profileData);
       
       router.push('/dashboard');
     } catch (err: any) {
@@ -211,6 +238,45 @@ export default function RegisterPage() {
                   value={formData.nome}
                   onChange={(e) => setFormData({ ...formData, nome: e.target.value })}
                 />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-1">Data di nascita *</label>
+                <input
+                  type="date"
+                  required
+                  className="w-full px-3 py-2 border rounded"
+                  value={formData.dataNascita}
+                  onChange={(e) => setFormData({ ...formData, dataNascita: e.target.value })}
+                  max={new Date().toISOString().split('T')[0]}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-1">Foto profilo</label>
+                <div className="space-y-2">
+                  {photoPreview && (
+                    <div className="flex justify-center">
+                      <img src={photoPreview} alt="Anteprima" className="w-32 h-32 rounded-full object-cover" />
+                    </div>
+                  )}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="w-full px-3 py-2 border rounded"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        setPhotoFile(file);
+                        const reader = new FileReader();
+                        reader.onloadend = () => {
+                          setPhotoPreview(reader.result as string);
+                        };
+                        reader.readAsDataURL(file);
+                      }
+                    }}
+                  />
+                </div>
               </div>
 
               <div>

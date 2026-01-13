@@ -8,6 +8,7 @@ import { db } from '@/lib/firebase';
 import { User, Team } from '@/types/equippe';
 import Header from '@/components/Header';
 import { notifyTeamInviteResponse } from '@/lib/notifications';
+import { occupyPositions } from '@/lib/teamPositions';
 
 interface TeamInvite {
   id: string;
@@ -151,6 +152,11 @@ export default function InvitesPage() {
           true,
           invite.id
         );
+      }
+
+      // Aggiorna le posizioni occupate
+      if (user?.uid) {
+        await occupyPositions(invite.teamId, user.uid);
       }
 
       alert('Invito accettato! Ora fai parte dell\'Equipé');

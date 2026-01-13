@@ -10,6 +10,7 @@ import Link from 'next/link';
 import Header from '@/components/Header';
 import MapSelector from '@/components/MapSelector';
 import { notifyTeamRequest, notifyTeamRequestAccepted, notifyTeamRemoval, notifyTeamAdminPromotion, notifyTeamMemberLeft, notifyTeamInviteReceived } from '@/lib/notifications';
+import { occupyPositions, freePositions } from '@/lib/teamPositions';
 
 export default function TeamDetailPage() {
   const { user } = useAuth();
@@ -117,6 +118,9 @@ export default function TeamDetailPage() {
         updatedAt: Timestamp.now(),
       });
 
+      // Libera le posizioni occupate dal membro rimosso
+      await freePositions(teamId, userId);
+
       // Notifica l'utente rimosso
       if (team?.name) {
         await notifyTeamRemoval(userId, teamId, team.name);
@@ -143,6 +147,11 @@ export default function TeamDetailPage() {
           memberIds: arrayRemove(user?.uid),
           updatedAt: Timestamp.now(),
         });
+
+        // Libera le posizioni occupate dal membro
+        if (user?.uid) {
+          await freePositions(teamId, user.uid);
+        }
 
         // Notifica tutti gli admin che il membro ha lasciato
         if (team?.name && user) {
@@ -190,6 +199,11 @@ export default function TeamDetailPage() {
               createdBy: newAdmin.userId, // Aggiorna anche il createdBy
               updatedAt: Timestamp.now(),
             });
+
+            // Libera le posizioni occupate dall'admin
+            if (user?.uid) {
+              await freePositions(teamId, user.uid);
+            }
 
             alert(`${otherMembers[0].userId} è ora l'admin dell'Equipé`);
           }
@@ -341,6 +355,9 @@ export default function TeamDetailPage() {
         await notifyTeamRequestAccepted(userId, teamId, team.name);
       }
 
+      // Aggiorna le posizioni occupate
+      await occupyPositions(teamId, userId);
+
       // Ricarica i dati
       await loadTeamData();
       alert('Richiesta accettata! Il membro è stato aggiunto all\'équipe.');
@@ -434,70 +451,146 @@ export default function TeamDetailPage() {
         </div>
 
         {/* Sezione Composizione Equipé */}
-        {team.ruoliCercati && team.ruoliCercati.length > 0 && (
-          <div className="bg-white rounded-xl shadow-sm mb-6 overflow-hidden">
-            <div className="px-8 py-6 border-b border-gray-200">
-              <h3 className="text-2xl font-bold text-gray-900">Composizione Equipé</h3>
-            </div>
-            <div className="p-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {team.ruoliCercati.map((ruolo, index) => {
-                  const postiLiberi = ruolo.numero - ruolo.occupati;
-                  const percentualeOccupazione = (ruolo.occupati / ruolo.numero) * 100;
-                  
+        <div className="bg-white rounded-xl shadow-sm mb-6 overflow-hidden">
+          <div className="px-8 py-6 border-b border-gray-200">
+            <h3 className="text-2xl font-bold text-gray-900">👥 Composizione Equipé</h3>
+            <p className="text-sm text-gray-600 mt-1">Membri attuali del team</p>
+          </div>
+          <div className="p-6">
+            {members.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {members.map((member) => {
+                  const memberInfo = team.members.find(m => m.userId === member.uid);
+                  const isCurrentUser = member.uid === user?.uid;
+
                   return (
-                    <div key={index} className="border border-gray-200 rounded-lg p-5 hover:border-blue-300 transition">
-                      <div className="flex items-start justify-between mb-3">
-                        <div>
-                          <h4 className="font-bold text-lg text-gray-900 mb-1">{ruolo.specializzazione}</h4>
-                          <p className="text-sm text-gray-600">{ruolo.descrizione}</p>
+                    <div key={member.uid} className="border border-gray-200 rounded-lg p-4 hover:border-blue-300 hover:bg-blue-50/30 transition">
+                      <div className="flex items-start gap-3">
+                        <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white font-bold text-lg flex-shrink-0">
+                          {member.profile.nome.charAt(0).toUpperCase()}
                         </div>
-                        {postiLiberi > 0 ? (
-                          <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-lg text-xs font-bold whitespace-nowrap">
-                            🔍 {postiLiberi} {postiLiberi === 1 ? 'POSTO' : 'POSTI'} LIBERO
-                          </span>
-                        ) : (
-                          <span className="bg-green-100 text-green-700 px-3 py-1 rounded-lg text-xs font-bold whitespace-nowrap">
-                            ✓ COMPLETO
-                          </span>
-                        )}
-                      </div>
-
-                      {/* Barra di progresso */}
-                      <div className="mb-3">
-                        <div className="flex justify-between text-xs text-gray-600 mb-1">
-                          <span>{ruolo.occupati} occupati</span>
-                          <span>{ruolo.numero} totali</span>
-                        </div>
-                        <div className="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden">
-                          <div 
-                            className={`h-full rounded-full transition-all ${
-                              percentualeOccupazione === 100 ? 'bg-green-500' : 'bg-blue-500'
-                            }`}
-                            style={{ width: `${percentualeOccupazione}%` }}
-                          ></div>
-                        </div>
-                      </div>
-
-                      {/* Icone membri */}
-                      <div className="flex items-center gap-1">
-                        {Array.from({ length: ruolo.numero }).map((_, i) => (
-                          <div
-                            key={i}
-                            className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${
-                              i < ruolo.occupati
-                                ? 'bg-green-500 text-white'
-                                : 'bg-gray-200 text-gray-400 border-2 border-dashed border-gray-300'
-                            }`}
-                          >
-                            {i < ruolo.occupati ? '✓' : '?'}
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <h4 className="font-bold text-base text-gray-900">{member.profile.nome}</h4>
+                            {memberInfo?.role === 'admin' && (
+                              <span className="bg-purple-100 text-purple-700 px-2 py-0.5 rounded text-xs font-bold">
+                                ADMIN
+                              </span>
+                            )}
+                            {isCurrentUser && (
+                              <span className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-xs font-bold">
+                                TU
+                              </span>
+                            )}
                           </div>
-                        ))}
+                          <div className="flex flex-wrap gap-1 mb-2">
+                            {member.profile.specializzazioni.map((spec) => (
+                              <span key={spec} className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-lg font-medium">
+                                {spec}
+                              </span>
+                            ))}
+                          </div>
+                          <div className="flex items-center gap-2 text-xs text-gray-500">
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                            </svg>
+                            {member.profile.location.città}
+                          </div>
+                        </div>
                       </div>
                     </div>
                   );
                 })}
               </div>
+            ) : (
+              <div className="text-center py-8 text-gray-500">
+                <p>Nessun membro ancora presente</p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Sezione Posizioni Aperte */}
+        {team.ruoliCercati && team.ruoliCercati.filter(r => r.occupati < r.numero).length > 0 && (
+          <div className="bg-white rounded-xl shadow-sm mb-6 overflow-hidden border-2 border-amber-200">
+            <div className="px-8 py-6 border-b border-amber-200 bg-amber-50">
+              <h3 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+                <svg className="w-6 h-6 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+                Posizioni Aperte
+              </h3>
+              <p className="text-sm text-gray-600 mt-1">Stiamo cercando questi professionisti</p>
+            </div>
+            <div className="p-6 bg-gradient-to-br from-amber-50/30 to-white">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {team.ruoliCercati
+                  .filter(ruolo => ruolo.occupati < ruolo.numero)
+                  .map((ruolo, index) => {
+                    const postiLiberi = ruolo.numero - ruolo.occupati;
+                    const percentualeOccupazione = (ruolo.occupati / ruolo.numero) * 100;
+                    
+                    return (
+                      <div key={index} className="border-2 border-amber-300 bg-white rounded-lg p-5 hover:border-amber-400 hover:shadow-lg transition">
+                        <div className="flex items-start justify-between mb-3">
+                          <div className="flex-1">
+                            <h4 className="font-bold text-lg text-gray-900 mb-1">{ruolo.specializzazione}</h4>
+                            <p className="text-sm text-gray-600">{ruolo.descrizione}</p>
+                          </div>
+                          <span className="bg-amber-100 text-amber-700 px-3 py-1 rounded-lg text-xs font-bold whitespace-nowrap ml-2">
+                            🔍 {postiLiberi} {postiLiberi === 1 ? 'POSTO' : 'POSTI'}
+                          </span>
+                        </div>
+
+                        {/* Barra di progresso */}
+                        <div className="mb-3">
+                          <div className="flex justify-between text-xs text-gray-600 mb-1">
+                            <span>{ruolo.occupati} trovati</span>
+                            <span>{ruolo.numero} richiesti</span>
+                          </div>
+                          <div className="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden">
+                            <div 
+                              className="h-full rounded-full transition-all bg-amber-500"
+                              style={{ width: `${percentualeOccupazione}%` }}
+                            ></div>
+                          </div>
+                        </div>
+
+                        {/* Icone posizioni */}
+                        <div className="flex items-center gap-1">
+                          {Array.from({ length: ruolo.numero }).map((_, i) => (
+                            <div
+                              key={i}
+                              className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${
+                                i < ruolo.occupati
+                                  ? 'bg-green-500 text-white'
+                                  : 'bg-amber-100 text-amber-600 border-2 border-dashed border-amber-300'
+                              }`}
+                            >
+                              {i < ruolo.occupati ? '✓' : '?'}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Badge equipé completa */}
+        {team.ruoliCercati && team.ruoliCercati.every(r => r.occupati >= r.numero) && team.ruoliCercati.length > 0 && (
+          <div className="bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-300 rounded-xl shadow-sm mb-6 overflow-hidden">
+            <div className="p-6 text-center">
+              <div className="inline-flex items-center justify-center w-16 h-16 bg-green-500 rounded-full mb-3">
+                <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+              <h3 className="text-2xl font-bold text-green-900 mb-2">🎉 Equipé al Completo!</h3>
+              <p className="text-green-700">Tutte le posizioni sono state ricoperte</p>
             </div>
           </div>
         )}

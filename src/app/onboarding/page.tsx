@@ -7,8 +7,8 @@ import { doc, setDoc, Timestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
 const SPECIALIZZAZIONI = [
-  'Psicologia', 'Psicoterapia', 'Nutrizione', 'Dietologia', 'Fisioterapia',
-  'Logopedia', 'Terapia occupazionale', 'Assistenza sociale', 'Educazione professionale'
+  'Psicologo', 'Psicoterapeuta', 'Nutrizionista', 'Dietologo', 'Fisioterapista',
+  'Logopedista', 'Terapista occupazionale', 'Assistente sociale', 'Educatore professionale'
 ];
 
 const TEMATICHE = [

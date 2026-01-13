@@ -10,8 +10,8 @@ import { Studio } from '@/types/equippe';
 import { CITTA_ITALIANE, PROVINCE_ITALIANE } from '@/lib/comuni';
 
 const SPECIALIZZAZIONI = [
-  'Psicologia', 'Psicoterapia', 'Psichiatria', 'Nutrizione', 'Dietologia', 'Fisioterapia',
-  'Logopedia', 'Terapia occupazionale', 'Assistenza sociale', 'Educazione professionale'
+  'Psicologo', 'Psicoterapeuta', 'Psichiatra', 'Nutrizionista', 'Dietologo', 'Fisioterapista',
+  'Logopedista', 'Terapista occupazionale', 'Assistente sociale', 'Educatore professionale'
 ];
 
 const TEMATICHE = [

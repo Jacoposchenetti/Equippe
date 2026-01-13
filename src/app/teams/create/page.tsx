@@ -11,8 +11,8 @@ import Header from '@/components/Header';
 import MapSelector from '@/components/MapSelector';
 
 const SPECIALIZZAZIONI = [
-  'Psicologia', 'Psicoterapia', 'Psichiatria', 'Nutrizione', 'Dietologia', 'Fisioterapia',
-  'Logopedia', 'Terapia occupazionale', 'Assistenza sociale', 'Educazione professionale'
+  'Psicologo', 'Psicoterapeuta', 'Psichiatra', 'Nutrizionista', 'Dietologo', 'Fisioterapista',
+  'Logopedista', 'Terapista occupazionale', 'Assistente sociale', 'Educatore professionale'
 ];
 
 export default function CreateTeamPage() {

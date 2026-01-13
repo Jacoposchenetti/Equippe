@@ -52,6 +52,7 @@ export default function OnboardingPage() {
     tematiche: [] as string[],
     esperienza: '',
     indirizzo: '',
+    coordinate: null as { lat: number; lng: number } | null,
     disponibilità: '',
   });
 
@@ -103,8 +104,8 @@ export default function OnboardingPage() {
           tematiche: formData.tematiche,
           esperienza: formData.esperienza,
           location: { 
-            lat: 0, 
-            lng: 0, 
+            lat: formData.coordinate?.lat || 0, 
+            lng: formData.coordinate?.lng || 0, 
             città: città, 
             provincia: provincia,
             indirizzo: formData.indirizzo 
@@ -201,8 +202,13 @@ export default function OnboardingPage() {
           <div>
             <LocationAutocomplete
               value={formData.indirizzo}
-              onChange={(address) => {
-                setFormData({ ...formData, indirizzo: address });
+              onChange={(address, coords) => {
+                setFormData({ 
+                  ...formData, 
+                  indirizzo: address,
+                  coordinate: coords || null
+                });
+                console.log('📍 Coordinate onboarding:', coords);
               }}
               placeholder="Via, Città, Zona..."
               label="Indirizzo o Zona di Lavoro *"

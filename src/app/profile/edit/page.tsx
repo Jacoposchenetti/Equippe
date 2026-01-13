@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react';
 import { doc, updateDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '@/lib/firebase';
+import { requestNotificationPermission, saveFCMToken } from '@/lib/notifications';
 import Header from '@/components/Header';
 import LocationAutocomplete from '@/components/LocationAutocomplete';
 
@@ -57,8 +58,11 @@ export default function EditProfilePage() {
   const [website, setWebsite] = useState('');
   const [telefono, setTelefono] = useState('');
   const [indirizzo, setIndirizzo] = useState('');
+  const [coordinate, setCoordinate] = useState<{ lat: number; lng: number } | null>(null);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string>('');
+  const [notificationEnabled, setNotificationEnabled] = useState(false);
+  const [notificationLoading, setNotificationLoading] = useState(false);
 
   useEffect(() => {
     if (!user) {
@@ -105,8 +109,29 @@ export default function EditProfilePage() {
       setWebsite(userProfile.profile.website || '');
       setTelefono(userProfile.profile.telefono || '');
       setIndirizzo(userProfile.profile.location?.indirizzo || '');
+      // Inizializza coordinate se esistenti
+      if (userProfile.profile.location?.lat && userProfile.profile.location?.lng) {
+        setCoordinate({
+          lat: userProfile.profile.location.lat,
+          lng: userProfile.profile.location.lng
+        });
+      }
       setPhotoPreview(userProfile.profile.photoURL || '');
       setDataNascita(userProfile.profile.dataNascita || '');
+      
+      // Controlla stato notifiche
+      if (typeof window !== 'undefined' && 'Notification' in window) {
+        const hasPermission = Notification.permission === 'granted';
+        const hasToken = !!userProfile.fcmToken;
+        setNotificationEnabled(hasPermission && hasToken);
+      }
+      
+      // Controlla stato notifiche
+      if (typeof window !== 'undefined' && 'Notification' in window) {
+        const hasPermission = Notification.permission === 'granted';
+        const hasToken = !!userProfile.fcmToken;
+        setNotificationEnabled(hasPermission && hasToken);
+      }
     }
   }, [user, userProfile]);
 
@@ -123,6 +148,40 @@ export default function EditProfilePage() {
       setTematiche(tematiche.filter(t => t !== tema));
     } else {
       setTematiche([...tematiche, tema]);
+    }
+  };
+
+  const handleToggleNotifications = async () => {
+    if (!user) return;
+    
+    setNotificationLoading(true);
+    
+    try {
+      if (notificationEnabled) {
+        // Disabilita notifiche - rimuovi il token FCM
+        const userRef = doc(db, 'users', user.uid);
+        await updateDoc(userRef, {
+          fcmToken: null,
+          fcmTokenUpdatedAt: null
+        });
+        setNotificationEnabled(false);
+        alert('🔕 Notifiche push disabilitate');
+      } else {
+        // Abilita notifiche - richiedi permesso e salva token
+        const token = await requestNotificationPermission();
+        if (token) {
+          await saveFCMToken(user.uid, token);
+          setNotificationEnabled(true);
+          alert('🔔 Notifiche push abilitate con successo!');
+        } else {
+          alert('⚠️ Impossibile abilitare le notifiche. Controlla i permessi del browser.');
+        }
+      }
+    } catch (error) {
+      console.error('Errore toggle notifiche:', error);
+      alert('Errore durante la modifica delle notifiche');
+    } finally {
+      setNotificationLoading(false);
     }
   };
 
@@ -197,6 +256,9 @@ export default function EditProfilePage() {
         'profile.location.indirizzo': indirizzo.trim(),
         'profile.location.città': città,
         'profile.location.provincia': provincia,
+        // Salva coordinate se disponibili
+        'profile.location.lat': coordinate?.lat || 0,
+        'profile.location.lng': coordinate?.lng || 0,
         updatedAt: new Date()
       };
       
@@ -340,8 +402,12 @@ export default function EditProfilePage() {
             
             <LocationAutocomplete
               value={indirizzo}
-              onChange={(address) => {
+              onChange={(address, coords) => {
                 setIndirizzo(address);
+                if (coords) {
+                  setCoordinate(coords);
+                  console.log('📍 Coordinate salvate:', coords);
+                }
               }}
               placeholder="Via, Città, Zona..."
               label="Indirizzo o Zona di Lavoro *"
@@ -448,6 +514,72 @@ export default function EditProfilePage() {
                 />
               </div>
             </div>
+          </div>
+
+          {/* Notifiche Push */}
+          <div className="bg-white rounded-xl shadow-sm p-6">
+            <h2 className="text-2xl font-bold text-gray-900 mb-4">Notifiche Push</h2>
+            <p className="text-gray-600 mb-6">
+              Ricevi notifiche istantanee per messaggi, inviti e richieste da équipe
+            </p>
+            
+            <div className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
+              <div className="flex items-center gap-4">
+                <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
+                  notificationEnabled ? 'bg-green-100' : 'bg-gray-100'
+                }`}>
+                  {notificationEnabled ? (
+                    <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                    </svg>
+                  ) : (
+                    <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.586 15H4a1 1 0 01-.707-1.707l1.293-1.293a1 1 0 01.707-.293V8a6 6 0 1112 0v4.414l1.293 1.293A1 1 0 0118 15h-1.586l-1.707 1.707A1 1 0 0114 17H10a1 1 0 01-.707-.293L7.586 15zM6 8v8h12V8a6 6 0 00-12 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.5 3.5L6 21" />
+                    </svg>
+                  )}
+                </div>
+                
+                <div>
+                  <h3 className="font-semibold text-gray-900">
+                    Notifiche Push {notificationEnabled ? 'Abilitate' : 'Disabilitate'}
+                  </h3>
+                  <p className="text-sm text-gray-600">
+                    {notificationEnabled 
+                      ? 'Riceverai notifiche push per nuovi messaggi e attività'
+                      : 'Abilita per ricevere notifiche istantanee'
+                    }
+                  </p>
+                </div>
+              </div>
+              
+              <label className="flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={notificationEnabled}
+                  onChange={handleToggleNotifications}
+                  disabled={notificationLoading}
+                  className="sr-only"
+                />
+                <div className={`relative w-14 h-8 rounded-full transition-colors duration-200 ${
+                  notificationEnabled ? 'bg-blue-600' : 'bg-gray-300'
+                } ${notificationLoading ? 'opacity-50' : ''}`}>
+                  <div className={`absolute top-1 left-1 w-6 h-6 bg-white rounded-full transition-transform duration-200 ${
+                    notificationEnabled ? 'transform translate-x-6' : ''
+                  }`} />
+                </div>
+              </label>
+            </div>
+            
+            {notificationLoading && (
+              <p className="text-sm text-gray-500 mt-2 flex items-center gap-2">
+                <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Aggiornamento in corso...
+              </p>
+            )}
           </div>
 
           {/* Bottoni azione */}

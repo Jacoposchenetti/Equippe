@@ -1,6 +1,7 @@
 import { collection, addDoc, Timestamp } from 'firebase/firestore';
 import { db } from './firebase';
 import { NotificationType } from '@/types/equippe';
+import { getMessaging, getToken, onMessage, Messaging } from 'firebase/messaging';
 
 interface CreateNotificationParams {
   userId: string;
@@ -214,3 +215,114 @@ export async function notifyTeamInviteReceived(recipientId: string, teamId: stri
     console.error('Errore notifyTeamInviteReceived:', error);
   }
 }
+
+// ============================================
+// FIREBASE CLOUD MESSAGING (Push Notifications)
+// ============================================
+
+let messagingInstance: Messaging | null = null;
+
+/**
+ * Inizializza Firebase Cloud Messaging
+ * Deve essere chiamato solo nel browser, non durante SSR
+ */
+export function initializeMessaging(): Messaging | null {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+
+  if (!messagingInstance) {
+    try {
+      messagingInstance = getMessaging();
+    } catch (error) {
+      console.error('Errore inizializzazione FCM:', error);
+      return null;
+    }
+  }
+
+  return messagingInstance;
+}
+
+/**
+ * Richiede il permesso per le notifiche e ottiene il token FCM
+ * @returns FCM token o null se negato/errore
+ */
+export async function requestNotificationPermission(): Promise<string | null> {
+  if (typeof window === 'undefined' || !('Notification' in window)) {
+    console.log('Notifiche non supportate in questo browser');
+    return null;
+  }
+
+  try {
+    const permission = await Notification.requestPermission();
+    
+    if (permission !== 'granted') {
+      console.log('Permesso notifiche negato');
+      return null;
+    }
+
+    const messaging = initializeMessaging();
+    if (!messaging) {
+      console.error('Impossibile inizializzare messaging');
+      return null;
+    }
+
+    // Registra service worker
+    if ('serviceWorker' in navigator) {
+      const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+      console.log('Service Worker registrato:', registration);
+    }
+
+    // Ottieni token FCM
+    const token = await getToken(messaging, {
+      vapidKey: process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY
+    });
+
+    if (token) {
+      console.log('✅ FCM Token ottenuto:', token);
+      return token;
+    } else {
+      console.log('Nessun token disponibile');
+      return null;
+    }
+  } catch (error) {
+    console.error('Errore richiesta permesso notifiche:', error);
+    return null;
+  }
+}
+
+/**
+ * Listener per i messaggi in foreground
+ * @param callback Funzione da chiamare quando arriva un messaggio
+ */
+export function onMessageListener(callback: (payload: any) => void) {
+  const messaging = initializeMessaging();
+  if (!messaging) return () => {};
+
+  return onMessage(messaging, (payload) => {
+    console.log('Messaggio ricevuto in foreground:', payload);
+    callback(payload);
+  });
+}
+
+/**
+ * Salva il token FCM nel profilo utente
+ * @param userId ID dell'utente
+ * @param token FCM token
+ */
+export async function saveFCMToken(userId: string, token: string) {
+  try {
+    const { doc, updateDoc } = await import('firebase/firestore');
+    const userRef = doc(db, 'users', userId);
+    
+    await updateDoc(userRef, {
+      fcmToken: token,
+      fcmTokenUpdatedAt: Timestamp.now()
+    });
+
+    console.log('✅ Token FCM salvato per utente:', userId);
+  } catch (error) {
+    console.error('Errore salvataggio token FCM:', error);
+  }
+}
+

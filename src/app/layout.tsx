@@ -1,5 +1,6 @@
 ﻿import type { Metadata } from 'next';
 import { AuthProvider } from '@/contexts/AuthContext';
+import PushNotificationManager from '@/components/PushNotificationManager';
 import './globals.css';
 import 'leaflet/dist/leaflet.css';
 
@@ -18,6 +19,7 @@ export default function RootLayout({
       <body>
         <AuthProvider>
           {children}
+          <PushNotificationManager />
         </AuthProvider>
       </body>
     </html>

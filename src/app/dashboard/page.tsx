@@ -57,12 +57,20 @@ export default function Dashboard() {
       // Carica professionisti
       const usersRef = collection(db, 'users');
       const usersSnapshot = await getDocs(usersRef);
-      const users = usersSnapshot.docs.map(doc => ({
-        uid: doc.id,
-        ...doc.data()
-      } as User));
-      setProfessionisti(users.filter(u => u.uid !== user?.uid));
-      console.log('✅ Caricati', users.length, 'professionisti');
+      console.log('📊 Documenti utenti trovati:', usersSnapshot.size);
+      
+      const users = usersSnapshot.docs.map(doc => {
+        const userData = {
+          uid: doc.id,
+          ...doc.data()
+        } as User;
+        console.log('👤 Utente caricato:', userData.profile?.nome || 'Nome non disponibile', 'UID:', userData.uid);
+        return userData;
+      });
+      
+      const filteredUsers = users.filter(u => u.uid !== user?.uid);
+      setProfessionisti(filteredUsers);
+      console.log('✅ Caricati', users.length, 'utenti totali,', filteredUsers.length, 'professionisti (escluso current user)');
 
       // Carica teams con token refresh
       try {
@@ -127,6 +135,7 @@ export default function Dashboard() {
   };
 
   const handleSearch = (filters: SearchFilters) => {
+    console.log('🔍 Filtri applicati:', filters);
     setCurrentFilters(filters);
   };
 
@@ -145,28 +154,91 @@ export default function Dashboard() {
 
   // Filtra professionisti
   const filteredProfessionisti = professionisti.filter(p => {
-    // Specializzazione
-    if (currentFilters.specializzazione && !p.profile.specializzazioni.includes(currentFilters.specializzazione)) {
-      return false;
+    console.log('🔍 Filtrando professionista:', p.profile.nome);
+    
+    // Specializzazione - controlla sia il nome originale che quello normalizzato
+    if (currentFilters.specializzazione) {
+      const normalizedSpecs = p.profile.specializzazioni.map(spec => normalizeSpecialization(spec));
+      if (!p.profile.specializzazioni.includes(currentFilters.specializzazione) && 
+          !normalizedSpecs.includes(currentFilters.specializzazione)) {
+        console.log('❌ Escluso per specializzazione:', p.profile.nome, 'Cercata:', currentFilters.specializzazione, 'Ha:', p.profile.specializzazioni);
+        return false;
+      }
     }
 
-    // Location - verifica distanza dagli studi se ci sono coordinate
+    // Location - verifica distanza dalla posizione del professionista
     if (currentFilters.coordinate && currentFilters.raggioKm) {
-      const hasStudioInRange = p.profile.studi?.some(studio => {
-        if (studio.coordinate) {
-          const distance = calculateDistance(
-            currentFilters.coordinate!.lat,
-            currentFilters.coordinate!.lng,
-            studio.coordinate.lat,
-            studio.coordinate.lng
-          );
-          return distance <= currentFilters.raggioKm!;
+      console.log('🗺️ Controllando posizione per:', p.profile.nome);
+      console.log('📍 Filtro coordinate:', currentFilters.coordinate, 'Raggio:', currentFilters.raggioKm);
+      console.log('🏠 Professionista location:', p.profile.location);
+      
+      let hasLocationInRange = false;
+      
+      // Controlla location principale se ha coordinate valide
+      if (p.profile.location && p.profile.location.lat && p.profile.location.lng &&
+          p.profile.location.lat !== 0 && p.profile.location.lng !== 0) {
+        console.log('✅ Professionista ha coordinate:', p.profile.location.lat, p.profile.location.lng);
+        const distance = calculateDistance(
+          currentFilters.coordinate.lat,
+          currentFilters.coordinate.lng,
+          p.profile.location.lat,
+          p.profile.location.lng
+        );
+        console.log('📏 Distanza calcolata:', distance.toFixed(2), 'km');
+        if (distance <= currentFilters.raggioKm) {
+          hasLocationInRange = true;
+          console.log('✅ Professionista nel raggio!');
+        } else {
+          console.log('❌ Professionista fuori raggio');
         }
-        return false;
-      });
+      } else {
+        console.log('⚠️ Professionista senza coordinate valide');
+        
+        // FALLBACK: Se ha un indirizzo di Roma e stiamo cercando a Roma, includilo
+        if (p.profile.location?.indirizzo) {
+          const addressLower = p.profile.location.indirizzo.toLowerCase();
+          const isRomeAddress = addressLower.includes('roma') || addressLower.includes('rome');
+          const isSearchingInRome = currentFilters.indirizzo?.toLowerCase().includes('roma') || 
+                                  currentFilters.indirizzo?.toLowerCase().includes('rome');
+          
+          if (isRomeAddress && isSearchingInRome && currentFilters.raggioKm >= 10) {
+            hasLocationInRange = true;
+            console.log('🎆 Fallback Roma: professionista incluso');
+          } else {
+            console.log('🚫 Fallback Roma: non applicabile');
+          }
+        }
+      }
+      
+      // Se ha studi, controlla anche quelli
+      if (!hasLocationInRange && p.profile.studi?.length) {
+        console.log('🔄 Controllando studi alternativi...');
+        hasLocationInRange = p.profile.studi.some(studio => {
+          if (studio.coordinate) {
+            const distance = calculateDistance(
+              currentFilters.coordinate!.lat,
+              currentFilters.coordinate!.lng,
+              studio.coordinate.lat,
+              studio.coordinate.lng
+            );
+            console.log('📏 Distanza studio:', distance.toFixed(2), 'km');
+            return distance <= currentFilters.raggioKm!;
+          }
+          return false;
+        });
+      }
 
-      // Se non ha studi con coordinate nel raggio, escludi
-      if (!hasStudioInRange) return false;
+      // Se non ha posizioni nel raggio, escludi (a meno che non sia remoto)
+      if (!hasLocationInRange) {
+        // Se ha studi con remoto o non ha filtro remoto attivo, potrebbe essere incluso
+        const hasRemoto = p.profile.studi?.some(s => s.remoto);
+        if (!hasRemoto && !currentFilters.remoto) {
+          console.log('❌ Escluso per posizione:', p.profile.nome);
+          return false;
+        } else {
+          console.log('✅ Incluso per lavoro remoto:', p.profile.nome);
+        }
+      }
     }
 
     // Remoto
@@ -269,7 +341,22 @@ export default function Dashboard() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredProfessionisti.length === 0 ? (
               <div className="col-span-full text-center py-12 text-gray-500">
-                Nessun professionista trovato
+                <div className="mb-4 text-6xl">🔍</div>
+                <h3 className="text-xl font-semibold mb-2">Nessun professionista trovato</h3>
+                <div className="text-sm text-gray-400 space-y-1">
+                  {currentFilters.specializzazione && (
+                    <p>• Specializzazione: {currentFilters.specializzazione}</p>
+                  )}
+                  {currentFilters.coordinate && (
+                    <p>• Zona: {currentFilters.indirizzo} (raggio {currentFilters.raggioKm} km)</p>
+                  )}
+                  {currentFilters.remoto && (
+                    <p>• Include lavoro da remoto</p>
+                  )}
+                </div>
+                <p className="text-xs text-gray-400 mt-4">
+                  💡 Prova ad espandere il raggio di ricerca o rimuovere alcuni filtri
+                </p>
               </div>
             ) : (
               filteredProfessionisti.map((p, index) => (

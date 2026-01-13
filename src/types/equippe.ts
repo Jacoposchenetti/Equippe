@@ -51,6 +51,8 @@ export interface User {
   stats: UserStats;
   createdAt: Timestamp;
   updatedAt: Timestamp;
+  fcmToken?: string;
+  fcmTokenUpdatedAt?: Timestamp;
 }
 
 // Team Types

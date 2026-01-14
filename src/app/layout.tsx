@@ -5,7 +5,7 @@ import './globals.css';
 import 'leaflet/dist/leaflet.css';
 
 export const metadata: Metadata = {
-  title: 'Equippe - Piattaforma per professionisti sociosanitari',
+  title: 'Equipé - Piattaforma per professionisti sociosanitari',
   description: 'Trova colleghi, forma equipé multidisciplinari e collabora',
   viewport: {
     width: 'device-width',

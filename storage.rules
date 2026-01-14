@@ -13,6 +13,61 @@ service firebase.storage {
                    && request.resource.contentType.matches('image/.*');  // Solo immagini
     }
     
+    // Regole per le foto équipe
+    match /team-photos/{teamId}/{fileName} {
+      // Lettura: tutti gli utenti autenticati possono vedere le foto équipe
+      allow read: if request.auth != null;
+      
+      // Scrittura: utenti autenticati possono caricare foto équipe
+      // TODO: Aggiungere controllo che l'utente sia admin del team
+      allow write: if request.auth != null 
+                   && request.resource.size < 5 * 1024 * 1024  // Max 5MB
+                   && request.resource.contentType.matches('image/.*');  // Solo immagini
+    }
+    
+    // Regole per le foto équipe
+    match /team-photos/{teamId}/{fileName} {
+      // Lettura: tutti gli utenti autenticati possono vedere le foto équipe
+      allow read: if request.auth != null;
+      
+      // Scrittura: solo membri dell'équipe possono caricare/modificare foto
+      // TODO: In futuro potremmo aggiungere controllo membership
+      allow write: if request.auth != null 
+                   && request.resource.size < 5 * 1024 * 1024  // Max 5MB
+                   && request.resource.contentType.matches('image/.*');  // Solo immagini
+    }
+    
+    // Regole per gli allegati chat
+    match /chat-attachments/{conversationId}/{fileName} {
+      // Lettura: tutti gli utenti autenticati possono leggere gli allegati
+      allow read: if request.auth != null;
+      
+      // Scrittura: utenti autenticati possono caricare file
+      allow write: if request.auth != null 
+                   && request.resource.size < 10 * 1024 * 1024  // Max 10MB
+                   && (
+                     // Immagini
+                     request.resource.contentType.matches('image/.*') ||
+                     // Documenti PDF
+                     request.resource.contentType == 'application/pdf' ||
+                     // Documenti Word
+                     request.resource.contentType == 'application/msword' ||
+                     request.resource.contentType == 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+                     // Documenti Excel
+                     request.resource.contentType == 'application/vnd.ms-excel' ||
+                     request.resource.contentType == 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
+                     // Documenti PowerPoint
+                     request.resource.contentType == 'application/vnd.ms-powerpoint' ||
+                     request.resource.contentType == 'application/vnd.openxmlformats-officedocument.presentationml.presentation' ||
+                     // File di testo
+                     request.resource.contentType == 'text/plain' ||
+                     request.resource.contentType == 'text/csv' ||
+                     // Archivi
+                     request.resource.contentType == 'application/zip' ||
+                     request.resource.contentType == 'application/x-rar-compressed'
+                   );
+    }
+    
     // Nega tutto il resto
     match /{allPaths=**} {
       allow read, write: if false;

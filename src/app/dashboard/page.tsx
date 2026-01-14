@@ -405,9 +405,17 @@ export default function Dashboard() {
                   <div className="p-6">
                     {/* Avatar Team */}
                     <div className="flex justify-center mb-4">
-                      <div className={`w-20 h-20 ${getAvatarColor(index)} rounded-full flex items-center justify-center text-gray-700 font-bold text-2xl`}>
-                        {getInitials(team.name || 'Team')}
-                      </div>
+                      {team.photoURL ? (
+                        <img 
+                          src={team.photoURL} 
+                          alt={`Foto ${team.name}`}
+                          className="w-20 h-20 rounded-full object-cover border-4 border-amber-200"
+                        />
+                      ) : (
+                        <div className={`w-20 h-20 ${getAvatarColor(index)} rounded-full flex items-center justify-center text-gray-700 font-bold text-2xl`}>
+                          {getInitials(team.name || 'Team')}
+                        </div>
+                      )}
                     </div>
 
                     {/* Nome Team */}

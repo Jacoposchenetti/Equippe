@@ -20,7 +20,7 @@ const messaging = firebase.messaging();
 messaging.onBackgroundMessage((payload) => {
   console.log('[firebase-messaging-sw.js] Background message received:', payload);
 
-  const notificationTitle = payload.notification?.title || 'Equippe';
+  const notificationTitle = payload.notification?.title || 'Equipé';
   const notificationOptions = {
     body: payload.notification?.body || 'Hai una nuova notifica',
     icon: '/icon-192x192.png',

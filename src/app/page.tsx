@@ -6,7 +6,7 @@ export default function Home() {
       <div className="flex min-h-screen flex-col items-center justify-center px-4">
         <main className="text-center max-w-4xl">
           <h1 className="text-6xl font-bold text-blue-600 mb-4">
-            Equippe
+            Equipé
           </h1>
           <h2 className="text-3xl font-semibold text-gray-800 mb-6">
             La piattaforma per professionisti sociosanitari
@@ -65,7 +65,7 @@ export default function Home() {
         </main>
 
         <footer className="mt-16 text-center text-gray-500 text-sm">
-          <p> 2026 Equippe - Piattaforma per professionisti sociosanitari</p>
+          <p> 2026 Equipé - Piattaforma per professionisti sociosanitari</p>
         </footer>
       </div>
     </div>

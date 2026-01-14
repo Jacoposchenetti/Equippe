@@ -9,6 +9,7 @@ import { Team, RoleCercato } from '@/types/equippe';
 import Link from 'next/link';
 import Header from '@/components/Header';
 import MapSelector from '@/components/MapSelector';
+import { uploadTeamPhoto } from '@/lib/teamPhotoUpload';
 
 const SPECIALIZZAZIONI = [
   'Psicologo',
@@ -52,6 +53,12 @@ export default function EditTeamPage() {
     numero: 1,
     descrizione: '',
   });
+  
+  // Stati per la gestione della foto équipe
+  const [teamPhoto, setTeamPhoto] = useState<File | null>(null);
+  const [teamPhotoPreview, setTeamPhotoPreview] = useState<string>('');
+  const [teamPhotoURL, setTeamPhotoURL] = useState<string>('');
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
 
   useEffect(() => {
     if (!user) {
@@ -89,6 +96,12 @@ export default function EditTeamPage() {
         remoto: teamData.remoto || false,
         ruoliCercati: teamData.ruoliCercati || [],
       });
+      
+      // Carica la foto esistente se presente
+      if (teamData.photoURL) {
+        setTeamPhotoURL(teamData.photoURL);
+        setTeamPhotoPreview(teamData.photoURL);
+      }
     } catch (error) {
       console.error('Errore caricamento team:', error);
     } finally {
@@ -131,6 +144,43 @@ export default function EditTeamPage() {
     }));
   };
 
+  // Funzioni per gestire la foto équipe
+  const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validazione file
+    if (!file.type.startsWith('image/')) {
+      setError('Seleziona un\'immagine valida');
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) { // 5MB
+      setError('L\'immagine deve essere inferiore a 5MB');
+      return;
+    }
+
+    setTeamPhoto(file);
+    
+    // Crea preview
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      setTeamPhotoPreview(e.target?.result as string);
+    };
+    reader.readAsDataURL(file);
+    setError('');
+  };
+
+  const removePhoto = () => {
+    setTeamPhoto(null);
+    setTeamPhotoPreview('');
+    setTeamPhotoURL('');
+    
+    // Reset input file
+    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+    if (fileInput) fileInput.value = '';
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -148,6 +198,24 @@ export default function EditTeamPage() {
     setSaving(true);
 
     try {
+      let finalPhotoURL = teamPhotoURL;
+      
+      // Upload foto se selezionata
+      if (teamPhoto) {
+        setUploadingPhoto(true);
+        try {
+          finalPhotoURL = await uploadTeamPhoto(teamPhoto, teamId);
+          setTeamPhotoURL(finalPhotoURL);
+        } catch (photoError) {
+          console.error('Errore upload foto:', photoError);
+          setError('Errore durante l\'upload della foto');
+          setSaving(false);
+          setUploadingPhoto(false);
+          return;
+        }
+        setUploadingPhoto(false);
+      }
+
       // Pulisci ruoli cercati da campi undefined
       const ruoliCercatiPuliti = formData.ruoliCercati.map(ruolo => {
         const ruoloPulito: any = {
@@ -180,6 +248,9 @@ export default function EditTeamPage() {
       }
       if (formData.raggioKm) {
         updateData.raggioKm = formData.raggioKm;
+      }
+      if (finalPhotoURL) {
+        updateData.photoURL = finalPhotoURL;
       }
 
       await updateDoc(doc(db, 'teams', teamId), updateData);
@@ -250,6 +321,55 @@ export default function EditTeamPage() {
               rows={4}
               placeholder="Descrivi gli obiettivi e le modalità di collaborazione dell'Equipé..."
             />
+          </div>
+
+          {/* Foto Equipé */}
+          <div className="mb-6">
+            <label className="block text-sm font-semibold text-gray-700 mb-2">Foto Equipé</label>
+            <div className="space-y-4">
+              {teamPhotoPreview ? (
+                <div className="relative inline-block">
+                  <img
+                    src={teamPhotoPreview}
+                    alt="Anteprima foto équipe"
+                    className="w-32 h-32 object-cover rounded-lg border border-gray-300"
+                  />
+                  <button
+                    type="button"
+                    onClick={removePhoto}
+                    disabled={uploadingPhoto}
+                    className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition disabled:opacity-50"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                  {uploadingPhoto && (
+                    <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center rounded-lg">
+                      <div className="text-white text-sm">Caricamento...</div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="w-32 h-32 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center bg-gray-50">
+                  <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                  </svg>
+                </div>
+              )}
+              
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handlePhotoSelect}
+                disabled={uploadingPhoto}
+                className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 disabled:opacity-50"
+              />
+              
+              <p className="text-xs text-gray-500">
+                Formati supportati: JPG, PNG, GIF. Dimensione massima: 5MB
+              </p>
+            </div>
           </div>
 
           {/* Zona Operativa */}

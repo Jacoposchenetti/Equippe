@@ -5,9 +5,10 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState, useRef } from 'react';
 import { collection, query, where, orderBy, onSnapshot, addDoc, updateDoc, doc, getDoc, getDocs, Timestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { Conversation, Message, Team, ConversationType } from '@/types/equippe';
+import { Conversation, Message, Team, ConversationType, FileAttachment } from '@/types/equippe';
 import Header from '@/components/Header';
 import { notifyNewMessage } from '@/lib/notifications';
+import { uploadFile, validateFile, getFileIcon, formatFileSize } from '@/lib/fileUpload';
 
 export default function MessagesPage() {
   const { user, userProfile } = useAuth();
@@ -22,7 +23,11 @@ export default function MessagesPage() {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [creatingConversation, setCreatingConversation] = useState(false);
+  const [uploadingFiles, setUploadingFiles] = useState<File[]>([]);
+  const [uploadProgress, setUploadProgress] = useState<{[key: string]: number}>({});
+  const [pendingAttachments, setPendingAttachments] = useState<FileAttachment[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!user?.uid || !userProfile) {
@@ -100,6 +105,7 @@ export default function MessagesPage() {
           type: 'team',
           teamId: team.id || team.teamId,
           teamName: team.nome || team.name,
+          teamPhotoURL: team.photoURL || '',
           participants: teamMembers,
           participantsData,
           lastMessage: 'Chat di gruppo creata',
@@ -157,6 +163,25 @@ export default function MessagesPage() {
               conv.participantsData = {};
             }
             
+            // Aggiorna foto team per conversazioni team se mancante
+            if (conv.type === 'team' && conv.teamId && !conv.teamPhotoURL) {
+              try {
+                const teamDoc = await getDoc(doc(db, 'teams', conv.teamId));
+                if (teamDoc.exists()) {
+                  const teamData = teamDoc.data();
+                  if (teamData.photoURL) {
+                    conv.teamPhotoURL = teamData.photoURL;
+                    // Aggiorna anche nel database
+                    await updateDoc(doc(db, 'conversations', conv.id), {
+                      teamPhotoURL: teamData.photoURL
+                    });
+                  }
+                }
+              } catch (error) {
+                console.error('Error updating team photo in conversation:', error);
+              }
+            }
+            
             for (const participantId of conv.participants) {
               // Ricarica sempre i dati per assicurarci che le foto profilo siano aggiornate
               try {
@@ -175,10 +200,6 @@ export default function MessagesPage() {
                       name: userData.profile?.nome || 'Utente',
                       photoURL: userData.profile?.photoURL || ''
                     };
-                    console.log('Loaded user data for', participantId, ':', {
-                      name: userData.profile?.nome,
-                      photoURL: userData.profile?.photoURL
-                    });
                   }
                 }
               } catch (error) {
@@ -335,11 +356,84 @@ export default function MessagesPage() {
     setCreatingConversation(false);
   };
 
-  const handleSendMessage = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!user || !userProfile || !selectedConversation || !messageText.trim() || sending) return;
+  const handleFileSelect = (files: FileList | null) => {
+    if (!files) return;
+    
+    const validFiles: File[] = [];
+    const errors: string[] = [];
+    
+    Array.from(files).forEach(file => {
+      const error = validateFile(file);
+      if (error) {
+        errors.push(`${file.name}: ${error}`);
+      } else {
+        validFiles.push(file);
+      }
+    });
+    
+    if (errors.length > 0) {
+      alert('Errori nei file:\n' + errors.join('\n'));
+    }
+    
+    if (validFiles.length > 0) {
+      handleUploadFiles(validFiles);
+    }
+    
+    // Reset input file
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
 
-    setSending(true);
+  const handleUploadFiles = async (files: File[]) => {
+    if (!selectedConversation || !user) return;
+    
+    setUploadingFiles(prev => [...prev, ...files]);
+    
+    try {
+      const uploadPromises = files.map(async (file) => {
+        const fileName = file.name;
+        setUploadProgress(prev => ({ ...prev, [fileName]: 0 }));
+        
+        const attachment = await uploadFile(
+          file,
+          selectedConversation,
+          user.uid,
+          (progress) => {
+            setUploadProgress(prev => ({ ...prev, [fileName]: progress }));
+          }
+        );
+        
+        return attachment;
+      });
+      
+      const attachments = await Promise.all(uploadPromises);
+      
+      // Aggiungi agli allegati in attesa invece di inviare subito
+      setPendingAttachments(prev => [...prev, ...attachments]);
+      
+    } catch (error) {
+      console.error('Error uploading files:', error);
+      alert('Errore durante l\'upload dei file');
+    } finally {
+      // Pulisci stati upload
+      setUploadingFiles(prev => prev.filter(f => !files.includes(f)));
+      files.forEach(file => {
+        setUploadProgress(prev => {
+          const newProgress = { ...prev };
+          delete newProgress[file.name];
+          return newProgress;
+        });
+      });
+    }
+  };
+
+  const removeAttachment = (attachmentId: string) => {
+    setPendingAttachments(prev => prev.filter(att => att.id !== attachmentId));
+  };
+
+  const handleSendMessageWithAttachments = async (attachments: FileAttachment[], text?: string) => {
+    if (!user || !userProfile || !selectedConversation) return;
 
     try {
       const conversation = conversations.find(c => c.id === selectedConversation);
@@ -351,7 +445,8 @@ export default function MessagesPage() {
         senderId: user.uid,
         senderName: userProfile.profile.nome,
         senderPhotoURL: userProfile.profile.photoURL || '',
-        content: messageText.trim(),
+        content: text || (attachments.length > 0 ? '' : ''),
+        attachments,
         read: false,
         createdAt: Timestamp.now()
       };
@@ -368,7 +463,6 @@ export default function MessagesPage() {
       const convRef = doc(db, 'conversations', selectedConversation);
       const currentUnreadCount = conversation?.unreadCount || {};
       
-      // Per chat di team, incrementa unread per tutti i membri eccetto il sender
       const newUnreadCount = { ...currentUnreadCount };
       let recipientIds: string[] = [];
       
@@ -380,14 +474,17 @@ export default function MessagesPage() {
           }
         });
       } else {
-        // Chat privata
         const receiverId = conversation.participants.find(id => id !== user.uid)!;
         newUnreadCount[receiverId] = (newUnreadCount[receiverId] || 0) + 1;
         recipientIds = [receiverId];
       }
       
+      const lastMessage = attachments.length > 0 
+        ? `📎 ${attachments.length} allegat${attachments.length === 1 ? 'o' : 'i'}${text ? ': ' + text.substring(0, 50) : ''}`
+        : text || '';
+      
       await updateDoc(convRef, {
-        lastMessage: messageText.trim().substring(0, 100),
+        lastMessage: lastMessage.substring(0, 100),
         lastMessageTime: Timestamp.now(),
         lastSenderId: user.uid,
         unreadCount: newUnreadCount
@@ -401,14 +498,29 @@ export default function MessagesPage() {
           user.uid,
           userProfile.profile.nome,
           recipientIds,
-          messageText.trim()
+          lastMessage
         );
       }
 
+    } catch (error) {
+      console.error('Error sending message with attachments:', error);
+      throw error;
+    }
+  };
+
+  const handleSendMessage = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user || !userProfile || !selectedConversation || (!messageText.trim() && pendingAttachments.length === 0) || sending) return;
+
+    setSending(true);
+
+    try {
+      await handleSendMessageWithAttachments(pendingAttachments, messageText.trim());
       setMessageText('');
-    } catch (err) {
-      console.error('Errore nell\'invio del messaggio:', err);
-      alert('Errore nell\'invio. Riprova.');
+      setPendingAttachments([]);
+    } catch (error) {
+      console.error('Error sending message:', error);
+      alert('Errore nell\'invio del messaggio');
     }
 
     setSending(false);
@@ -462,15 +574,6 @@ export default function MessagesPage() {
                     const otherId = conv.participants.find(id => id !== user?.uid);
                     displayName = otherId && conv.participantsData?.[otherId]?.name || 'Sconosciuto';
                     photoURL = otherId && conv.participantsData?.[otherId]?.photoURL || '';
-                    
-                    // Debug log per capire cosa succede
-                    console.log('Conversation debug:', {
-                      convId: conv.id,
-                      otherId,
-                      participantsData: conv.participantsData,
-                      photoURL,
-                      displayName
-                    });
                   }
 
                   return (
@@ -485,11 +588,19 @@ export default function MessagesPage() {
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-1">
                             {isTeamChat ? (
-                              <div className="w-10 h-10 bg-gradient-to-br from-amber-500 to-orange-600 rounded-full flex items-center justify-center text-white font-bold">
-                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                                </svg>
-                              </div>
+                              conv.teamPhotoURL ? (
+                                <img 
+                                  src={conv.teamPhotoURL} 
+                                  alt={displayName} 
+                                  className="w-10 h-10 rounded-full object-cover border-2 border-amber-300"
+                                />
+                              ) : (
+                                <div className="w-10 h-10 bg-gradient-to-br from-amber-500 to-orange-600 rounded-full flex items-center justify-center text-white font-bold">
+                                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 919.288 0M15 7a3 3 0 11-6 0 3 3 0 616 0zm6 3a2 2 0 11-4 0 2 2 0 414 0zM7 10a2 2 0 11-4 0 2 2 0 414 0z" />
+                                  </svg>
+                                </div>
+                              )
                             ) : photoURL ? (
                               <img 
                                 src={photoURL} 
@@ -564,11 +675,19 @@ export default function MessagesPage() {
                       
                       {selectedConvData?.type === 'team' ? (
                         <>
-                          <div className="w-10 h-10 bg-gradient-to-br from-amber-500 to-orange-600 rounded-full flex items-center justify-center text-white">
-                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 515.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 919.288 0M15 7a3 3 0 11-6 0 3 3 0 616 0zm6 3a2 2 0 11-4 0 2 2 0 414 0zM7 10a2 2 0 11-4 0 2 2 0 414 0z" />
-                            </svg>
-                          </div>
+                          {selectedConvData.teamPhotoURL ? (
+                            <img 
+                              src={selectedConvData.teamPhotoURL} 
+                              alt={selectedConvData.teamName} 
+                              className="w-10 h-10 rounded-full object-cover border-2 border-amber-300"
+                            />
+                          ) : (
+                            <div className="w-10 h-10 bg-gradient-to-br from-amber-500 to-orange-600 rounded-full flex items-center justify-center text-white">
+                              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 515.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 919.288 0M15 7a3 3 0 11-6 0 3 3 0 616 0zm6 3a2 2 0 11-4 0 2 2 0 414 0zM7 10a2 2 0 11-4 0 2 2 0 414 0z" />
+                              </svg>
+                            </div>
+                          )}
                           <div className="flex-1">
                             <h2 className="text-xl font-bold text-amber-900">
                               Équipe: {selectedConvData.teamName}
@@ -627,7 +746,58 @@ export default function MessagesPage() {
                                   {msg.senderName}
                                 </p>
                               )}
-                              <p className="whitespace-pre-wrap break-words">{msg.content}</p>
+                              
+                              {/* Contenuto testuale */}
+                              {msg.content && (
+                                <p className="whitespace-pre-wrap break-words mb-2">{msg.content}</p>
+                              )}
+                              
+                              {/* Allegati */}
+                              {msg.attachments && msg.attachments.length > 0 && (
+                                <div className="space-y-2 mb-2">
+                                  {msg.attachments.map((attachment) => (
+                                    <div key={attachment.id} className={`border rounded-lg p-2 ${isMine ? 'border-blue-300 bg-blue-500' : 'border-gray-300 bg-white'}`}>
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-lg">{getFileIcon(attachment.type)}</span>
+                                        <div className="flex-1 min-w-0">
+                                          <p className={`text-sm font-medium truncate ${isMine ? 'text-white' : 'text-gray-900'}`}>
+                                            {attachment.name}
+                                          </p>
+                                          <p className={`text-xs ${isMine ? 'text-blue-100' : 'text-gray-500'}`}>
+                                            {formatFileSize(attachment.size)}
+                                          </p>
+                                        </div>
+                                        <a
+                                          href={attachment.downloadURL}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className={`px-2 py-1 rounded text-xs font-medium transition ${
+                                            isMine 
+                                              ? 'bg-blue-700 text-white hover:bg-blue-800' 
+                                              : 'bg-blue-600 text-white hover:bg-blue-700'
+                                          }`}
+                                        >
+                                          {attachment.type.startsWith('image/') ? 'Visualizza' : 'Scarica'}
+                                        </a>
+                                      </div>
+                                      
+                                      {/* Preview per immagini */}
+                                      {attachment.type.startsWith('image/') && (
+                                        <div className="mt-2">
+                                          <img 
+                                            src={attachment.downloadURL} 
+                                            alt={attachment.name}
+                                            className="max-w-full h-auto rounded cursor-pointer"
+                                            style={{ maxHeight: '200px' }}
+                                            onClick={() => window.open(attachment.downloadURL, '_blank')}
+                                          />
+                                        </div>
+                                      )}
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                              
                               <p className={`text-xs mt-1 ${isMine ? 'text-blue-100' : 'text-gray-500'}`}>
                                 {msg.createdAt.toDate().toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}
                               </p>
@@ -641,23 +811,119 @@ export default function MessagesPage() {
 
                   {/* Form invio messaggio */}
                   <form onSubmit={handleSendMessage} className="p-4 border-t border-gray-200 bg-gray-50">
-                    <div className="flex gap-3">
-                      <input
-                        type="text"
-                        value={messageText}
-                        onChange={(e) => setMessageText(e.target.value)}
-                        placeholder="Scrivi un messaggio..."
-                        className="flex-1 px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        disabled={sending}
-                      />
+                    {/* Indicatore upload in corso */}
+                    {uploadingFiles.length > 0 && (
+                      <div className="mb-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                        <p className="text-sm text-blue-700 mb-2">Caricamento file in corso...</p>
+                        {uploadingFiles.map((file) => (
+                          <div key={file.name} className="flex items-center gap-2 mb-1">
+                            <span className="text-xs">{getFileIcon(file.type)}</span>
+                            <span className="text-sm flex-1">{file.name}</span>
+                            <div className="w-20 bg-gray-200 rounded-full h-2">
+                              <div 
+                                className="bg-blue-600 h-2 rounded-full transition-all" 
+                                style={{ width: `${uploadProgress[file.name] || 0}%` }}
+                              ></div>
+                            </div>
+                            <span className="text-xs text-gray-500">{Math.round(uploadProgress[file.name] || 0)}%</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Anteprima allegati in attesa */}
+                    {pendingAttachments.length > 0 && (
+                      <div className="mb-3 p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                        <div className="flex items-center justify-between mb-2">
+                          <p className="text-sm text-gray-700 font-medium">Allegati ({pendingAttachments.length}):</p>
+                          <button
+                            type="button"
+                            onClick={() => setPendingAttachments([])}
+                            className="text-xs text-red-600 hover:text-red-800"
+                          >
+                            Rimuovi tutti
+                          </button>
+                        </div>
+                        <div className="space-y-2">
+                          {pendingAttachments.map((attachment) => (
+                            <div key={attachment.id} className="flex items-center gap-2 p-2 bg-white border border-gray-200 rounded">
+                              <span className="text-lg">{getFileIcon(attachment.type)}</span>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium text-gray-900 truncate">
+                                  {attachment.name}
+                                </p>
+                                <p className="text-xs text-gray-500">
+                                  {formatFileSize(attachment.size)}
+                                </p>
+                              </div>
+                              {/* Preview per immagini */}
+                              {attachment.type.startsWith('image/') && (
+                                <img 
+                                  src={attachment.downloadURL} 
+                                  alt={attachment.name}
+                                  className="w-10 h-10 object-cover rounded"
+                                />
+                              )}
+                              <button
+                                type="button"
+                                onClick={() => removeAttachment(attachment.id)}
+                                className="p-1 text-red-600 hover:text-red-800 hover:bg-red-50 rounded"
+                                title="Rimuovi allegato"
+                              >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    
+                    <div className="flex gap-3 items-end">
+                      <div className="flex-1">
+                        <input
+                          type="text"
+                          value={messageText}
+                          onChange={(e) => setMessageText(e.target.value)}
+                          placeholder="Scrivi un messaggio..."
+                          className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          disabled={sending || uploadingFiles.length > 0}
+                        />
+                      </div>
+                      
+                      {/* Pulsante allegati */}
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={sending || uploadingFiles.length > 0}
+                        className="p-3 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition disabled:opacity-50 disabled:cursor-not-allowed"
+                        title="Allega file"
+                      >
+                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+                        </svg>
+                      </button>
+                      
+                      {/* Pulsante invia */}
                       <button
                         type="submit"
-                        disabled={!messageText.trim() || sending}
+                        disabled={(!messageText.trim() && pendingAttachments.length === 0) || sending || uploadingFiles.length > 0}
                         className="px-6 py-3 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition shadow-sm"
                       >
                         {sending ? 'Invio...' : 'Invia'}
                       </button>
                     </div>
+                    
+                    {/* Input file nascosto */}
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      multiple
+                      onChange={(e) => handleFileSelect(e.target.files)}
+                      className="hidden"
+                      accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.zip,.rar"
+                    />
                   </form>
                 </>
               )}

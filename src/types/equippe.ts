@@ -86,6 +86,7 @@ export interface Team {
   nome: string;
   name?: string; // Alias per compatibilità
   description?: string;
+  photoURL?: string; // Foto dell'équipe
   adminUid: string;
   createdBy?: string; // Alias per compatibilità
   members: TeamMember[];
@@ -176,6 +177,16 @@ export interface ApiResponse<T> {
 // Chat/Messaging Types
 export type ConversationType = 'private' | 'team';
 
+export interface FileAttachment {
+  id: string;
+  name: string;
+  size: number;
+  type: string; // MIME type
+  url: string; // Firebase Storage URL
+  downloadURL: string;
+  uploadedAt: Timestamp;
+}
+
 export interface Message {
   id: string;
   conversationId: string;
@@ -184,6 +195,7 @@ export interface Message {
   senderPhotoURL?: string;
   receiverId?: string; // Solo per chat private
   content: string;
+  attachments?: FileAttachment[];
   read: boolean;
   createdAt: Timestamp;
 }
@@ -201,6 +213,7 @@ export interface Conversation {
   // Per chat di team
   teamId?: string;
   teamName?: string;
+  teamPhotoURL?: string;
   // Per chat private
   lastMessage?: string;
   lastMessageTime?: Timestamp;

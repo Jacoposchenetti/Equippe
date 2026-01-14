@@ -50,7 +50,7 @@ export default function PushNotificationManager() {
       
       // Mostra una notifica browser se l'app è in foreground
       if (Notification.permission === 'granted') {
-        new Notification(payload.notification?.title || 'Equippe', {
+        new Notification(payload.notification?.title || 'Equipé', {
           body: payload.notification?.body,
           icon: '/icon-192x192.png',
           badge: '/icon-72x72.png',

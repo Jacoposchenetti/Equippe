@@ -2,13 +2,14 @@
 
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { collection, addDoc, Timestamp, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { User, RoleCercato } from '@/types/equippe';
 import Link from 'next/link';
 import Header from '@/components/Header';
 import MapSelector from '@/components/MapSelector';
+import { uploadTeamPhoto, validateTeamPhoto } from '@/lib/teamPhotoUpload';
 
 const SPECIALIZZAZIONI = [
   'Psicologo',
@@ -33,6 +34,12 @@ export default function CreateTeamPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [allUsers, setAllUsers] = useState<User[]>([]);
+  const [selectedPhoto, setSelectedPhoto] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [teamPhotoURL, setTeamPhotoURL] = useState<string>('');
+  const photoInputRef = useRef<HTMLInputElement>(null);
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -79,6 +86,42 @@ export default function CreateTeamPage() {
         ? prev.selectedMembers.filter(id => id !== userId)
         : [...prev.selectedMembers, userId]
     }));
+  };
+
+  const handlePhotoSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validazione file
+    if (!file.type.startsWith('image/')) {
+      setError('Seleziona un\'immagine valida');
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) { // 5MB
+      setError('L\'immagine deve essere inferiore a 5MB');
+      return;
+    }
+
+    setUploadingPhoto(true);
+    setError('');
+
+    try {
+      const photoURL = await uploadTeamPhoto(file, user!.uid);
+      setTeamPhotoURL(photoURL);
+    } catch (error) {
+      console.error('Errore upload foto:', error);
+      setError('Errore durante l\'upload della foto');
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
+
+  const handleRemovePhoto = () => {
+    setTeamPhotoURL('');
+    // Reset input file
+    const fileInput = document.getElementById('team-photo') as HTMLInputElement;
+    if (fileInput) fileInput.value = '';
   };
 
   const aggiungiRuolo = () => {
@@ -210,6 +253,9 @@ export default function CreateTeamPage() {
       if (formData.raggioKm) {
         teamData.raggioKm = formData.raggioKm;
       }
+      if (teamPhotoURL) {
+        teamData.photoURL = teamPhotoURL;
+      }
 
       console.log('📤 Salvando team con dati:', teamData);
       await addDoc(collection(db, 'teams'), teamData);
@@ -269,6 +315,95 @@ export default function CreateTeamPage() {
               rows={4}
               placeholder="Descrivi gli obiettivi e le modalità di collaborazione dell'Equipé..."
             />
+          </div>
+
+          {/* Foto Equipé */}
+          <div className="mb-6 border-t pt-6">
+            <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+              <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+              Foto Equipé
+            </h3>
+            <p className="text-sm text-gray-600 mb-4">
+              Aggiungi una foto che rappresenti la tua Equipé (opzionale)
+            </p>
+
+            <div className="flex items-start gap-6">
+              {/* Preview foto */}
+              <div className="w-32 h-32 bg-gray-100 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center overflow-hidden">
+                {photoPreview ? (
+                  <img 
+                    src={photoPreview} 
+                    alt="Preview foto équipe" 
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="text-center">
+                    <svg className="w-8 h-8 text-gray-400 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    <p className="text-xs text-gray-500">Nessuna foto</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Controlli upload */}
+              <div className="flex-1">
+                <div className="flex gap-3 mb-2">
+                  <button
+                    type="button"
+                    onClick={() => photoInputRef.current?.click()}
+                    disabled={uploadingPhoto}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition"
+                  >
+                    {uploadingPhoto ? 'Caricamento...' : 'Scegli Foto'}
+                  </button>
+                  
+                  {(selectedPhoto || photoPreview) && (
+                    <button
+                      type="button"
+                      onClick={handleRemovePhoto}
+                      disabled={uploadingPhoto}
+                      className="px-4 py-2 bg-gray-500 text-white rounded-lg font-medium hover:bg-gray-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition"
+                    >
+                      Rimuovi
+                    </button>
+                  )}
+                </div>
+
+                {uploadingPhoto && (
+                  <div className="mb-3">
+                    <div className="flex justify-between text-sm text-gray-600 mb-1">
+                      <span>Caricamento in corso...</span>
+                      <span>{Math.round(uploadProgress)}%</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div 
+                        className="bg-blue-600 h-2 rounded-full transition-all" 
+                        style={{ width: `${uploadProgress}%` }}
+                      ></div>
+                    </div>
+                  </div>
+                )}
+
+                <p className="text-xs text-gray-500">
+                  Formati supportati: JPEG, PNG, WebP, GIF<br/>
+                  Dimensione massima: 5MB
+                </p>
+
+                {/* Input file nascosto */}
+                <input
+                  ref={photoInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/gif"
+                  onChange={handlePhotoSelect}
+                  className="hidden"
+                />
+              </div>
+            </div>
           </div>
 
           {/* Località e Zona */}

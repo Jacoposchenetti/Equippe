@@ -210,7 +210,7 @@ export default function RegisterPage() {
     <div className="min-h-screen bg-gray-50 py-12 px-4">
       <div className="max-w-3xl mx-auto">
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-blue-600">Equippe</h1>
+          <h1 className="text-4xl font-bold text-blue-600">Equipé</h1>
           <h2 className="mt-4 text-2xl font-bold">Registrati come professionista</h2>
           <p className="mt-2 text-sm text-gray-600">
             Hai già un account?{' '}

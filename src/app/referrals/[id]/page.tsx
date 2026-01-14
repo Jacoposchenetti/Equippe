@@ -155,7 +155,7 @@ export default function ReferralDetailPage() {
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white shadow">
         <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
-          <h1 className="text-2xl font-bold text-blue-600">Equippe</h1>
+          <h1 className="text-2xl font-bold text-blue-600">Equipé</h1>
           <Link href="/referrals" className="text-blue-600 hover:underline">← Torna ai Referral</Link>
         </div>
       </header>

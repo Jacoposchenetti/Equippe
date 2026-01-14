@@ -1,5 +1,7 @@
 ﻿'use client';
 
+import Footer from '@/components/Footer';
+
 export default function Home() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
@@ -63,11 +65,9 @@ export default function Home() {
             </div>
           </div>
         </main>
-
-        <footer className="mt-16 text-center text-gray-500 text-sm">
-          <p> 2026 Equipé - Piattaforma per professionisti sociosanitari</p>
-        </footer>
       </div>
+      
+      <Footer />
     </div>
   );
 }

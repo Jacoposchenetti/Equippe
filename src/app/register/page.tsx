@@ -62,6 +62,11 @@ export default function RegisterPage() {
   });
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string>('');
+  const [consents, setConsents] = useState({
+    termini: false,
+    privacy: false,
+    marketing: false
+  });
   const [currentStudio, setCurrentStudio] = useState<Studio>({
     indirizzo: '',
     città: '',
@@ -118,6 +123,12 @@ export default function RegisterPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+
+    // Validazione consensi obbligatori GDPR
+    if (!consents.termini || !consents.privacy) {
+      setError('Devi accettare i Termini di Servizio e l\'Informativa Privacy per procedere');
+      return;
+    }
 
     if (formData.specializzazioni.length === 0) {
       setError('Seleziona almeno una specializzazione');
@@ -178,6 +189,11 @@ export default function RegisterPage() {
         },
         teams: [],
         stats: { referralsSent: 0, referralsReceived: 0 },
+        consents: {
+          termini: { accepted: consents.termini, timestamp: Timestamp.now() },
+          privacy: { accepted: consents.privacy, timestamp: Timestamp.now() },
+          marketing: { accepted: consents.marketing, timestamp: Timestamp.now() }
+        },
         createdAt: Timestamp.now(),
         updatedAt: Timestamp.now(),
       };
@@ -495,13 +511,82 @@ export default function RegisterPage() {
                 />
               </div>
 
+              {/* Sezione Consensi Privacy GDPR */}
+              <div className="space-y-4 p-6 bg-gray-50 rounded-lg border">
+                <h3 className="font-semibold text-gray-900 text-lg">📋 Consensi Privacy (Obbligatori)</h3>
+                <p className="text-sm text-gray-600">
+                  Per utilizzare Equipé è necessario accettare i seguenti consensi in conformità al GDPR:
+                </p>
+                
+                <label className="flex items-start gap-3 cursor-pointer">
+                  <input 
+                    type="checkbox" 
+                    checked={consents.termini}
+                    onChange={(e) => setConsents({...consents, termini: e.target.checked})}
+                    className="mt-1 w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                  />
+                  <span className="text-sm leading-relaxed">
+                    Ho letto e accetto i{' '}
+                    <Link href="/legal/termini" className="text-blue-600 underline hover:text-blue-800" target="_blank">
+                      Termini e Condizioni di Servizio
+                    </Link>{' '}
+                    di Equipé <span className="text-red-500">*</span>
+                  </span>
+                </label>
+                
+                <label className="flex items-start gap-3 cursor-pointer">
+                  <input 
+                    type="checkbox" 
+                    checked={consents.privacy}
+                    onChange={(e) => setConsents({...consents, privacy: e.target.checked})}
+                    className="mt-1 w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                  />
+                  <span className="text-sm leading-relaxed">
+                    Ho letto e accetto l'
+                    <Link href="/legal/privacy" className="text-blue-600 underline hover:text-blue-800" target="_blank">
+                      Informativa Privacy
+                    </Link>{' '}
+                    e autorizzo il trattamento dei miei dati professionali per le finalità del servizio <span className="text-red-500">*</span>
+                  </span>
+                </label>
+                
+                <label className="flex items-start gap-3 cursor-pointer">
+                  <input 
+                    type="checkbox" 
+                    checked={consents.marketing}
+                    onChange={(e) => setConsents({...consents, marketing: e.target.checked})}
+                    className="mt-1 w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                  />
+                  <span className="text-sm leading-relaxed">
+                    Vorrei ricevere comunicazioni informative sui nuovi servizi di Equipé{' '}
+                    <Link href="/legal/privacy#marketing" className="text-blue-600 underline hover:text-blue-800" target="_blank">
+                      (facoltativo)
+                    </Link>
+                  </span>
+                </label>
+
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mt-4">
+                  <p className="text-xs text-blue-800">
+                    <strong>Privacy e Sicurezza:</strong> I tuoi dati sono trattati secondo il GDPR, 
+                    conservati su server UE e crittografati. Non condividiamo mai informazioni con terzi 
+                    non autorizzati.
+                  </p>
+                </div>
+              </div>
+
               <button
                 type="submit"
-                disabled={loading}
-                className="w-full py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+                disabled={loading || (!consents.termini || !consents.privacy)}
+                className="w-full py-3 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
               >
-                {loading ? 'Registrazione...' : 'Completa registrazione'}
+                {loading ? 'Registrazione in corso...' : 'Completa Registrazione'}
               </button>
+              
+              {(!consents.termini || !consents.privacy) && (
+                <p className="text-sm text-red-600 text-center">
+                  Accetta i consensi obbligatori per completare la registrazione
+                </p>
+              )}
             </form>
           )}
         </div>

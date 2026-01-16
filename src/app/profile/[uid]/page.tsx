@@ -193,27 +193,55 @@ export default function ProfilePage() {
               {/* Nome e info base */}
               <div>
                 <h1 className="text-3xl font-bold text-gray-900">{profileUser.profile.nome}</h1>
+                
+                {/* Studi multipli */}
                 <div className="mt-2 space-y-1">
-                  {profileUser.profile.location.indirizzo && (
-                    <p className="text-gray-600 flex items-center gap-1">
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                      </svg>
-                      {profileUser.profile.location.indirizzo}
-                    </p>
-                  )}
-                  {profileUser.profile.location.zonaRoma && (
-                    <p className="text-gray-600 text-sm">
-                      📍 {profileUser.profile.location.zonaRoma}
-                    </p>
-                  )}
-                  {!profileUser.profile.location.indirizzo && (
-                    <p className="text-gray-600">
-                      {profileUser.profile.location.città}, {profileUser.profile.location.provincia}
-                    </p>
+                  {profileUser.profile.studi && profileUser.profile.studi.length > 0 ? (
+                    <>
+                      <div className="text-sm font-medium text-gray-700 mb-2">
+                        📍 {profileUser.profile.studi.length === 1 ? 'Studio' : 'Studi'} di Lavoro:
+                      </div>
+                      {profileUser.profile.studi.map((studio, index) => (
+                        <div key={index} className="flex items-start gap-2 text-gray-600">
+                          <svg className="w-4 h-4 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                          </svg>
+                          <div className="flex-1">
+                            <span>{studio.indirizzo}</span>
+                            {studio.remoto && (
+                              <span className="ml-2 text-green-600 text-sm font-medium">• Remoto</span>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </>
+                  ) : (
+                    // Fallback per compatibilità con il vecchio formato location
+                    <>
+                      {profileUser.profile.location.indirizzo && (
+                        <p className="text-gray-600 flex items-center gap-1">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                          </svg>
+                          {profileUser.profile.location.indirizzo}
+                        </p>
+                      )}
+                      {profileUser.profile.location.zonaRoma && (
+                        <p className="text-gray-600 text-sm">
+                          📍 {profileUser.profile.location.zonaRoma}
+                        </p>
+                      )}
+                      {!profileUser.profile.location.indirizzo && (
+                        <p className="text-gray-600">
+                          {profileUser.profile.location.città}, {profileUser.profile.location.provincia}
+                        </p>
+                      )}
+                    </>
                   )}
                 </div>
+                
                 {profileUser.email && (
                   <p className="text-gray-500 text-sm mt-1">{profileUser.email}</p>
                 )}
@@ -263,6 +291,43 @@ export default function ProfilePage() {
             ))}
           </div>
         </div>
+
+        {/* Studi e Sedi di Lavoro */}
+        {profileUser.profile.studi && profileUser.profile.studi.length > 0 && (
+          <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+            <h2 className="text-xl font-bold text-gray-900 mb-4">
+              {profileUser.profile.studi.length === 1 ? 'Studio di Lavoro' : 'Studi e Sedi di Lavoro'}
+            </h2>
+            <div className="space-y-4">
+              {profileUser.profile.studi.map((studio, index) => (
+                <div key={index} className="border-l-4 border-blue-200 pl-4">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-start gap-2">
+                        <svg className="w-5 h-5 mt-0.5 text-blue-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                        </svg>
+                        <div>
+                          <p className="font-medium text-gray-900">{studio.indirizzo}</p>
+                          {studio.città && (
+                            <p className="text-sm text-gray-600">{studio.città}, {studio.provincia}</p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 ml-4">
+                      {studio.remoto && (
+                        <span className="px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs font-medium">
+                          🌐 Remoto
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Bio (se presente) */}
         {profileUser.profile.bio && (

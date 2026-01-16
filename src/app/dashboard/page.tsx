@@ -158,46 +158,64 @@ export default function Dashboard() {
     if (currentFilters.coordinate && currentFilters.raggioKm) {
       let hasLocationInRange = false;
       
-      // Controlla location principale se ha coordinate valide
-      if (p.profile.location && p.profile.location.lat && p.profile.location.lng &&
-          p.profile.location.lat !== 0 && p.profile.location.lng !== 0) {
-        const distance = calculateDistance(
-          currentFilters.coordinate.lat,
-          currentFilters.coordinate.lng,
-          p.profile.location.lat,
-          p.profile.location.lng
-        );
-        if (distance <= currentFilters.raggioKm) {
-          hasLocationInRange = true;
-        }
-      } else {
-        // FALLBACK: Se ha un indirizzo di Roma e stiamo cercando a Roma, includilo
-        if (p.profile.location?.indirizzo) {
-          const addressLower = p.profile.location.indirizzo.toLowerCase();
-          const isRomeAddress = addressLower.includes('roma') || addressLower.includes('rome');
-          const isSearchingInRome = currentFilters.indirizzo?.toLowerCase().includes('roma') || 
-                                  currentFilters.indirizzo?.toLowerCase().includes('rome');
-          
-          if (isRomeAddress && isSearchingInRome && currentFilters.raggioKm >= 10) {
-            hasLocationInRange = true;
+      // PRIMA controlla studi multipli se disponibili
+      if (p.profile.studi && p.profile.studi.length > 0) {
+        for (const studio of p.profile.studi) {
+          // Controlla coordinate se valide
+          if (studio.coordinate && studio.coordinate.lat !== 0 && studio.coordinate.lng !== 0) {
+            const distance = calculateDistance(
+              currentFilters.coordinate.lat,
+              currentFilters.coordinate.lng,
+              studio.coordinate.lat,
+              studio.coordinate.lng
+            );
+            if (distance <= currentFilters.raggioKm) {
+              hasLocationInRange = true;
+              break;
+            }
+          } else {
+            // FALLBACK per studi senza coordinate: controlla se l'indirizzo contiene Roma
+            if (studio.indirizzo) {
+              const addressLower = studio.indirizzo.toLowerCase();
+              const isRomeAddress = addressLower.includes('roma') || addressLower.includes('rome');
+              const isSearchingInRome = currentFilters.indirizzo?.toLowerCase().includes('roma') || 
+                                      currentFilters.indirizzo?.toLowerCase().includes('rome');
+              
+              if (isRomeAddress && isSearchingInRome && currentFilters.raggioKm >= 10) {
+                hasLocationInRange = true;
+                break;
+              }
+            }
           }
         }
       }
       
-      // Se ha studi, controlla anche quelli
-      if (!hasLocationInRange && p.profile.studi?.length) {
-        hasLocationInRange = p.profile.studi.some(studio => {
-          if (studio.coordinate) {
-            const distance = calculateDistance(
-              currentFilters.coordinate!.lat,
-              currentFilters.coordinate!.lng,
-              studio.coordinate.lat,
-              studio.coordinate.lng
-            );
-            return distance <= currentFilters.raggioKm!;
+      // FALLBACK: se non ha studi validi, controlla location principale (legacy)
+      if (!hasLocationInRange && p.profile.location) {
+        if (p.profile.location.lat && p.profile.location.lng &&
+            p.profile.location.lat !== 0 && p.profile.location.lng !== 0) {
+          const distance = calculateDistance(
+            currentFilters.coordinate.lat,
+            currentFilters.coordinate.lng,
+            p.profile.location.lat,
+            p.profile.location.lng
+          );
+          if (distance <= currentFilters.raggioKm) {
+            hasLocationInRange = true;
           }
-          return false;
-        });
+        } else {
+          // FALLBACK per location senza coordinate
+          if (p.profile.location.indirizzo) {
+            const addressLower = p.profile.location.indirizzo.toLowerCase();
+            const isRomeAddress = addressLower.includes('roma') || addressLower.includes('rome');
+            const isSearchingInRome = currentFilters.indirizzo?.toLowerCase().includes('roma') || 
+                                    currentFilters.indirizzo?.toLowerCase().includes('rome');
+            
+            if (isRomeAddress && isSearchingInRome && currentFilters.raggioKm >= 10) {
+              hasLocationInRange = true;
+            }
+          }
+        }
       }
 
       // Se non ha posizioni nel raggio, escludi (a meno che non sia remoto)
@@ -365,9 +383,47 @@ export default function Dashboard() {
                       )}
                     </div>
 
-                    {/* Location */}
+                    {/* Location - Studi multipli */}
                     <div className="text-center text-sm text-gray-600 mb-4">
-                      {p.profile.location?.indirizzo ? (
+                      {p.profile.studi && p.profile.studi.length > 0 ? (
+                        <div className="space-y-1">
+                          {p.profile.studi.slice(0, 2).map((studio, idx) => {
+                            // Estrae meglio la città dall'indirizzo
+                            let displayLocation = studio.città;
+                            if (!displayLocation || displayLocation === 'N/A') {
+                              const parts = studio.indirizzo.split(',');
+                              // Cerca "Roma" nelle parti dell'indirizzo
+                              const romaPart = parts.find(part => part.toLowerCase().includes('roma'));
+                              if (romaPart) {
+                                displayLocation = 'Roma';
+                              } else if (parts.length >= 2) {
+                                // Prende la penultima parte se disponibile, altrimenti la prima
+                                displayLocation = parts[parts.length - 2]?.trim() || parts[0]?.trim();
+                              } else {
+                                displayLocation = 'Studio';
+                              }
+                            }
+                            
+                            return (
+                              <div key={idx} className="flex items-center justify-center gap-1">
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                                </svg>
+                                <span className="truncate">{studio.indirizzo}</span>
+                                {studio.remoto && (
+                                  <span className="text-green-600 text-xs">• Remoto</span>
+                                )}
+                              </div>
+                            );
+                          })}
+                          {p.profile.studi.length > 2 && (
+                            <div className="text-xs text-gray-500">
+                              +{p.profile.studi.length - 2} {p.profile.studi.length - 2 === 1 ? 'altro studio' : 'altri studi'}
+                            </div>
+                          )}
+                        </div>
+                      ) : p.profile.location?.indirizzo ? (
                         <p className="flex items-center justify-center gap-1">
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />

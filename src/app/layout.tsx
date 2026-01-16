@@ -1,4 +1,4 @@
-﻿import type { Metadata } from 'next';
+﻿import type { Metadata, Viewport } from 'next';
 import { AuthProvider } from '@/contexts/AuthContext';
 import PushNotificationManager from '@/components/PushNotificationManager';
 import './globals.css';
@@ -7,12 +7,13 @@ import 'leaflet/dist/leaflet.css';
 export const metadata: Metadata = {
   title: 'Equipé - Piattaforma per professionisti sociosanitari',
   description: 'Trova colleghi, forma equipé multidisciplinari e collabora',
-  viewport: {
-    width: 'device-width',
-    initialScale: 1,
-    maximumScale: 1,
-    userScalable: false,
-  },
+};
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
 };
 
 export default function RootLayout({

@@ -9,6 +9,7 @@ import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, auth, storage } from '@/lib/firebase';
 import { Studio } from '@/types/equippe';
 import { CITTA_ITALIANE, PROVINCE_ITALIANE } from '@/lib/comuni';
+import AddressAutocomplete from '@/components/AddressAutocomplete';
 
 const SPECIALIZZAZIONI = [
   'Psicologo',
@@ -72,6 +73,7 @@ export default function RegisterPage() {
     città: '',
     provincia: '',
     remoto: false,
+    coordinate: undefined,
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -79,16 +81,22 @@ export default function RegisterPage() {
   const router = useRouter();
 
   const addStudio = () => {
-    if (!currentStudio.città || !currentStudio.provincia) {
-      setError('Inserisci città e provincia');
+    if (!currentStudio.indirizzo || !currentStudio.coordinate) {
+      setError('Seleziona un indirizzo valido dal suggeritore per procedere');
       return;
     }
     setFormData({
       ...formData,
       studi: [...formData.studi, { ...currentStudio }],
-      città: formData.città || currentStudio.città, // Aggiorna città principale
+      città: formData.città || 'Italia', // Default generico
     });
-    setCurrentStudio({ indirizzo: '', città: '', provincia: '', remoto: false });
+    setCurrentStudio({ 
+      indirizzo: '', 
+      città: '', 
+      provincia: '', 
+      remoto: false,
+      coordinate: undefined 
+    });
     setError('');
   };
 
@@ -411,8 +419,12 @@ export default function RegisterPage() {
                     {formData.studi.map((studio, index) => (
                       <div key={index} className="flex items-center justify-between p-3 bg-blue-50 rounded">
                         <div className="text-sm">
-                          <div className="font-medium">{studio.città} ({studio.provincia})</div>
-                          {studio.indirizzo && <div className="text-gray-600">{studio.indirizzo}</div>}
+                          <div className="font-medium">{studio.indirizzo}</div>
+                          {studio.coordinate && (
+                            <div className="text-xs text-green-600">
+                              📍 Geo: {studio.coordinate.lat.toFixed(4)}, {studio.coordinate.lng.toFixed(4)}
+                            </div>
+                          )}
                           {studio.remoto && <div className="text-blue-600">Lavoro da remoto</div>}
                         </div>
                         <button
@@ -429,55 +441,26 @@ export default function RegisterPage() {
 
                 {/* Form per aggiungere nuovo studio */}
                 <div className="border rounded p-4 space-y-3">
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-xs font-medium mb-1">Città *</label>
-                      <select
-                        value={currentStudio.città}
-                        onChange={(e) => {
-                          const selected = CITTA_ITALIANE.find(c => c.nome === e.target.value);
-                          setCurrentStudio({
-                            ...currentStudio,
-                            città: e.target.value,
-                            provincia: selected?.provincia || '',
-                          });
-                        }}
-                        className="w-full px-2 py-1 text-sm border rounded"
-                      >
-                        <option value="">Seleziona città</option>
-                        {CITTA_ITALIANE.map((città) => (
-                          <option key={città.nome} value={città.nome}>
-                            {città.nome}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium mb-1">Provincia *</label>
-                      <select
-                        value={currentStudio.provincia}
-                        onChange={(e) => setCurrentStudio({ ...currentStudio, provincia: e.target.value })}
-                        className="w-full px-2 py-1 text-sm border rounded"
-                      >
-                        <option value="">Seleziona</option>
-                        {PROVINCE_ITALIANE.map((prov) => (
-                          <option key={prov} value={prov}>
-                            {prov}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-
                   <div>
-                    <label className="block text-xs font-medium mb-1">Indirizzo (opzionale)</label>
-                    <input
-                      type="text"
+                    <label className="block text-xs font-medium mb-1">Indirizzo Studio *</label>
+                    <AddressAutocomplete
                       value={currentStudio.indirizzo}
-                      onChange={(e) => setCurrentStudio({ ...currentStudio, indirizzo: e.target.value })}
-                      className="w-full px-2 py-1 text-sm border rounded"
-                      placeholder="es. Via Roma 123"
+                      coordinate={currentStudio.coordinate}
+                      onChange={(location) => {
+                        setCurrentStudio({
+                          ...currentStudio,
+                          indirizzo: location.indirizzo || '',
+                          coordinate: location.coordinate,
+                          città: '', // Vuoto, non più usato
+                          provincia: '' // Vuoto, non più usato
+                        });
+                      }}
+                      placeholder="es. Via Roma 123, Milano MI"
+                      className="w-full"
                     />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Seleziona l'indirizzo dal suggeritore per la geolocalizzazione
+                    </p>
                   </div>
 
                   <label className="flex items-center">

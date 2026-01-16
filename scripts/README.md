@@ -1,4 +1,4 @@
-# Script per Pulire Conversazioni Duplicate
+# Script di Manutenzione Database
 
 ## Prerequisiti
 
@@ -12,34 +12,55 @@
    npm install firebase-admin
    ```
 
-## Come Usare lo Script
+## Script Disponibili
 
-1. Apri il terminale nella cartella del progetto:
-   ```bash
-   cd C:\Users\User1\Desktop\Progetti\Equippe\equippe-mvp
-   ```
+### 1. Clean Duplicate Conversations
+```bash
+node scripts/cleanDuplicateConversations.js
+```
 
-2. Esegui lo script:
-   ```bash
-   node scripts/cleanDuplicateConversations.js
-   ```
-
-3. Lo script:
-   - Cercherà tutte le conversazioni duplicate
-   - Ti mostrerà un elenco di quelle da eliminare
-   - Ti chiederà conferma prima di procedere
-
-4. Digita `y` per confermare l'eliminazione, oppure `n` per annullare
-
-## Come Funziona
-
-Lo script:
-- Trova tutte le conversazioni con gli stessi partecipanti
+- Cercherà tutte le conversazioni duplicate
 - Mantiene solo la più recente per ogni coppia di utenti
 - Elimina tutte le altre conversazioni duplicate
 
+### 2. Migrate Studi Field
+```bash
+node scripts/migrateStudiField.js
+```
+
+- Aggiunge il campo `profile.studi` a tutti gli utenti che non ce l'hanno
+- Migra i dati da `profile.location` al nuovo array `studi`
+- Mantiene la compatibilità con il vecchio formato
+
+**Rollback:**
+```bash
+node scripts/migrateStudiField.js rollback
+```
+
+### 3. Fix Studi Coordinates
+```bash
+node scripts/fixStudiCoordinates.js
+```
+
+- Ottiene le coordinate reali degli indirizzi degli studi usando geocoding
+- Aggiorna solo gli studi con coordinate non valide (0,0)
+- Usa OpenStreetMap Nominatim (servizio gratuito)
+
+**Test geocoding:**
+```bash
+node scripts/fixStudiCoordinates.js test
+```
+
+### 4. Altri script
+- `checkUserData.js` - Verifica integrità dati utente
+- `debugProfile.js` - Debug profilo specifico
+- `migrateConsentsFromBrowser.js` - Migrazione consensi
+- `migrateGdprConsents.js` - Migrazione GDPR
+- `testTeamPhoto.js` - Test upload foto team
+- `updateConversationsPhotos.js` - Aggiornamento foto conversazioni
+
 ## Importante
 
-⚠️ **BACKUP**: Prima di eseguire lo script, fai un backup del database Firestore dalla console Firebase!
+⚠️ **BACKUP**: Prima di eseguire qualsiasi script, fai un backup del database Firestore dalla console Firebase!
 
 ⚠️ **SICUREZZA**: NON committare mai il file `serviceAccountKey.json` su Git! È già nel .gitignore.

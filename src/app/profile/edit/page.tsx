@@ -59,6 +59,7 @@ export default function EditProfilePage() {
   const [telefono, setTelefono] = useState('');
   const [indirizzo, setIndirizzo] = useState('');
   const [coordinate, setCoordinate] = useState<{ lat: number; lng: number } | null>(null);
+  const [studi, setStudi] = useState<Array<{indirizzo: string; coordinate?: {lat: number; lng: number}; remoto: boolean}>>([]);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string>('');
   const [notificationEnabled, setNotificationEnabled] = useState(false);
@@ -116,6 +117,22 @@ export default function EditProfilePage() {
           lng: userProfile.profile.location.lng
         });
       }
+      
+      // Inizializza studi esistenti o crea un array vuoto se non presenti
+      if (userProfile.profile.studi && userProfile.profile.studi.length > 0) {
+        setStudi(userProfile.profile.studi.map(studio => ({
+          indirizzo: studio.indirizzo,
+          coordinate: studio.coordinate,
+          remoto: studio.remoto || false
+        })));
+      } else if (userProfile.profile.location?.indirizzo) {
+        // Migra il vecchio indirizzo a studio singolo
+        setStudi([{
+          indirizzo: userProfile.profile.location.indirizzo,
+          coordinate: coordinate || undefined,
+          remoto: false
+        }]);
+      }
       setPhotoPreview(userProfile.profile.photoURL || '');
       setDataNascita(userProfile.profile.dataNascita || '');
       
@@ -149,6 +166,26 @@ export default function EditProfilePage() {
     } else {
       setTematiche([...tematiche, tema]);
     }
+  };
+
+  const addStudio = () => {
+    setStudi([...studi, { indirizzo: '', remoto: false }]);
+  };
+
+  const removeStudio = (index: number) => {
+    if (studi.length > 1) {
+      setStudi(studi.filter((_, i) => i !== index));
+    }
+  };
+
+  const updateStudio = (index: number, field: string, value: any) => {
+    const updatedStudi = studi.map((studio, i) => {
+      if (i === index) {
+        return { ...studio, [field]: value };
+      }
+      return studio;
+    });
+    setStudi(updatedStudi);
   };
 
   const handleToggleNotifications = async () => {
@@ -200,9 +237,17 @@ export default function EditProfilePage() {
       return;
     }
 
-    if (!indirizzo.trim()) {
-      alert('L\'indirizzo è obbligatorio');
+    if (!indirizzo.trim() && studi.length === 0) {
+      alert('Inserisci almeno un indirizzo di studio nella sezione "Localizzazione"');
       return;
+    }
+
+    if (studi.length > 0) {
+      const hasEmptyStudi = studi.some(studio => !studio.indirizzo.trim());
+      if (hasEmptyStudi) {
+        alert('Tutti gli studi devono avere un indirizzo valido');
+        return;
+      }
     }
 
     if (specializzazioni.length === 0) {
@@ -231,18 +276,44 @@ export default function EditProfilePage() {
         }
       }
       
-      // Estrai città e provincia dall'indirizzo per salvarle in background
-      let città = '';
-      let provincia = '';
-      const parts = indirizzo.split(',');
-      if (parts.length >= 2) {
-        città = parts[parts.length - 2].trim();
-        const lastPart = parts[parts.length - 1].trim();
-        const provinciaMatch = lastPart.match(/\b([A-Z]{2})\b/);
-        if (provinciaMatch) {
-          provincia = provinciaMatch[1];
+      // Prepara i dati degli studi con coordinate e città/provincia
+      const studiData = studi.length > 0 ? studi.map(studio => {
+        const parts = studio.indirizzo.split(',');
+        let città = '';
+        let provincia = '';
+        
+        if (parts.length >= 2) {
+          città = parts[parts.length - 2].trim();
+          const lastPart = parts[parts.length - 1].trim();
+          const provinciaMatch = lastPart.match(/\b([A-Z]{2})\b/);
+          if (provinciaMatch) {
+            provincia = provinciaMatch[1];
+          }
         }
-      }
+        
+        return {
+          indirizzo: studio.indirizzo.trim(),
+          città: città,
+          provincia: provincia,
+          remoto: studio.remoto,
+          coordinate: studio.coordinate || { lat: 0, lng: 0 }
+        };
+      }) : [];
+      
+      // Mantieni compatibilità con location principale (usa primo studio se disponibile)
+      const mainLocation = studiData.length > 0 ? {
+        indirizzo: studiData[0].indirizzo,
+        città: studiData[0].città,
+        provincia: studiData[0].provincia,
+        lat: studiData[0].coordinate?.lat || 0,
+        lng: studiData[0].coordinate?.lng || 0
+      } : {
+        indirizzo: indirizzo.trim(),
+        città: '',
+        provincia: '',
+        lat: coordinate?.lat || 0,
+        lng: coordinate?.lng || 0
+      };
       
       const updateData: any = {
         'profile.nome': nome.trim(),
@@ -253,12 +324,12 @@ export default function EditProfilePage() {
         'profile.linkedin': linkedin.trim(),
         'profile.website': website.trim(),
         'profile.telefono': telefono.trim(),
-        'profile.location.indirizzo': indirizzo.trim(),
-        'profile.location.città': città,
-        'profile.location.provincia': provincia,
-        // Salva coordinate se disponibili
-        'profile.location.lat': coordinate?.lat || 0,
-        'profile.location.lng': coordinate?.lng || 0,
+        'profile.location.indirizzo': mainLocation.indirizzo,
+        'profile.location.città': mainLocation.città,
+        'profile.location.provincia': mainLocation.provincia,
+        'profile.location.lat': mainLocation.lat,
+        'profile.location.lng': mainLocation.lng,
+        'profile.studi': studiData, // Aggiunge gli studi multipli
         updatedAt: new Date()
       };
       
@@ -396,25 +467,138 @@ export default function EditProfilePage() {
             </div>
           </div>
 
-          {/* Localizzazione */}
+          {/* Localizzazione - Studi */}
           <div className="bg-white rounded-xl shadow-sm p-6">
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">Localizzazione</h2>
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h2 className="text-2xl font-bold text-gray-900">Studi e Sedi di Lavoro</h2>
+                <p className="text-sm text-gray-600 mt-1">Aggiungi i luoghi dove ricevi pazienti o svolgi la tua attività</p>
+              </div>
+              <button
+                type="button"
+                onClick={addStudio}
+                className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition text-sm font-medium"
+              >
+                + Aggiungi Studio
+              </button>
+            </div>
             
-            <LocationAutocomplete
-              value={indirizzo}
-              onChange={(address, coords) => {
-                setIndirizzo(address);
-                if (coords) {
-                  setCoordinate(coords);
-                  console.log('📍 Coordinate salvate:', coords);
-                }
-              }}
-              placeholder="Via, Città, Zona..."
-              label="Indirizzo o Zona di Lavoro *"
-            />
-            <p className="text-xs text-gray-500 mt-2">
-              Inserisci l'indirizzo o la zona principale dove lavori
-            </p>
+            {/* Mantieni il campo legacy per compatibilità */}
+            {indirizzo && studi.length === 0 && (
+              <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                <div className="flex items-start gap-2">
+                  <svg className="w-5 h-5 text-yellow-600 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.728-.833-2.498 0L4.316 15.5c-.77.833.192 2.5 1.732 2.5z" />
+                  </svg>
+                  <div className="flex-1">
+                    <h3 className="text-sm font-medium text-yellow-800">Vecchia configurazione rilevata</h3>
+                    <p className="text-xs text-yellow-600 mt-1">
+                      Hai un indirizzo salvato nel vecchio formato. Ti consigliamo di convertirlo in uno studio per gestire più sedi.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (indirizzo) {
+                          setStudi([{
+                            indirizzo: indirizzo,
+                            coordinate: coordinate || undefined,
+                            remoto: false
+                          }]);
+                          setIndirizzo('');
+                          setCoordinate(null);
+                        }
+                      }}
+                      className="mt-2 text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded hover:bg-yellow-200 transition"
+                    >
+                      Converti in Studio
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Lista Studi */}
+            {studi.length > 0 ? (
+              <div className="space-y-4">
+                {studi.map((studio, index) => (
+                  <div key={index} className="border border-gray-200 rounded-lg p-4">
+                    <div className="flex items-start justify-between mb-3">
+                      <h3 className="font-medium text-gray-900">Studio {index + 1}</h3>
+                      {studi.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => removeStudio(index)}
+                          className="text-red-500 hover:text-red-700 text-sm"
+                        >
+                          ✕ Rimuovi
+                        </button>
+                      )}
+                    </div>
+                    
+                    <div className="space-y-3">
+                      <LocationAutocomplete
+                        value={studio.indirizzo}
+                        onChange={(address, coords) => {
+                          updateStudio(index, 'indirizzo', address);
+                          if (coords) {
+                            updateStudio(index, 'coordinate', coords);
+                            console.log(`📍 Coordinate studio ${index + 1}:`, coords);
+                          }
+                        }}
+                        placeholder="Via, Città, Zona..."
+                        label={`Indirizzo Studio ${index + 1} *`}
+                      />
+                      
+                      <div className="flex items-center">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={studio.remoto}
+                            onChange={(e) => updateStudio(index, 'remoto', e.target.checked)}
+                            className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+                          />
+                          <span className="text-sm text-gray-700">Lavoro da remoto disponibile</span>
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8 text-gray-500">
+                <div className="text-4xl mb-2">🏢</div>
+                <p className="text-lg font-medium mb-2">Nessuno studio configurato</p>
+                <p className="text-sm mb-4">Aggiungi almeno uno studio dove ricevi i pazienti</p>
+                <button
+                  type="button"
+                  onClick={addStudio}
+                  className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition"
+                >
+                  Aggiungi Primo Studio
+                </button>
+              </div>
+            )}
+
+            {/* Campo legacy nascosto per compatibilità */}
+            {indirizzo && (
+              <div className="mt-4">
+                <LocationAutocomplete
+                  value={indirizzo}
+                  onChange={(address, coords) => {
+                    setIndirizzo(address);
+                    if (coords) {
+                      setCoordinate(coords);
+                      console.log('📍 Coordinate salvate (legacy):', coords);
+                    }
+                  }}
+                  placeholder="Via, Città, Zona..."
+                  label="Indirizzo Principal (Legacy)"
+                />
+                <p className="text-xs text-gray-500 mt-2">
+                  Questo è il vecchio campo indirizzo. Convertilo in uno studio per gestire più sedi.
+                </p>
+              </div>
+            )}
           </div>
 
           {/* Specializzazioni */}

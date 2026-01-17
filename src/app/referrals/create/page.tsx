@@ -220,6 +220,9 @@ export default function CreateReferralPage() {
                 <option value="psichiatra">Psichiatra</option>
                 <option value="neurologo">Neurologo</option>
                 <option value="neuropsichiatra">Neuropsichiatra Infantile</option>
+                <option value="ginecologo">Ginecologo</option>
+                <option value="andrologo">Andrologo</option>
+                <option value="sessuologo">Sessuologo</option>
               </select>
             </div>
 

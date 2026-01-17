@@ -24,7 +24,10 @@ const SPECIALIZZAZIONI = [
   'Terapista Occupazionale',
   'Infermiere',
   'Medico di Base',
-  'Medico Specialista'
+  'Medico Specialista',
+  'Ginecologo',
+  'Andrologo',
+  'Sessuologo'
 ];
 
 const TEMATICHE = [
@@ -82,6 +85,9 @@ export default function EditProfilePage() {
             'Psicoterapia': 'Psicoterapeuta',
             'Psichiatria': 'Psichiatra',
             'Nutrizione': 'Nutrizionista',
+            'Ginecologia': 'Ginecologo',
+            'Andrologia': 'Andrologo',
+            'Sessuologia': 'Sessuologo'
           };
           return map[spec] || spec;
         })

@@ -36,6 +36,33 @@ export default function TeamDetailPage() {
   const [sending, setSending] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // Stati per editing inline
+  const [editingField, setEditingField] = useState<string | null>(null);
+  const [editingValue, setEditingValue] = useState<string>('');
+  const [editingPositions, setEditingPositions] = useState<any[]>([]);
+  const [saving, setSaving] = useState(false);
+
+  // Specializzazioni disponibili
+  const specializzazioni = [
+    'Psicologo',
+    'Psicoterapeuta',
+    'Psichiatra',
+    'Nutrizionista',
+    'Dietista',
+    'Dietologo',
+    'Assistente Sociale',
+    'Educatore Professionale',
+    'Logopedista',
+    'Fisioterapista',
+    'Terapista Occupazionale',
+    'Infermiere',
+    'Medico di Base',
+    'Medico Specialista',
+    'Ginecologo',
+    'Andrologo',
+    'Sessuologo'
+  ];
+
   useEffect(() => {
     if (!user) {
       router.push('/login');
@@ -568,6 +595,70 @@ export default function TeamDetailPage() {
     }
   };
 
+  // Funzioni per editing inline
+  const startEditing = (field: string, currentValue: string | any[]) => {
+    setEditingField(field);
+    if (field === 'positions') {
+      setEditingPositions(Array.isArray(currentValue) ? currentValue : []);
+    } else {
+      setEditingValue(typeof currentValue === 'string' ? currentValue : '');
+    }
+  };
+
+  const cancelEditing = () => {
+    setEditingField(null);
+    setEditingValue('');
+    setEditingPositions([]);
+  };
+
+  const saveField = async (field: string) => {
+    if (!team || saving) return;
+
+    setSaving(true);
+    try {
+      let updateData: any = {};
+      
+      if (field === 'name') {
+        updateData.name = editingValue;
+      } else if (field === 'description') {
+        updateData.description = editingValue;
+      } else if (field === 'positions') {
+        updateData.ruoliCercati = editingPositions;
+      }
+
+      await updateDoc(doc(db, 'teams', teamId), updateData);
+      
+      // Aggiorna il team locale
+      setTeam(prev => prev ? { ...prev, ...updateData } : prev);
+      
+      // Reset editing state
+      cancelEditing();
+    } catch (error) {
+      console.error('Errore nel salvataggio:', error);
+      alert('Errore nel salvataggio');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Funzioni per gestire le posizioni
+  const updatePosition = (index: number, field: string, value: string | number) => {
+    setEditingPositions(prev => prev.map((pos, i) => 
+      i === index ? { ...pos, [field]: value } : pos
+    ));
+  };
+
+  const removePosition = (index: number) => {
+    const position = editingPositions[index];
+    if (position.occupati > 0) {
+      alert('Non puoi rimuovere una posizione che ha membri assegnati!');
+      return;
+    }
+    if (confirm(`Sei sicuro di voler rimuovere la posizione per ${position.specializzazione}?`)) {
+      setEditingPositions(prev => prev.filter((_, i) => i !== index));
+    }
+  };
+
   // Load team chat when component mounts and user/team changes
   useEffect(() => {
     if (team && user && isMember) {
@@ -617,8 +708,100 @@ export default function TeamDetailPage() {
                   </div>
                 )}
                 <div className="min-w-0 flex-1">
-                  <h2 className="text-4xl font-bold text-gray-900 mb-3">{team.name}</h2>
-                  <p className="text-gray-600 text-lg">{team.description}</p>
+                  {/* Nome del team - editabile per admin */}
+                  {isAdmin && editingField === 'name' ? (
+                    <div className="mb-3">
+                      <input
+                        type="text"
+                        value={editingValue}
+                        onChange={(e) => setEditingValue(e.target.value)}
+                        className="text-4xl font-bold text-gray-900 bg-white border border-blue-300 rounded px-3 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500 w-full"
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') saveField('name');
+                          if (e.key === 'Escape') cancelEditing();
+                        }}
+                        autoFocus
+                      />
+                      <div className="flex gap-2 mt-2">
+                        <button
+                          onClick={() => saveField('name')}
+                          disabled={saving}
+                          className="px-3 py-1 bg-green-600 text-white rounded text-sm hover:bg-green-700 disabled:opacity-50"
+                        >
+                          {saving ? '...' : '✓'}
+                        </button>
+                        <button
+                          onClick={cancelEditing}
+                          className="px-3 py-1 bg-gray-500 text-white rounded text-sm hover:bg-gray-600"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2 mb-3">
+                      <h2 className="text-4xl font-bold text-gray-900">{team.name}</h2>
+                      {isAdmin && (
+                        <button
+                          onClick={() => startEditing('name', team.name || '')}
+                          className="p-1 text-gray-400 hover:text-blue-600 transition bg-gray-100 rounded"
+                          title="Clicca per modificare"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                          </svg>
+                        </button>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Descrizione del team - editabile per admin */}
+                  {isAdmin && editingField === 'description' ? (
+                    <div>
+                      <textarea
+                        value={editingValue}
+                        onChange={(e) => setEditingValue(e.target.value)}
+                        className="text-gray-600 text-lg bg-white border border-blue-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 w-full resize-none"
+                        rows={3}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && e.ctrlKey) saveField('description');
+                          if (e.key === 'Escape') cancelEditing();
+                        }}
+                        autoFocus
+                      />
+                      <div className="flex gap-2 mt-2">
+                        <button
+                          onClick={() => saveField('description')}
+                          disabled={saving}
+                          className="px-3 py-1 bg-green-600 text-white rounded text-sm hover:bg-green-700 disabled:opacity-50"
+                        >
+                          {saving ? '...' : '✓'}
+                        </button>
+                        <button
+                          onClick={cancelEditing}
+                          className="px-3 py-1 bg-gray-500 text-white rounded text-sm hover:bg-gray-600"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                      <p className="text-xs text-gray-500 mt-1">Ctrl+Enter per salvare, Esc per annullare</p>
+                    </div>
+                  ) : (
+                    <div className="flex items-start gap-2">
+                      <p className="text-gray-600 text-lg flex-1">{team.description}</p>
+                      {isAdmin && (
+                        <button
+                          onClick={() => startEditing('description', team.description || '')}
+                          className="p-1 text-gray-400 hover:text-blue-600 transition mt-1 bg-gray-100 rounded"
+                          title="Clicca per modificare"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                          </svg>
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
               <div className="flex items-center gap-3">
@@ -627,28 +810,61 @@ export default function TeamDetailPage() {
                 }`}>
                   {team.status === 'active' ? '✓ Attivo' : 'Inattivo'}
                 </span>
-                {isAdmin && (
-                  <Link
-                    href={`/teams/${teamId}/edit`}
-                    className="px-5 py-2.5 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition shadow-sm flex items-center gap-2"
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                    </svg>
-                    Modifica
-                  </Link>
-                )}
               </div>
             </div>
 
             <div className="border-t border-gray-200 pt-6">
-              <span className="text-sm font-semibold text-gray-700 block mb-3">Specializzazioni del team:</span>
+              <div className="flex items-center gap-2 mb-3">
+                <span className="text-sm font-semibold text-gray-700">Specializzazioni del team</span>
+          
+              </div>
+
               <div className="flex flex-wrap gap-2">
-                {team.specializations?.map((spec: string) => (
-                  <span key={spec} className="bg-blue-100 text-blue-700 px-4 py-2 rounded-lg text-sm font-medium">
-                    {spec}
-                  </span>
-                ))}
+                {(() => {
+                  // Raccogli tutte le specializzazioni dei membri
+                  const allSpecializations = members.flatMap(member => 
+                    member.profile.specializzazioni || []
+                  );
+                  
+                  // Rimuovi duplicati
+                  const uniqueSpecializations = [...new Set(allSpecializations)];
+                  
+                  // Converti da professionista a disciplina
+                  const disciplines = uniqueSpecializations.map(spec => {
+                    const professionistToDiscipine: Record<string, string> = {
+                      'Psicologo': 'Psicologia',
+                      'Psicoterapeuta': 'Psicoterapia',
+                      'Psichiatra': 'Psichiatria',
+                      'Nutrizionista': 'Nutrizione',
+                      'Dietista': 'Dietetica',
+                      'Dietologo': 'Dietetica',
+                      'Assistente Sociale': 'Assistenza Sociale',
+                      'Educatore Professionale': 'Educazione Professionale',
+                      'Logopedista': 'Logopedia',
+                      'Fisioterapista': 'Fisioterapia',
+                      'Terapista Occupazionale': 'Terapia Occupazionale',
+                      'Infermiere': 'Infermieristica',
+                      'Medico di Base': 'Medicina Generale',
+                      'Medico Specialista': 'Medicina Specialistica',
+                      'Ginecologo': 'Ginecologia',
+                      'Andrologo': 'Andrologia',
+                      'Sessuologo': 'Sessuologia'
+                    };
+                    return professionistToDiscipine[spec] || spec;
+                  }).filter((disc, index, arr) => arr.indexOf(disc) === index); // Rimuovi duplicati anche dopo conversione
+                  
+                  return disciplines.length > 0 ? (
+                    disciplines.map((disc) => (
+                      <span key={disc} className="bg-blue-100 text-blue-700 px-4 py-2 rounded-lg text-sm font-medium">
+                        {disc}
+                      </span>
+                    ))
+                  ) : (
+                    <span className="text-gray-500 text-sm italic">
+                      Nessuna specializzazione (aggiungi membri al team)
+                    </span>
+                  );
+                })()}
               </div>
             </div>
           </div>
@@ -723,74 +939,228 @@ export default function TeamDetailPage() {
           </div>
         </div>
 
-        {/* Sezione Posizioni Aperte */}
-        {team.ruoliCercati && team.ruoliCercati.filter(r => r.occupati < r.numero).length > 0 && (
-          <div className="bg-white rounded-xl shadow-sm mb-6 overflow-hidden border-2 border-amber-200">
-            <div className="px-8 py-6 border-b border-amber-200 bg-amber-50">
-              <h3 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-                <svg className="w-6 h-6 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
-                Posizioni Aperte
-              </h3>
-              <p className="text-sm text-gray-600 mt-1">Stiamo cercando questi professionisti</p>
+        {/* Sezione Posizioni Aperte - sempre visibile per admin */}
+        <div className="bg-white rounded-xl shadow-sm mb-6 overflow-hidden border-2 border-amber-200">
+          <div className="px-8 py-6 border-b border-amber-200 bg-amber-50">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <h3 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+                  <svg className="w-6 h-6 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                  Posizioni Aperte
+                </h3>
+                {isAdmin && editingField !== 'positions' && (
+                  <button
+                    onClick={() => startEditing('positions', team.ruoliCercati || [])}
+                    className="p-1 text-gray-400 hover:text-blue-600 transition bg-gray-100 rounded"
+                    title="Clicca per modificare"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                    </svg>
+                  </button>
+                )}
+              </div>
             </div>
-            <div className="p-6 bg-gradient-to-br from-amber-50/30 to-white">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {team.ruoliCercati
-                  .filter(ruolo => ruolo.occupati < ruolo.numero)
-                  .map((ruolo, index) => {
-                    const postiLiberi = ruolo.numero - ruolo.occupati;
-                    const percentualeOccupazione = (ruolo.occupati / ruolo.numero) * 100;
-                    
-                    return (
-                      <div key={index} className="border-2 border-amber-300 bg-white rounded-lg p-5 hover:border-amber-400 hover:shadow-lg transition">
-                        <div className="flex items-start justify-between mb-3">
-                          <div className="flex-1">
-                            <h4 className="font-bold text-lg text-gray-900 mb-1">{ruolo.specializzazione}</h4>
-                            <p className="text-sm text-gray-600">{ruolo.descrizione}</p>
-                          </div>
-                          <span className="bg-amber-100 text-amber-700 px-3 py-1 rounded-lg text-xs font-bold whitespace-nowrap ml-2">
-                            {postiLiberi} {postiLiberi === 1 ? 'POSTO' : 'POSTI'}
-                          </span>
-                        </div>
+            <p className="text-sm text-gray-600 mt-1">Posizioni ricercate per questo team</p>
+          </div>
 
-                        {/* Barra di progresso */}
-                        <div className="mb-3">
-                          <div className="flex justify-between text-xs text-gray-600 mb-1">
-                            <span>{ruolo.occupati} trovati</span>
-                            <span>{ruolo.numero} richiesti</span>
+          <div className="p-6 bg-gradient-to-br from-amber-50/30 to-white">
+            {/* Editor posizioni per admin */}
+            {isAdmin && editingField === 'positions' ? (
+              <div className="space-y-6">
+                {/* Posizioni esistenti */}
+                {editingPositions.length > 0 && (
+                  <div>
+                    <h4 className="text-lg font-semibold text-gray-800 mb-4">Posizioni attuali</h4>
+                    <div className="space-y-3">
+                      {editingPositions.map((pos, index) => {
+                        const postiLiberi = pos.numero - pos.occupati;
+                        const isCompleto = pos.occupati >= pos.numero;
+                        const canRemove = pos.occupati === 0; // Solo se non ci sono membri assegnati
+                        
+                        return (
+                          <div key={index} className={`p-4 rounded-lg border-2 ${
+                            isCompleto ? 'border-green-300 bg-green-50' : 'border-amber-300 bg-amber-50'
+                          }`}>
+                            <div className="flex items-center justify-between">
+                              <div className="flex-1">
+                                <div className="flex items-center gap-3 mb-2">
+                                  <h5 className="font-bold text-lg">{pos.specializzazione}</h5>
+                                  <span className={`px-3 py-1 rounded-full text-sm font-bold ${
+                                    isCompleto 
+                                      ? 'bg-green-100 text-green-700' 
+                                      : 'bg-amber-100 text-amber-700'
+                                  }`}>
+                                    {isCompleto ? 'COMPLETO' : `${postiLiberi} POSTO${postiLiberi !== 1 ? 'I' : ''} APERTO${postiLiberi !== 1 ? 'I' : ''}`}
+                                  </span>
+                                </div>
+                                
+                                <div className="flex items-center gap-4 text-sm text-gray-600">
+                                  <span>Membri assegnati: <strong>{pos.occupati}</strong></span>
+                                  <span>Posti totali: <strong>{pos.numero}</strong></span>
+                                </div>
+                                
+                                {/* Barra di progresso */}
+                                <div className="mt-2 w-full bg-gray-200 rounded-full h-2">
+                                  <div 
+                                    className={`h-2 rounded-full transition-all ${
+                                      isCompleto ? 'bg-green-500' : 'bg-amber-500'
+                                    }`}
+                                    style={{ width: `${(pos.occupati / pos.numero) * 100}%` }}
+                                  ></div>
+                                </div>
+                              </div>
+                              
+                              <div className="flex items-center gap-2 ml-4">
+                                {!isCompleto && (
+                                  <div className="flex items-center gap-2">
+                                    <label className="text-sm font-medium">Posti totali:</label>
+                                    <input
+                                      type="number"
+                                      min={pos.occupati} // Non può essere meno dei posti già occupati
+                                      max="10"
+                                      value={pos.numero}
+                                      onChange={(e) => updatePosition(index, 'numero', parseInt(e.target.value) || pos.occupati)}
+                                      className="w-16 border border-gray-300 rounded px-2 py-1 text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    />
+                                  </div>
+                                )}
+                                
+                                {canRemove && (
+                                  <button
+                                    onClick={() => removePosition(index)}
+                                    className="p-2 bg-red-500 text-white rounded hover:bg-red-600"
+                                    title="Rimuovi posizione (solo se nessun membro assegnato)"
+                                  >
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                    </svg>
+                                  </button>
+                                )}
+                              </div>
+                            </div>
                           </div>
-                          <div className="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden">
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Sezione per aggiungere nuove posizioni */}
+                <div className="border-t border-gray-200 pt-4">
+                  <h4 className="text-lg font-semibold text-gray-800 mb-4">Aggiungi nuove posizioni</h4>
+                  
+                  <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Specializzazione cercata</label>
+                        <select
+                          value=""
+                          onChange={(e) => {
+                            if (e.target.value) {
+                              const existingIndex = editingPositions.findIndex(p => p.specializzazione === e.target.value);
+                              if (existingIndex >= 0) {
+                                alert('Questa specializzazione è già presente. Modifica quella esistente.');
+                                return;
+                              }
+                              setEditingPositions(prev => [...prev, { 
+                                specializzazione: e.target.value, 
+                                numero: 1, 
+                                occupati: 0 
+                              }]);
+                            }
+                          }}
+                          className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                          <option value="">+ Seleziona specializzazione</option>
+                          {specializzazioni
+                            .filter(spec => !editingPositions.some(p => p.specializzazione === spec))
+                            .map(spec => (
+                              <option key={spec} value={spec}>{spec}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="text-sm text-gray-600">
+                        <p>Seleziona una specializzazione dal menu per aggiungere una nuova posizione aperta.</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="flex gap-3 pt-4 border-t border-gray-200">
+                  <button
+                    onClick={() => saveField('positions')}
+                    disabled={saving}
+                    className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 font-medium"
+                  >
+                    {saving ? 'Salvataggio...' : 'Salva Modifiche'}
+                  </button>
+                  <button
+                    onClick={cancelEditing}
+                    className="px-6 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 font-medium"
+                  >
+                    Annulla
+                  </button>
+                </div>
+              </div>
+            ) : (
+              /* Vista normale posizioni */
+              <>
+                {team.ruoliCercati && team.ruoliCercati.length > 0 ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {team.ruoliCercati.map((ruolo, index) => {
+                      const postiLiberi = ruolo.numero - ruolo.occupati;
+                      const percentualeOccupazione = (ruolo.occupati / ruolo.numero) * 100;
+                      const isCompleto = postiLiberi === 0;
+                      
+                      return (
+                        <div key={index} className={`border-2 rounded-lg p-5 hover:shadow-lg transition ${
+                          isCompleto 
+                            ? 'border-green-300 bg-green-50 hover:border-green-400' 
+                            : 'border-amber-300 bg-white hover:border-amber-400'
+                        }`}>
+                          <div className="flex items-start justify-between mb-3">
+                            <div className="flex-1">
+                              <h4 className="font-bold text-lg text-gray-900 mb-1">{ruolo.specializzazione}</h4>
+                              <p className="text-sm text-gray-600">{ruolo.descrizione}</p>
+                            </div>
+                            <span className={`px-3 py-1 rounded-lg text-xs font-bold whitespace-nowrap ml-2 ${
+                              isCompleto
+                                ? 'bg-green-100 text-green-700'
+                                : 'bg-amber-100 text-amber-700'
+                            }`}>
+                              {postiLiberi > 0 ? `${postiLiberi} ${postiLiberi === 1 ? 'POSTO' : 'POSTI'}` : 'COMPLETO'}
+                            </span>
+                          </div>
+                          <div className="bg-gray-200 rounded-full h-2 mb-2">
                             <div 
-                              className="h-full rounded-full transition-all bg-amber-500"
+                              className={`h-2 rounded-full transition-all duration-300 ${
+                                isCompleto ? 'bg-green-500' : 'bg-amber-500'
+                              }`}
                               style={{ width: `${percentualeOccupazione}%` }}
                             ></div>
                           </div>
+                          <p className="text-xs text-gray-600">
+                            {ruolo.occupati} / {ruolo.numero} posizioni occupate
+                          </p>
                         </div>
-
-                        {/* Icone posizioni */}
-                        <div className="flex items-center gap-1">
-                          {Array.from({ length: ruolo.numero }).map((_, i) => (
-                            <div
-                              key={i}
-                              className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${
-                                i < ruolo.occupati
-                                  ? 'bg-green-500 text-white'
-                                  : 'bg-amber-100 text-amber-600 border-2 border-dashed border-amber-300'
-                              }`}
-                            >
-                              {i < ruolo.occupati ? '✓' : '?'}
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    );
-                  })}
-              </div>
-            </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-gray-500">
+                    <p>Nessuna posizione aperta al momento</p>
+                    {isAdmin && (
+                      <p className="text-sm mt-2">Clicca l'icona di modifica per aggiungere posizioni</p>
+                    )}
+                  </div>
+                )}
+              </>
+            )}
           </div>
-        )}
+        </div>
 
         {/* Badge equipé completa */}
         {team.ruoliCercati && team.ruoliCercati.every(r => r.occupati >= r.numero) && team.ruoliCercati.length > 0 && (

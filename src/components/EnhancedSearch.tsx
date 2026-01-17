@@ -103,7 +103,10 @@ export default function EnhancedSearch({ onSearch, availableSpecializations = []
     'Terapista Occupazionale',
     'Infermiere',
     'Medico di Base',
-    'Medico Specialista'
+    'Medico Specialista',
+    'Ginecologo',
+    'Andrologo',
+    'Sessuologo'
   ];
 
   // Tipologie di equipé (basate sulle specializzazioni dei membri)
@@ -142,12 +145,12 @@ export default function EnhancedSearch({ onSearch, availableSpecializations = []
         </button>
         <button
           onClick={() => {
-            setSearchType('équipé');
+            setSearchType('equipé');
             setSpecializzazione('');
             // La ricerca si aggiornerà automaticamente tramite useEffect
           }}
           className={`flex-1 py-3 px-4 rounded-lg font-medium transition-colors text-sm sm:text-base ${
-            searchType === 'équipé'
+            searchType === 'equipé'
               ? 'bg-blue-600 text-white'
               : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
           }`}
@@ -162,12 +165,15 @@ export default function EnhancedSearch({ onSearch, availableSpecializations = []
           {searchType === 'professionista' ? 'Specializzazione' : 'Tipologia Equipé'}
         </label>
         <select
-          value={specializzazione}
+          value={searchType === 'equipé' ? '' : specializzazione}
           onChange={(e) => setSpecializzazione(e.target.value)}
-          className="w-full border border-gray-300 rounded-lg px-3 py-3 text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
+          disabled={searchType === 'equipé'}
+          className={`w-full border border-gray-300 rounded-lg px-3 py-3 text-base focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+            searchType === 'equipé' ? 'bg-gray-100 cursor-not-allowed' : ''
+          }`}
         >
           <option value="">Tutte</option>
-          {currentSpecs.map((spec) => (
+          {searchType === 'professionista' && currentSpecs.map((spec) => (
             <option key={spec} value={spec}>
               {spec}
             </option>

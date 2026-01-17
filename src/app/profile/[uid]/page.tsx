@@ -38,6 +38,9 @@ export default function ProfilePage() {
       'Terapia Occupazionale': 'Terapista Occupazionale',
       'Infermieristica': 'Infermiere',
       'Medicina': 'Medico Specialista',
+      'Ginecologia': 'Ginecologo',
+      'Andrologia': 'Andrologo',
+      'Sessuologia': 'Sessuologo'
     };
     return normalizationMap[spec] || spec;
   };

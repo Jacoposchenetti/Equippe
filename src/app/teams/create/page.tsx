@@ -25,7 +25,10 @@ const SPECIALIZZAZIONI = [
   'Terapista Occupazionale',
   'Infermiere',
   'Medico di Base',
-  'Medico Specialista'
+  'Medico Specialista',
+  'Ginecologo',
+  'Andrologo',
+  'Sessuologo'
 ];
 
 export default function CreateTeamPage() {

@@ -237,7 +237,7 @@ export default function TeamDetailPage() {
   };
 
   const handleDeleteTeam = async () => {
-    if (!confirm('⚠️ ATTENZIONE: Sei sicuro di voler eliminare definitivamente questa Equipé? Questa azione non può essere annullata.')) return;
+    if (!confirm('ATTENZIONE: Sei sicuro di voler eliminare definitivamente questa Equipé? Questa azione non può essere annullata.')) return;
     
     // Doppia conferma per sicurezza
     if (!confirm('Confermi l\'eliminazione? Tutti i dati del team saranno persi.')) return;

@@ -194,7 +194,7 @@ export default function Header() {
                   className="flex items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded-lg transition"
                   onClick={() => setShowMobileMenu(false)}
                 >
-                  ⚙️ Modifica Profilo
+                  Modifica Profilo
                 </Link>
                 
                 <button

@@ -78,7 +78,7 @@ export default function PushNotificationManager() {
       setShowPrompt(false);
       
       // Mostra conferma
-      alert('✅ Notifiche push abilitate con successo!');
+      alert('🔔 Notifiche push abilitate con successo!');
     } else {
       setPermission(Notification.permission);
       setShowPrompt(false);

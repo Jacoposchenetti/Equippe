@@ -324,7 +324,7 @@ export default function MapSelector({
         </MapContainer>
         
         <div className="absolute top-2 left-2 bg-white px-3 py-2 rounded shadow-lg text-sm z-[1000]">
-          <p className="font-medium text-gray-700">💡 Clicca sulla mappa per selezionare la posizione</p>
+          <p className="font-medium text-gray-700">Clicca sulla mappa per selezionare la posizione</p>
         </div>
       </div>
 

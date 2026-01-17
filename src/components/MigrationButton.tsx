@@ -85,7 +85,7 @@ export default function MigrationButton() {
       {results && (
         <div className="mt-3 p-2 bg-green-50 border border-green-200 rounded">
           <p className="text-sm text-green-800">
-            ✅ Completato: {results.updated} utenti aggiornati, {results.skipped} già esistenti
+            Completato: {results.updated} utenti aggiornati, {results.skipped} già esistenti
           </p>
         </div>
       )}

@@ -16,7 +16,7 @@ interface TeamInvite {
   type: 'invite' | 'request';
   fromUserId: string;
   toUserId: string;
-  status: 'pending' | 'accepted' | 'rejected';
+  status: 'pending' | 'accepted' | 'rejected' | 'cancelled';
   createdAt: any;
   updatedAt: any;
 }
@@ -80,13 +80,13 @@ export default function InvitesPage() {
         })
       );
       
-      // Filtra solo pending lato client
+      // Filtra solo pending lato client per gli inviti ricevuti
       const pendingReceived = received.filter(inv => inv.status === 'pending');
       console.log('✅ Inviti pending:', pendingReceived.length);
       setReceivedInvites(pendingReceived);
 
       console.log('🔍 Caricamento inviti inviati...');
-      // Carica inviti inviati (dove sono il mittente)
+      // Carica inviti inviati (dove sono il mittente) - TUTTI gli stati
       const sentQuery = query(
         collection(db, 'teamInvites'),
         where('fromUserId', '==', user.uid)
@@ -194,6 +194,26 @@ export default function InvitesPage() {
     } catch (error) {
       console.error('Errore rifiuto invito:', error);
       alert('Errore durante il rifiuto dell\'invito');
+    }
+  };
+
+  const handleCancelInvite = async (invite: InviteWithData) => {
+    if (!confirm('Sei sicuro di voler annullare questo invito?')) return;
+
+    try {
+      await updateDoc(doc(db, 'teamInvites', invite.id), {
+        status: 'cancelled',
+        updatedAt: Timestamp.now(),
+      });
+
+      // Opzionalmente, potresti notificare l'utente che l'invito è stato annullato
+      // Ma per ora evitiamo di inviare troppi spam di notifiche
+      
+      alert('Invito annullato con successo');
+      await loadInvites();
+    } catch (error) {
+      console.error('Errore annullamento invito:', error);
+      alert('Errore durante l\'annullamento dell\'invito');
     }
   };
 
@@ -311,10 +331,12 @@ export default function InvitesPage() {
                           <span className={`inline-block px-3 py-1 rounded-lg text-sm font-medium ${
                             invite.status === 'pending' ? 'bg-amber-100 text-amber-700' :
                             invite.status === 'accepted' ? 'bg-green-100 text-green-700' :
+                            invite.status === 'cancelled' ? 'bg-gray-100 text-gray-700' :
                             'bg-red-100 text-red-700'
                           }`}>
                             {invite.status === 'pending' ? 'In attesa' :
-                             invite.status === 'accepted' ? 'Accettato' : 'Rifiutato'}
+                             invite.status === 'accepted' ? 'Accettato' :
+                             invite.status === 'cancelled' ? 'Annullato' : 'Rifiutato'}
                           </span>
                         </>
                       )}
@@ -345,6 +367,20 @@ export default function InvitesPage() {
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                           </svg>
                           Rifiuta
+                        </button>
+                      </div>
+                    )}
+                    
+                    {tab === 'sent' && invite.status === 'pending' && (
+                      <div className="flex gap-2 ml-4">
+                        <button
+                          onClick={() => handleCancelInvite(invite)}
+                          className="px-5 py-2.5 bg-orange-600 text-white rounded-lg font-medium hover:bg-orange-700 transition shadow-sm flex items-center gap-2"
+                        >
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                          Annulla Invito
                         </button>
                       </div>
                     )}

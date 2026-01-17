@@ -5,8 +5,9 @@ import { useRouter, useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { doc, getDoc, collection, query, where, getDocs, addDoc, Timestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { User, Conversation } from '@/types/equippe';
+import { User, Conversation, Team } from '@/types/equippe';
 import Header from '@/components/Header';
+import { notifyTeamInviteReceived } from '@/lib/notifications';
 
 export default function ProfilePage() {
   const { user: currentUser, userProfile } = useAuth();
@@ -17,6 +18,10 @@ export default function ProfilePage() {
   const [profileUser, setProfileUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [startingConversation, setStartingConversation] = useState(false);
+  const [adminTeams, setAdminTeams] = useState<Team[]>([]);
+  const [showInviteModal, setShowInviteModal] = useState(false);
+  const [selectedTeamId, setSelectedTeamId] = useState('');
+  const [sendingInvite, setSendingInvite] = useState(false);
 
   // Funzione per normalizzare i vecchi nomi delle discipline nei nomi dei professionisti
   const normalizeSpecialization = (spec: string): string => {
@@ -65,6 +70,7 @@ export default function ProfilePage() {
     }
 
     loadProfile();
+    loadAdminTeams();
   }, [currentUser, uid]);
 
   const loadProfile = async () => {
@@ -86,6 +92,101 @@ export default function ProfilePage() {
       router.push('/dashboard');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadAdminTeams = async () => {
+    try {
+      if (!currentUser) return;
+      
+      const teamsRef = collection(db, 'teams');
+      const q = query(teamsRef, where('memberIds', 'array-contains', currentUser.uid));
+      const snapshot = await getDocs(q);
+      
+      const allTeams = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      } as Team));
+      
+      // Filtra solo i team dove sono amministratore
+      const myAdminTeams = allTeams.filter(team => {
+        const member = team.members.find(m => 
+          (m.userId || m.uid) === currentUser.uid
+        );
+        return member && (member.role === 'admin' || member.ruolo === 'admin');
+      });
+      
+      setAdminTeams(myAdminTeams);
+    } catch (error) {
+      console.error('Errore caricamento team amministrati:', error);
+    }
+  };
+
+  const handleSendInvite = async () => {
+    if (!selectedTeamId) {
+      alert('Seleziona un\'équipe');
+      return;
+    }
+    
+    if (!currentUser || !profileUser) return;
+    
+    setSendingInvite(true);
+    
+    try {
+      // Controlla se esiste già un invito pendente per questo utente e team
+      const invitesRef = collection(db, 'teamInvites');
+      const existingInviteQuery = query(
+        invitesRef,
+        where('teamId', '==', selectedTeamId),
+        where('toUserId', '==', profileUser.uid),
+        where('status', '==', 'pending')
+      );
+      
+      const existingInviteSnapshot = await getDocs(existingInviteQuery);
+      
+      if (!existingInviteSnapshot.empty) {
+        alert('Esiste già un invito pendente per questo professionista in questa équipe');
+        return;
+      }
+      
+      // Controlla se l'utente è già membro del team
+      const selectedTeam = adminTeams.find(t => t.id === selectedTeamId);
+      if (selectedTeam?.memberIds?.includes(profileUser.uid)) {
+        alert('Questo professionista è già membro dell\'équipe selezionata');
+        return;
+      }
+      
+      // Crea l'invito
+      const inviteRef = await addDoc(collection(db, 'teamInvites'), {
+        teamId: selectedTeamId,
+        type: 'invite',
+        fromUserId: currentUser.uid,
+        toUserId: profileUser.uid,
+        status: 'pending',
+        createdAt: Timestamp.now(),
+        updatedAt: Timestamp.now(),
+      });
+      
+      // Invia notifica
+      if (selectedTeam) {
+        const senderName = userProfile?.profile?.nome || currentUser.displayName || currentUser.email || 'Un professionista';
+        await notifyTeamInviteReceived(
+          profileUser.uid,
+          selectedTeamId,
+          selectedTeam.nome || selectedTeam.name || 'Équipe',
+          senderName,
+          inviteRef.id
+        );
+      }
+      
+      setShowInviteModal(false);
+      setSelectedTeamId('');
+      alert('Invito inviato con successo!');
+    } catch (error) {
+      console.error('Errore invio invito:', error);
+      alert('Errore durante l\'invio dell\'invito');
+    } finally {
+      setSendingInvite(false);
     }
   };
 
@@ -248,14 +349,33 @@ export default function ProfilePage() {
               </div>
             </div>
 
-            {/* Pulsante messaggio */}
-            <button
-              onClick={handleStartConversation}
-              disabled={startingConversation}
-              className="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
-            >
-              {startingConversation ? 'Caricamento...' : '💬 Invia Messaggio'}
-            </button>
+            {/* Pulsanti azione */}
+            <div className="flex gap-3">
+              {/* Pulsante Invita in Équipe */}
+              {adminTeams.length > 0 && (
+                <button
+                  onClick={() => setShowInviteModal(true)}
+                  className="px-6 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors flex items-center gap-2"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                  </svg>
+                  Invita in Équipe
+                </button>
+              )}
+              
+              {/* Pulsante messaggio */}
+              <button
+                onClick={handleStartConversation}
+                disabled={startingConversation}
+                className="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-3.582 8-8 8a8.959 8.959 0 01-4.906-1.456L3 21l2.544-5.906A8.959 8.959 0 013 12c0-4.418 3.582-8 8-8s8 3.582 8 8z" />
+                </svg>
+                {startingConversation ? 'Caricamento...' : 'Invia Messaggio'}
+              </button>
+            </div>
           </div>
         </div>
 
@@ -368,6 +488,65 @@ export default function ProfilePage() {
           </div>
         )}
       </div>
+      
+      {/* Modal Invito Équipe */}
+      {showInviteModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full">
+            <div className="px-6 py-4 border-b border-gray-200">
+              <h3 className="text-xl font-bold text-gray-900">Invita in Équipe</h3>
+              <p className="text-sm text-gray-600 mt-1">Seleziona l'équipe in cui invitare <strong>{profileUser?.profile.nome}</strong></p>
+            </div>
+            
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-semibold mb-2">Équipe di destinazione *</label>
+                <select
+                  value={selectedTeamId}
+                  onChange={(e) => setSelectedTeamId(e.target.value)}
+                  className="w-full border rounded-lg px-3 py-2"
+                  required
+                >
+                  <option value="">Seleziona un'équipe...</option>
+                  {adminTeams.map((team) => (
+                    <option key={team.id} value={team.id}>
+                      {team.nome || team.name}
+                      {team.specializations && team.specializations.length > 0 && 
+                        ` - ${team.specializations.join(', ')}`
+                      }
+                    </option>
+                  ))}
+                </select>
+              </div>
+              
+              {selectedTeamId && (
+                <div className="bg-blue-50 p-3 rounded-lg text-sm text-blue-800">
+                  <strong>ℹ️ Info:</strong> L'invito verrà inviato al professionista che potrà accettare o rifiutare.
+                </div>
+              )}
+            </div>
+            
+            <div className="px-6 py-4 border-t border-gray-200 flex gap-3 justify-end">
+              <button
+                onClick={() => {
+                  setShowInviteModal(false);
+                  setSelectedTeamId('');
+                }}
+                className="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50"
+              >
+                Annulla
+              </button>
+              <button
+                onClick={handleSendInvite}
+                disabled={!selectedTeamId || sendingInvite}
+                className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 disabled:bg-gray-400 disabled:cursor-not-allowed"
+              >
+                {sendingInvite ? 'Invio...' : 'Invia Invito'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

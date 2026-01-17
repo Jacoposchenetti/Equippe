@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import MapSelector from './MapSelector';
 
 export type SearchType = 'professionista' | 'equipé';
@@ -26,6 +26,18 @@ export default function EnhancedSearch({ onSearch, availableSpecializations = []
   const [raggioKm, setRaggioKm] = useState<number>(10);
   const [indirizzo, setIndirizzo] = useState<string>('');
   const [remoto, setRemoto] = useState<boolean>(false);
+
+  // Aggiorna automaticamente quando cambia il tipo di ricerca
+  useEffect(() => {
+    handleSearch();
+  }, [searchType]);
+
+  // Aggiorna automaticamente quando si resettano i filtri aggiuntivi
+  useEffect(() => {
+    if (!specializzazione && !coordinate && !remoto) {
+      handleSearch();
+    }
+  }, [specializzazione, coordinate, remoto]);
 
   const handleSearch = () => {
     onSearch({
@@ -80,6 +92,7 @@ export default function EnhancedSearch({ onSearch, availableSpecializations = []
           onClick={() => {
             setSearchType('professionista');
             setSpecializzazione('');
+            // La ricerca si aggiornerà automaticamente tramite useEffect
           }}
           className={`flex-1 py-3 px-4 rounded-lg font-medium transition-colors text-sm sm:text-base ${
             searchType === 'professionista'
@@ -91,11 +104,12 @@ export default function EnhancedSearch({ onSearch, availableSpecializations = []
         </button>
         <button
           onClick={() => {
-            setSearchType('equipé');
+            setSearchType('équipé');
             setSpecializzazione('');
+            // La ricerca si aggiornerà automaticamente tramite useEffect
           }}
           className={`flex-1 py-3 px-4 rounded-lg font-medium transition-colors text-sm sm:text-base ${
-            searchType === 'equipé'
+            searchType === 'équipé'
               ? 'bg-blue-600 text-white'
               : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
           }`}
@@ -155,13 +169,15 @@ export default function EnhancedSearch({ onSearch, availableSpecializations = []
         </label>
       </div>
 
-      {/* Bottone Cerca */}
-      <button
-        onClick={handleSearch}
-        className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-blue-700 transition-colors text-base"
-      >
-        Cerca
-      </button>
+      {/* Bottone Cerca - mostrato solo se ci sono filtri aggiuntivi */}
+      {(specializzazione || coordinate || remoto) && (
+        <button
+          onClick={handleSearch}
+          className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-blue-700 transition-colors text-base"
+        >
+          Cerca
+        </button>
+      )}
 
       {searchType === 'equipé' && (
         <p className="text-xs sm:text-sm text-gray-500 mt-2">

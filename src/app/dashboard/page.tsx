@@ -48,6 +48,17 @@ export default function Dashboard() {
     loadData();
   }, [user]);
 
+  // Inizializza automaticamente la ricerca al caricamento
+  useEffect(() => {
+    if (!loading) {
+      // Esegui una ricerca di base al caricamento
+      setCurrentFilters({
+        type: 'professionista',
+        remoto: false,
+      });
+    }
+  }, [loading]);
+
   const loadData = async () => {
     try {
       // Verifica autenticazione

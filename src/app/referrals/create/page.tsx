@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import { collection, addDoc, getDocs, query, where, Timestamp, getDoc, doc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { User } from '@/types/equippe';
+import { User, Team } from '@/types/equippe';
 import { generateEncryptionKey, exportKey, encryptData } from '@/lib/encryption';
 import Link from 'next/link';
 import { notifyReferralReceived } from '@/lib/notifications';
@@ -16,6 +16,12 @@ export default function CreateReferralPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [professionisti, setProfessionisti] = useState<User[]>([]);
+  const [allProfessionisti, setAllProfessionisti] = useState<User[]>([]);
+  const [teams, setTeams] = useState<Team[]>([]);
+  const [filters, setFilters] = useState({
+    professionista: '',
+    teamId: ''
+  });
   const [formData, setFormData] = useState({
     receiverId: '',
     patientName: '',
@@ -32,7 +38,12 @@ export default function CreateReferralPage() {
       return;
     }
     loadProfessionisti();
+    loadTeams();
   }, [user]);
+
+  useEffect(() => {
+    filterProfessionisti();
+  }, [filters, allProfessionisti, teams]);
 
   const loadProfessionisti = async () => {
     try {
@@ -42,10 +53,56 @@ export default function CreateReferralPage() {
         uid: doc.id,
         ...doc.data()
       } as User));
-      setProfessionisti(users.filter(u => u.uid !== user?.uid));
+      const filteredUsers = users.filter(u => u.uid !== user?.uid);
+      setAllProfessionisti(filteredUsers);
+      setProfessionisti(filteredUsers);
     } catch (error) {
       console.error('Errore caricamento professionisti:', error);
     }
+  };
+
+  const loadTeams = async () => {
+    try {
+      if (!user) return;
+      
+      const teamsRef = collection(db, 'teams');
+      const q = query(teamsRef, where('memberIds', 'array-contains', user.uid));
+      const snapshot = await getDocs(q);
+      
+      const userTeams = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      } as Team));
+      
+      setTeams(userTeams);
+    } catch (error) {
+      console.error('Errore caricamento team:', error);
+    }
+  };
+
+  const filterProfessionisti = () => {
+    let filtered = [...allProfessionisti];
+
+    // Filtra per tipo di professionista
+    if (filters.professionista) {
+      filtered = filtered.filter(prof => 
+        prof.profile.specializzazioni.some(spec => 
+          spec.toLowerCase().includes(filters.professionista.toLowerCase())
+        )
+      );
+    }
+
+    // Filtra per team di appartenenza
+    if (filters.teamId) {
+      const selectedTeam = teams.find(t => t.id === filters.teamId);
+      if (selectedTeam && selectedTeam.memberIds) {
+        filtered = filtered.filter(prof => 
+          selectedTeam.memberIds!.includes(prof.uid)
+        );
+      }
+    }
+
+    setProfessionisti(filtered);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -139,9 +196,79 @@ export default function CreateReferralPage() {
         )}
 
         <form onSubmit={handleSubmit} className="bg-white p-8 rounded-lg shadow space-y-6">
+          {/* Filtri */}
+          <div className="bg-blue-50 p-6 rounded-lg space-y-4">
+            <h3 className="text-lg font-semibold text-blue-900 mb-4">🔍 Filtri di Ricerca</h3>
+            
+            {/* Filtro Professionista */}
+            <div>
+              <label className="block text-sm font-semibold mb-2 text-blue-800">Tipo di Professionista</label>
+              <select
+                value={filters.professionista}
+                onChange={(e) => setFilters({ ...filters, professionista: e.target.value })}
+                className="w-full border rounded px-3 py-2"
+              >
+                <option value="">Tutti i professionisti</option>
+                <option value="psicologo">Psicologo</option>
+                <option value="psicoterapeuta">Psicoterapeuta</option>
+                <option value="nutrizionista">Nutrizionista</option>
+                <option value="dietista">Dietista</option>
+                <option value="fisioterapista">Fisioterapista</option>
+                <option value="logopedista">Logopedista</option>
+                <option value="neuropsicomotricista">Neuropsicomotricista</option>
+                <option value="terapista occupazionale">Terapista Occupazionale</option>
+                <option value="psichiatra">Psichiatra</option>
+                <option value="neurologo">Neurologo</option>
+                <option value="neuropsichiatra">Neuropsichiatra Infantile</option>
+              </select>
+            </div>
+
+            {/* Filtro Équipe */}
+            <div>
+              <label className="block text-sm font-semibold mb-2 text-blue-800">Équipe di Provenienza</label>
+              <select
+                value={filters.teamId}
+                onChange={(e) => setFilters({ ...filters, teamId: e.target.value })}
+                className="w-full border rounded px-3 py-2"
+              >
+                <option value="">Tutte le équipe</option>
+                {teams.map((team) => (
+                  <option key={team.id} value={team.id}>
+                    {team.nome || team.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            
+            <div className="text-sm text-blue-700 bg-blue-100 p-3 rounded">
+              <div className="flex items-center justify-between">
+                <span><strong>Risultati trovati:</strong> {professionisti.length} professionisti</span>
+                {(filters.professionista || filters.teamId) && (
+                  <button
+                    type="button"
+                    onClick={() => setFilters({ professionista: '', teamId: '' })}
+                    className="text-xs bg-white text-blue-700 px-2 py-1 rounded border border-blue-300 hover:bg-blue-50"
+                  >
+                    Resetta filtri
+                  </button>
+                )}
+              </div>
+              {professionisti.length === 0 && (filters.professionista || filters.teamId) && (
+                <div className="mt-2 text-orange-700 bg-orange-100 p-2 rounded">
+                  ⚠️ Nessun professionista trovato con i filtri selezionati. Prova a modificare i criteri di ricerca.
+                </div>
+              )}
+            </div>
+          </div>
+
           {/* Destinatario */}
           <div>
             <label className="block text-sm font-semibold mb-2">Invia a *</label>
+            {professionisti.length === 0 && (filters.professionista || filters.teamId) && (
+              <div className="mb-3 p-3 bg-yellow-50 border border-yellow-200 rounded text-sm text-yellow-800">
+                <strong>💡 Suggerimento:</strong> Rimuovi alcuni filtri per vedere più professionisti disponibili.
+              </div>
+            )}
             <select
               value={formData.receiverId}
               onChange={(e) => setFormData({ ...formData, receiverId: e.target.value })}
@@ -149,11 +276,15 @@ export default function CreateReferralPage() {
               required
             >
               <option value="">Seleziona professionista...</option>
-              {professionisti.map((prof) => (
-                <option key={prof.uid} value={prof.uid}>
-                  {prof.profile.nome} - {prof.profile.specializzazioni.join(', ')} ({prof.profile.location.città})
-                </option>
-              ))}
+              {professionisti.length === 0 ? (
+                <option value="" disabled>Nessun professionista trovato con i filtri selezionati</option>
+              ) : (
+                professionisti.map((prof) => (
+                  <option key={prof.uid} value={prof.uid}>
+                    {prof.profile.nome} - {prof.profile.specializzazioni.join(', ')} ({prof.profile.location.città})
+                  </option>
+                ))
+              )}
             </select>
           </div>
 

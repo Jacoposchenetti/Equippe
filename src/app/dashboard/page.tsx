@@ -328,7 +328,7 @@ export default function Dashboard() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredProfessionisti.length === 0 ? (
               <div className="col-span-full text-center py-12 text-gray-500">
-                <div className="mb-4 text-6xl">🔍</div>
+                <div className="mb-4 text-6xl">?</div>
                 <h3 className="text-xl font-semibold mb-2">Nessun professionista trovato</h3>
                 <div className="text-sm text-gray-400 space-y-1">
                   {currentFilters.specializzazione && (
@@ -342,7 +342,7 @@ export default function Dashboard() {
                   )}
                 </div>
                 <p className="text-xs text-gray-400 mt-4">
-                  💡 Prova ad espandere il raggio di ricerca o rimuovere alcuni filtri
+                  Suggerimento: Prova ad espandere il raggio di ricerca o rimuovere alcuni filtri
                 </p>
               </div>
             ) : (
@@ -489,7 +489,7 @@ export default function Dashboard() {
                       {/* Membri Attuali */}
                       <div className="mb-3">
                         <div className="flex items-center justify-between mb-2">
-                          <span className="text-xs font-semibold text-gray-700">👥 Membri Attuali</span>
+                          <span className="text-xs font-semibold text-gray-700">Membri Attuali</span>
                           <span className="text-xs text-gray-500">{team.members?.length || 0}</span>
                         </div>
                         {team.membersWithData && team.membersWithData.length > 0 ? (
@@ -522,7 +522,7 @@ export default function Dashboard() {
                       {team.ruoliCercati && team.ruoliCercati.length > 0 ? (
                         <div>
                           <div className="flex items-center justify-between mb-2">
-                            <span className="text-xs font-semibold text-orange-700">🔍 Cercano</span>
+                            <span className="text-xs font-semibold text-orange-700">Cercano</span>
                             <span className="text-xs text-orange-600 font-medium">
                               {team.ruoliCercati.reduce((acc, r) => acc + (r.numero - r.occupati), 0)} {team.ruoliCercati.reduce((acc, r) => acc + (r.numero - r.occupati), 0) === 1 ? 'posto' : 'posti'}
                             </span>

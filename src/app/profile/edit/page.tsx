@@ -211,7 +211,7 @@ export default function EditProfilePage() {
           setNotificationEnabled(true);
           alert('🔔 Notifiche push abilitate con successo!');
         } else {
-          alert('⚠️ Impossibile abilitare le notifiche. Controlla i permessi del browser.');
+          alert('Impossibile abilitare le notifiche. Controlla i permessi del browser.');
         }
       }
     } catch (error) {

@@ -496,7 +496,7 @@ export default function RegisterPage() {
 
               {/* Sezione Consensi Privacy GDPR */}
               <div className="space-y-4 p-6 bg-gray-50 rounded-lg border">
-                <h3 className="font-semibold text-gray-900 text-lg">📋 Consensi Privacy (Obbligatori)</h3>
+                <h3 className="font-semibold text-gray-900 text-lg">Consensi Privacy (Obbligatori)</h3>
                 <p className="text-sm text-gray-600">
                   Per utilizzare Equipé è necessario accettare i seguenti consensi in conformità al GDPR:
                 </p>

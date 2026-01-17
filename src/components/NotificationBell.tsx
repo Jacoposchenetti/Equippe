@@ -98,21 +98,21 @@ export default function NotificationBell() {
   const getNotificationIcon = (type: Notification['type']) => {
     switch (type) {
       case 'team_request':
-        return '👥';
+        return 'Team';
       case 'message':
-        return '💬';
+        return 'Msg';
       case 'team_request_accepted':
-        return '✅';
+        return 'OK';
       case 'team_removed':
-        return '❌';
+        return 'NO';
       case 'team_admin':
-        return '⭐';
+        return 'Info';
       case 'team_invite_response':
-        return '📨';
+        return 'Inv';
       case 'referral_received':
-        return '🤝';
+        return 'Ref';
       case 'referral_accepted':
-        return '✅';
+        return 'OK';
       default:
         return '🔔';
     }

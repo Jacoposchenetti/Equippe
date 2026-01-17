@@ -126,7 +126,7 @@ export default function EnhancedSearch({ onSearch, availableSpecializations = []
       {/* Località con Mappa */}
       <div className="mb-4">
         <label className="block text-sm font-medium text-gray-700 mb-2">
-          📍 Zona di interesse
+          Zona di interesse
         </label>
         <div className="overflow-hidden rounded-lg">
           <MapSelector

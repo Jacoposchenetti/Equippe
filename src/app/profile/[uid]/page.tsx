@@ -438,7 +438,7 @@ export default function ProfilePage() {
                     <div className="flex items-center gap-2 ml-4">
                       {studio.remoto && (
                         <span className="px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs font-medium">
-                          🌐 Remoto
+                          Remoto
                         </span>
                       )}
                     </div>
@@ -469,7 +469,7 @@ export default function ProfilePage() {
                   rel="noopener noreferrer"
                   className="flex items-center gap-2 text-blue-600 hover:text-blue-800"
                 >
-                  <span>🔗</span>
+                  <span>Link</span>
                   <span>LinkedIn</span>
                 </a>
               )}
@@ -480,7 +480,7 @@ export default function ProfilePage() {
                   rel="noopener noreferrer"
                   className="flex items-center gap-2 text-blue-600 hover:text-blue-800"
                 >
-                  <span>🌐</span>
+                  <span>Web</span>
                   <span>Website</span>
                 </a>
               )}
@@ -521,7 +521,7 @@ export default function ProfilePage() {
               
               {selectedTeamId && (
                 <div className="bg-blue-50 p-3 rounded-lg text-sm text-blue-800">
-                  <strong>ℹ️ Info:</strong> L'invito verrà inviato al professionista che potrà accettare o rifiutare.
+                  <strong>Info:</strong> L'invito verrà inviato al professionista che potrà accettare o rifiutare.
                 </div>
               )}
             </div>

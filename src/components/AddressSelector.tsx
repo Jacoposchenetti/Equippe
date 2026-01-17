@@ -135,7 +135,7 @@ export default function MapSelector({
         {coordinate && (
           <div className="absolute right-8 top-1/2 transform -translate-y-1/2">
             <div className="text-green-500" title="Indirizzo geolocalizzato">
-              📍
+              Loc
             </div>
           </div>
         )}

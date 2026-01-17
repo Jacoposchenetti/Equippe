@@ -657,7 +657,7 @@ export default function TeamDetailPage() {
         {/* Sezione Composizione Equipé */}
         <div className="bg-white rounded-xl shadow-sm mb-6 overflow-hidden">
           <div className="px-8 py-6 border-b border-gray-200">
-            <h3 className="text-2xl font-bold text-gray-900">👥 Composizione Equipé</h3>
+            <h3 className="text-2xl font-bold text-gray-900">Composizione Equipé</h3>
             <p className="text-sm text-gray-600 mt-1">Membri attuali del team</p>
           </div>
           <div className="p-6">
@@ -751,7 +751,7 @@ export default function TeamDetailPage() {
                             <p className="text-sm text-gray-600">{ruolo.descrizione}</p>
                           </div>
                           <span className="bg-amber-100 text-amber-700 px-3 py-1 rounded-lg text-xs font-bold whitespace-nowrap ml-2">
-                            🔍 {postiLiberi} {postiLiberi === 1 ? 'POSTO' : 'POSTI'}
+                            {postiLiberi} {postiLiberi === 1 ? 'POSTO' : 'POSTI'}
                           </span>
                         </div>
 
@@ -801,7 +801,7 @@ export default function TeamDetailPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
               </div>
-              <h3 className="text-2xl font-bold text-green-900 mb-2">🎉 Equipé al Completo!</h3>
+              <h3 className="text-2xl font-bold text-green-900 mb-2">Equipé al Completo!</h3>
               <p className="text-green-700">Tutte le posizioni sono state ricoperte</p>
             </div>
           </div>
@@ -1203,7 +1203,7 @@ export default function TeamDetailPage() {
               >
                 {messages.length === 0 ? (
                   <div className="text-center py-8 text-gray-500">
-                    <p className="mb-2">💬</p>
+                    <p className="mb-2">Messaggio</p>
                     <p>Nessun messaggio ancora. Inizia la conversazione!</p>
                   </div>
                 ) : (
@@ -1302,7 +1302,7 @@ export default function TeamDetailPage() {
               <div className="border border-red-300 rounded-lg p-4 bg-red-50">
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
-                    <h4 className="font-bold text-red-900 mb-1">⚠️ Elimina Equipé</h4>
+                    <h4 className="font-bold text-red-900 mb-1">Elimina Equipé</h4>
                     <p className="text-sm text-red-700">
                       Elimina definitivamente questa equipé. Questa azione è irreversibile e rimuoverà tutti i dati associati.
                     </p>

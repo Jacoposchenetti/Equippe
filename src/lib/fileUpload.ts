@@ -84,11 +84,11 @@ export const uploadFile = async (
 
 export const getFileIcon = (mimeType: string): string => {
   if (mimeType.startsWith('image/')) return '🖼️';
-  if (mimeType === 'application/pdf') return '📄';
+  if (mimeType === 'application/pdf') return 'PDF';
   if (mimeType.includes('word') || mimeType.includes('document')) return '📝';
   if (mimeType.includes('excel') || mimeType.includes('spreadsheet')) return '📊';
   if (mimeType.includes('powerpoint') || mimeType.includes('presentation')) return '📋';
-  if (mimeType.startsWith('text/')) return '📃';
+  if (mimeType.startsWith('text/')) return 'TXT';
   if (mimeType.includes('zip') || mimeType.includes('rar')) return '🗜️';
   return '📁';
 };

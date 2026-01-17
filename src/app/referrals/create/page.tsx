@@ -198,7 +198,7 @@ export default function CreateReferralPage() {
         <form onSubmit={handleSubmit} className="bg-white p-8 rounded-lg shadow space-y-6">
           {/* Filtri */}
           <div className="bg-blue-50 p-6 rounded-lg space-y-4">
-            <h3 className="text-lg font-semibold text-blue-900 mb-4">🔍 Filtri di Ricerca</h3>
+            <h3 className="text-lg font-semibold text-blue-900 mb-4">Filtri di Ricerca</h3>
             
             {/* Filtro Professionista */}
             <div>
@@ -255,7 +255,7 @@ export default function CreateReferralPage() {
               </div>
               {professionisti.length === 0 && (filters.professionista || filters.teamId) && (
                 <div className="mt-2 text-orange-700 bg-orange-100 p-2 rounded">
-                  ⚠️ Nessun professionista trovato con i filtri selezionati. Prova a modificare i criteri di ricerca.
+                  Nessun professionista trovato con i filtri selezionati. Prova a modificare i criteri di ricerca.
                 </div>
               )}
             </div>
@@ -266,7 +266,7 @@ export default function CreateReferralPage() {
             <label className="block text-sm font-semibold mb-2">Invia a *</label>
             {professionisti.length === 0 && (filters.professionista || filters.teamId) && (
               <div className="mb-3 p-3 bg-yellow-50 border border-yellow-200 rounded text-sm text-yellow-800">
-                <strong>💡 Suggerimento:</strong> Rimuovi alcuni filtri per vedere più professionisti disponibili.
+                <strong>Suggerimento:</strong> Rimuovi alcuni filtri per vedere più professionisti disponibili.
               </div>
             )}
             <select
@@ -303,7 +303,7 @@ export default function CreateReferralPage() {
           </div>
 
           <div className="border-t pt-6">
-            <h3 className="text-lg font-semibold mb-4">🔒 Dati Paziente (Crittografati)</h3>
+            <h3 className="text-lg font-semibold mb-4">Dati Paziente (Crittografati)</h3>
             
             {/* Nome Paziente */}
             <div className="mb-4">
@@ -368,7 +368,7 @@ export default function CreateReferralPage() {
             </div>
 
             <div className="bg-blue-50 p-4 rounded text-sm text-blue-800">
-              <strong>🔒 Privacy e Sicurezza:</strong> Tutti i dati sensibili del paziente saranno crittografati 
+              <strong>Privacy e Sicurezza:</strong> Tutti i dati sensibili del paziente saranno crittografati 
               end-to-end prima dell'invio, in conformità con il GDPR.
             </div>
           </div>

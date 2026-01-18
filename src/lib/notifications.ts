@@ -15,6 +15,7 @@ interface CreateNotificationParams {
   conversationId?: string;
   senderId?: string;
   senderName?: string;
+  senderPhotoURL?: string;
   referralId?: string;
   inviteId?: string;
   accepted?: boolean;
@@ -37,7 +38,7 @@ export async function createNotification(params: CreateNotificationParams) {
 
 // Helper specifici per ogni tipo di notifica
 
-export async function notifyTeamRequest(teamId: string, teamName: string, adminIds: string[], requesterId: string, requesterName: string) {
+export async function notifyTeamRequest(teamId: string, teamName: string, adminIds: string[], requesterId: string, requesterName: string, requesterPhotoURL?: string) {
   try {
     // Notifica tutti gli admin dell'équipe
     await Promise.all(
@@ -50,7 +51,8 @@ export async function notifyTeamRequest(teamId: string, teamName: string, adminI
           teamId,
           teamName,
           senderId: requesterId,
-          senderName: requesterName
+          senderName: requesterName,
+          senderPhotoURL: requesterPhotoURL
         })
       )
     );
@@ -59,7 +61,7 @@ export async function notifyTeamRequest(teamId: string, teamName: string, adminI
   }
 }
 
-export async function notifyNewMessage(conversationId: string, messageId: string, senderId: string, senderName: string, recipientIds: string[], messagePreview: string) {
+export async function notifyNewMessage(conversationId: string, messageId: string, senderId: string, senderName: string, senderPhotoURL: string | undefined, recipientIds: string[], messagePreview: string) {
   try {
     // Notifica tutti i partecipanti tranne il mittente
     await Promise.all(
@@ -74,7 +76,8 @@ export async function notifyNewMessage(conversationId: string, messageId: string
             conversationId,
             messageId,
             senderId,
-            senderName
+            senderName,
+            senderPhotoURL
           })
         )
     );
@@ -146,7 +149,7 @@ export async function notifyTeamInviteResponse(senderId: string, recipientName: 
   }
 }
 
-export async function notifyReferralReceived(recipientId: string, senderId: string, senderName: string, patientName: string, referralId: string) {
+export async function notifyReferralReceived(recipientId: string, senderId: string, senderName: string, senderPhotoURL: string | undefined, patientName: string, referralId: string) {
   try {
     await createNotification({
       userId: recipientId,
@@ -155,6 +158,7 @@ export async function notifyReferralReceived(recipientId: string, senderId: stri
       message: `${senderName} ti ha inviato una referral per ${patientName}`,
       senderId,
       senderName,
+      senderPhotoURL,
       referralId
     });
   } catch (error) {
@@ -162,14 +166,16 @@ export async function notifyReferralReceived(recipientId: string, senderId: stri
   }
 }
 
-export async function notifyReferralAccepted(senderId: string, recipientName: string, patientName: string, referralId: string) {
+export async function notifyReferralAccepted(senderId: string, recipientId: string, recipientName: string, recipientPhotoURL: string | undefined, patientName: string, referralId: string) {
   try {
     await createNotification({
       userId: senderId,
       type: 'referral_accepted',
       title: 'Referral accettata',
       message: `${recipientName} ha accettato la presa in carico di ${patientName}`,
+      senderId: recipientId,
       senderName: recipientName,
+      senderPhotoURL: recipientPhotoURL,
       referralId,
       accepted: true
     });

@@ -7,6 +7,7 @@ import { collection, query, where, getDocs, doc, getDoc, updateDoc, Timestamp, a
 import { db } from '@/lib/firebase';
 import { User, Team } from '@/types/equippe';
 import Header from '@/components/Header';
+import Footer from '@/components/Footer';
 import { notifyTeamInviteResponse } from '@/lib/notifications';
 import { occupyPositions } from '@/lib/teamPositions';
 
@@ -391,6 +392,7 @@ export default function InvitesPage() {
           </div>
         )}
       </div>
+      <Footer />
     </div>
   );
 }

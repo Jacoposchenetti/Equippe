@@ -10,8 +10,8 @@ import { generateEncryptionKey, exportKey, encryptData } from '@/lib/encryption'
 import Link from 'next/link';
 import { notifyReferralReceived } from '@/lib/notifications';
 
-export default function CreateReferralPage() {
-  const { user } = useAuth();
+export default function CreatePazientePage() {
+  const { user, userProfile } = useAuth();
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -139,7 +139,7 @@ export default function CreateReferralPage() {
       const { encrypted: encryptedDiagnosis, iv: diagnosisIv } = await encryptData(formData.diagnosis, encryptionKey);
       const { encrypted: encryptedNotes, iv: notesIv } = await encryptData(formData.notes, encryptionKey);
 
-      // Crea il referral
+      // Crea il paziente
       const referralData = {
         senderUid: user.uid,
         receiverUid: formData.receiverId,
@@ -158,20 +158,22 @@ export default function CreateReferralPage() {
 
       const referralRef = await addDoc(collection(db, 'referrals'), referralData);
 
-      // Notifica il destinatario del nuovo referral
+      // Notifica il destinatario del nuovo paziente
       const senderName = user.displayName || user.email || 'Un professionista';
+      const senderPhoto = userProfile?.profile?.photoURL || user.photoURL;
       await notifyReferralReceived(
         formData.receiverId,
         user.uid,
         senderName,
+        senderPhoto,
         formData.patientName,
         referralRef.id
       );
 
       router.push('/referrals');
     } catch (err: any) {
-      console.error('Errore creazione referral:', err);
-      setError(err.message || 'Errore durante la creazione del referral');
+      console.error('Errore creazione paziente:', err);
+      setError(err.message || 'Errore durante la creazione del paziente');
     } finally {
       setLoading(false);
     }
@@ -182,12 +184,12 @@ export default function CreateReferralPage() {
       <header className="bg-white shadow">
         <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
           <h1 className="text-2xl font-bold text-blue-600">Equipé</h1>
-          <Link href="/referrals" className="text-blue-600 hover:underline">← Torna ai Referral</Link>
+          <Link href="/referrals" className="text-blue-600 hover:underline">← Torna ai Pazienti</Link>
         </div>
       </header>
 
       <div className="max-w-4xl mx-auto px-4 py-8">
-        <h2 className="text-3xl font-bold mb-6">Crea Nuovo Referral</h2>
+        <h2 className="text-3xl font-bold mb-6">Crea Nuovo Paziente</h2>
 
         {error && (
           <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
@@ -347,7 +349,7 @@ export default function CreateReferralPage() {
 
             {/* Diagnosi */}
             <div className="mb-4">
-              <label className="block text-sm font-semibold mb-2">Diagnosi / Motivo Referral *</label>
+              <label className="block text-sm font-semibold mb-2">Diagnosi / Motivo Invio *</label>
               <textarea
                 value={formData.diagnosis}
                 onChange={(e) => setFormData({ ...formData, diagnosis: e.target.value })}
@@ -383,7 +385,7 @@ export default function CreateReferralPage() {
               disabled={loading}
               className="flex-1 bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 disabled:bg-gray-400 font-semibold"
             >
-              {loading ? 'Invio in corso...' : 'Invia Referral'}
+              {loading ? 'Invio in corso...' : 'Invia Paziente'}
             </button>
             <Link
               href="/referrals"

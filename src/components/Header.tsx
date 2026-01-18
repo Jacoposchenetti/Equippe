@@ -40,7 +40,7 @@ export default function Header() {
   const navLinks = [
     { href: '/dashboard', label: 'Dashboard', badge: 0 },
     { href: '/teams', label: 'Equipé', badge: 0 },
-    { href: '/referrals', label: 'Referral', badge: 0 },
+    { href: '/referrals', label: 'Pazienti', badge: 0 },
     { href: '/invites', label: 'Inviti', badge: 0 },
     { href: '/messages', label: 'Messaggi', badge: unreadMessages },
   ];

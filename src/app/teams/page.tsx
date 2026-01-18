@@ -3,16 +3,18 @@
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { collection, query, where, getDocs } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { Team } from '@/types/equippe';
+import { Team, User } from '@/types/equippe';
 import Link from 'next/link';
 import Header from '@/components/Header';
+import Footer from '@/components/Footer';
 
 export default function TeamsPage() {
   const { user, userProfile } = useAuth();
   const router = useRouter();
-  const [myTeams, setMyTeams] = useState<Team[]>([]);
+  const [myTeams, setMyTeams] = useState<(Team & { id: string })[]>([]);
+  const [teamMembers, setTeamMembers] = useState<Record<string, User[]>>({});
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -35,14 +37,74 @@ export default function TeamsPage() {
       const teams = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
-      } as Team));
+      } as Team & { id: string }));
 
       setMyTeams(teams);
+
+      // Carica i membri per ogni team
+      const membersData: Record<string, User[]> = {};
+      for (const team of teams) {
+        if (team.memberIds && team.memberIds.length > 0) {
+          const teamMembersList: User[] = [];
+          for (const memberId of team.memberIds) {
+            try {
+              const memberDoc = await getDoc(doc(db, 'users', memberId));
+              if (memberDoc.exists()) {
+                teamMembersList.push({ uid: memberDoc.id, ...memberDoc.data() } as User);
+              }
+            } catch (error) {
+              console.error(`Errore caricamento membro ${memberId}:`, error);
+            }
+          }
+          membersData[team.id] = teamMembersList;
+        }
+      }
+      setTeamMembers(membersData);
+
     } catch (error) {
       console.error('Errore caricamento team:', error);
     } finally {
       setLoading(false);
     }
+  };
+
+  // Funzione per estrarre le specializzazioni uniche dai membri del team
+  const getTeamSpecializations = (teamId: string) => {
+    const members = teamMembers[teamId] || [];
+    
+    // Raccogli tutte le specializzazioni dei membri
+    const allSpecializations = members.flatMap(member => 
+      member.profile?.specializzazioni || []
+    );
+    
+    // Rimuovi duplicati
+    const uniqueSpecializations = [...new Set(allSpecializations)];
+    
+    // Converti da professionista a disciplina
+    const disciplines = uniqueSpecializations.map(spec => {
+      const professionistToDiscipine: Record<string, string> = {
+        'Psicologo': 'Psicologia',
+        'Psicoterapeuta': 'Psicoterapia',
+        'Psichiatra': 'Psichiatria',
+        'Nutrizionista': 'Nutrizione',
+        'Dietista': 'Dietetica',
+        'Dietologo': 'Dietetica',
+        'Assistente Sociale': 'Assistenza Sociale',
+        'Educatore Professionale': 'Educazione Professionale',
+        'Logopedista': 'Logopedia',
+        'Fisioterapista': 'Fisioterapia',
+        'Terapista Occupazionale': 'Terapia Occupazionale',
+        'Infermiere': 'Infermieristica',
+        'Medico di Base': 'Medicina Generale',
+        'Medico Specialista': 'Medicina Specialistica',
+        'Ginecologo': 'Ginecologia',
+        'Andrologo': 'Andrologia',
+        'Sessuologo': 'Sessuologia'
+      };
+      return professionistToDiscipine[spec] || spec;
+    }).filter((disc, index, arr) => arr.indexOf(disc) === index); // Rimuovi duplicati anche dopo conversione
+    
+    return disciplines;
   };
 
   if (loading) {
@@ -117,13 +179,22 @@ export default function TeamsPage() {
                   </span>
                 </div>
                 <div className="mt-4">
-                  <span className="text-xs font-semibold text-gray-700">Specializzazioni:</span>
+                  <span className="text-xs font-semibold text-gray-700">Specializzazioni del team:</span>
                   <div className="flex flex-wrap gap-1 mt-1">
-                    {team.specializations?.map((spec: string) => (
-                      <span key={spec} className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
-                        {spec}
-                      </span>
-                    ))}
+                    {(() => {
+                      const teamSpecializations = getTeamSpecializations(team.id);
+                      return teamSpecializations.length > 0 ? (
+                        teamSpecializations.map((spec) => (
+                          <span key={spec} className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                            {spec}
+                          </span>
+                        ))
+                      ) : (
+                        <span className="text-xs text-gray-500 italic">
+                          Nessuna specializzazione
+                        </span>
+                      );
+                    })()}
                   </div>
                 </div>
               </Link>
@@ -131,6 +202,7 @@ export default function TeamsPage() {
           </div>
         )}
       </div>
+      <Footer />
     </div>
   );
 }

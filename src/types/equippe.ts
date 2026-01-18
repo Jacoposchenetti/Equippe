@@ -251,6 +251,7 @@ export interface Notification {
   conversationId?: string;     // Per message
   senderId?: string;           // Chi ha generato la notifica
   senderName?: string;
+  senderPhotoURL?: string;     // Foto profilo di chi ha generato la notifica
   referralId?: string;         // Per referral
   inviteId?: string;           // Per team_invite_response
   accepted?: boolean;          // Per team_invite_response e referral_accepted

@@ -7,6 +7,7 @@ import { collection, query, where, getDocs, getDoc, doc } from 'firebase/firesto
 import { db } from '@/lib/firebase';
 import { User, Team } from '@/types/equippe';
 import Header from '@/components/Header';
+import Footer from '@/components/Footer';
 import EnhancedSearch, { SearchFilters } from '@/components/EnhancedSearch';
 
 export default function Dashboard() {
@@ -370,9 +371,13 @@ export default function Dashboard() {
                           src={p.profile.photoURL} 
                           alt={p.profile.nome} 
                           className="w-20 h-20 rounded-full object-cover border-4 border-gray-200"
+                          style={{ aspectRatio: '1/1' }}
                         />
                       ) : (
-                        <div className={`w-20 h-20 ${getAvatarColor(index)} rounded-full flex items-center justify-center text-gray-700 font-bold text-2xl`}>
+                        <div 
+                          className={`w-20 h-20 ${getAvatarColor(index)} rounded-full flex items-center justify-center text-gray-700 font-bold text-2xl`}
+                          style={{ aspectRatio: '1/1' }}
+                        >
                           {getInitials(p.profile.nome)}
                         </div>
                       )}
@@ -480,9 +485,13 @@ export default function Dashboard() {
                           src={team.photoURL} 
                           alt={`Foto ${team.name}`}
                           className="w-20 h-20 rounded-full object-cover border-4 border-amber-200"
+                          style={{ aspectRatio: '1/1' }}
                         />
                       ) : (
-                        <div className={`w-20 h-20 ${getAvatarColor(index)} rounded-full flex items-center justify-center text-gray-700 font-bold text-2xl`}>
+                        <div 
+                          className={`w-20 h-20 ${getAvatarColor(index)} rounded-full flex items-center justify-center text-gray-700 font-bold text-2xl`}
+                          style={{ aspectRatio: '1/1' }}
+                        >
                           {getInitials(team.name || 'Team')}
                         </div>
                       )}
@@ -608,6 +617,7 @@ export default function Dashboard() {
           </div>
         )}
       </div>
+      <Footer />
     </div>
   );
 }

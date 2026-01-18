@@ -33,8 +33,8 @@ interface DecryptedData {
   notes: string;
 }
 
-export default function ReferralDetailPage() {
-  const { user } = useAuth();
+export default function PazienteDetailPage() {
+  const { user, userProfile } = useAuth();
   const router = useRouter();
   const params = useParams();
   const referralId = params.id as string;
@@ -56,7 +56,7 @@ export default function ReferralDetailPage() {
 
   const loadReferralData = async () => {
     try {
-      // Carica referral
+      // Carica paziente
       const referralDoc = await getDoc(doc(db, 'referrals', referralId));
       if (!referralDoc.exists()) {
         router.push('/referrals');
@@ -118,9 +118,12 @@ export default function ReferralDetailPage() {
       // Notifica il mittente se il referral è stato accettato
       if (newStatus === 'accepted' && decryptedData && user) {
         const receiverName = user.displayName || user.email || 'Un professionista';
+        const receiverPhoto = userProfile?.profile?.photoURL || user.photoURL;
         await notifyReferralAccepted(
           referral.senderUid,
+          user.uid,
           receiverName,
+          receiverPhoto,
           decryptedData.patient.name,
           referralId
         );

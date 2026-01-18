@@ -7,6 +7,7 @@ import { collection, query, where, orderBy, onSnapshot, addDoc, updateDoc, doc, 
 import { db } from '@/lib/firebase';
 import { Conversation, Message, Team, ConversationType, FileAttachment } from '@/types/equippe';
 import Header from '@/components/Header';
+import Footer from '@/components/Footer';
 import { notifyNewMessage } from '@/lib/notifications';
 import { uploadFile, validateFile, getFileIcon, formatFileSize } from '@/lib/fileUpload';
 
@@ -497,6 +498,7 @@ export default function MessagesPage() {
           messageDoc.id,
           user.uid,
           userProfile.profile.nome,
+          userProfile.profile.photoURL || user.photoURL,
           recipientIds,
           lastMessage
         );
@@ -931,6 +933,7 @@ export default function MessagesPage() {
           </div>
         </div>
       </div>
+      <Footer />
     </div>
   );
 }

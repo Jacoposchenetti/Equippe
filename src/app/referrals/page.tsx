@@ -8,6 +8,7 @@ import { db } from '@/lib/firebase';
 import { User } from '@/types/equippe';
 import Link from 'next/link';
 import Header from '@/components/Header';
+import Footer from '@/components/Footer';
 
 interface Referral {
   id: string;
@@ -40,7 +41,7 @@ export default function ReferralsPage() {
     try {
       if (!user) return;
 
-      // Carica referral ricevuti
+      // Carica pazienti ricevuti
       const receivedQuery = query(
         collection(db, 'referrals'),
         where('receiverUid', '==', user.uid)
@@ -52,7 +53,7 @@ export default function ReferralsPage() {
       } as Referral));
       setReceivedReferrals(received);
 
-      // Carica referral inviati
+      // Carica pazienti inviati
       const sentQuery = query(
         collection(db, 'referrals'),
         where('senderUid', '==', user.uid)
@@ -81,7 +82,7 @@ export default function ReferralsPage() {
       }
       setUsers(usersData);
     } catch (error) {
-      console.error('Errore caricamento referral:', error);
+      console.error('Errore caricamento pazienti:', error);
     } finally {
       setLoading(false);
     }
@@ -132,12 +133,12 @@ export default function ReferralsPage() {
 
       <div className="max-w-7xl mx-auto px-6 py-8">
         <div className="flex justify-between items-center mb-8">
-          <h1 className="text-4xl font-bold text-gray-900">Referral</h1>
+          <h1 className="text-4xl font-bold text-gray-900">Pazienti</h1>
           <Link
             href="/referrals/create"
             className="px-6 py-3 bg-amber-500 text-white rounded-lg font-medium hover:bg-amber-600 transition shadow-sm"
           >
-            + Nuovo Referral
+            + Nuovo Paziente
           </Link>
         </div>
         
@@ -180,19 +181,19 @@ export default function ReferralsPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
               <h3 className="text-xl font-bold text-gray-900 mb-2">
-                {tab === 'received' ? 'Nessun referral ricevuto' : 'Nessun referral inviato'}
+                {tab === 'received' ? 'Nessun paziente ricevuto' : 'Nessun paziente inviato'}
               </h3>
               <p className="text-gray-600 mb-6">
                 {tab === 'received'
-                  ? 'Quando riceverai dei referral, appariranno qui'
-                  : 'Crea il tuo primo referral per iniziare a collaborare'}
+                  ? 'Quando riceverai dei pazienti, appariranno qui'
+                  : 'Crea il tuo primo paziente per iniziare a collaborare'}
               </p>
               {tab === 'sent' && (
                 <Link
                   href="/referrals/create"
                   className="inline-block px-6 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition shadow-sm"
                 >
-                  Crea Referral
+                  Crea Paziente
                 </Link>
               )}
             </div>
@@ -244,6 +245,7 @@ export default function ReferralsPage() {
           </div>
         )}
       </div>
+      <Footer />
     </div>
   );
 }

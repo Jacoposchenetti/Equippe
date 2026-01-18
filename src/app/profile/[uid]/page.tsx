@@ -287,9 +287,13 @@ export default function ProfilePage() {
                   src={profileUser.profile.photoURL} 
                   alt={profileUser.profile.nome} 
                   className="w-20 h-20 rounded-full object-cover border-4 border-blue-300"
+                  style={{ aspectRatio: '1/1' }}
                 />
               ) : (
-                <div className="w-20 h-20 rounded-full bg-blue-300 flex items-center justify-center text-white text-2xl font-bold">
+                <div 
+                  className="w-20 h-20 rounded-full bg-blue-300 flex items-center justify-center text-white text-2xl font-bold"
+                  style={{ aspectRatio: '1/1' }}
+                >
                   {profileUser.profile.nome.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)}
                 </div>
               )}

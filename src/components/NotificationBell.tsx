@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { db } from '@/lib/firebase';
-import { collection, query, where, onSnapshot, orderBy, updateDoc, doc, Timestamp } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, orderBy, updateDoc, doc, Timestamp, getDoc } from 'firebase/firestore';
 import { Notification } from '@/types/equippe';
 import { useRouter } from 'next/navigation';
 
@@ -13,6 +13,7 @@ export default function NotificationBell() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [showDropdown, setShowDropdown] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [userPhotos, setUserPhotos] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (!user) return;
@@ -27,7 +28,7 @@ export default function NotificationBell() {
 
     const unsubscribe = onSnapshot(
       q,
-      (snapshot) => {
+      async (snapshot) => {
         const notifs = snapshot.docs.map(doc => ({
           id: doc.id,
           ...doc.data()
@@ -35,6 +36,31 @@ export default function NotificationBell() {
         
         setNotifications(notifs);
         setUnreadCount(notifs.filter(n => !n.read).length);
+        
+        // Recupera le foto profilo mancanti
+        const senderIds = notifs
+          .filter(n => n.senderId && (!n.senderPhotoURL || n.senderPhotoURL.trim() === ''))
+          .map(n => n.senderId!)
+          .filter((id, index, arr) => arr.indexOf(id) === index); // rimuovi duplicati
+        
+        if (senderIds.length > 0) {
+          const photos: Record<string, string> = {};
+          for (const senderId of senderIds) {
+            try {
+              const userDoc = await getDoc(doc(db, 'users', senderId));
+              if (userDoc.exists()) {
+                const userData = userDoc.data();
+                const photoURL = userData.profile?.photoURL || userData.photoURL;
+                if (photoURL) {
+                  photos[senderId] = photoURL;
+                }
+              }
+            } catch (error) {
+              console.error('Errore recupero foto utente:', senderId, error);
+            }
+          }
+          setUserPhotos(prev => ({ ...prev, ...photos }));
+        }
       },
       (error) => {
         // Gestisci errore di permessi silenziosamente
@@ -205,9 +231,47 @@ export default function NotificationBell() {
                       }`}
                     >
                       <div className="flex gap-2 sm:gap-3">
-                        <span className="text-lg sm:text-2xl flex-shrink-0">
-                          {getNotificationIcon(notification.type)}
-                        </span>
+                        {/* Foto profilo del sender se disponibile, altrimenti icona */}
+                        {(() => {
+                          const photoURL = notification.senderPhotoURL || (notification.senderId ? userPhotos[notification.senderId] : null);
+                          return photoURL && photoURL.trim() !== '' ? (
+                            <img 
+                              src={photoURL} 
+                              alt={notification.senderName || 'Utente'} 
+                              className="rounded-full object-cover border-2 border-gray-200 flex-shrink-0"
+                              style={{ 
+                                width: '40px', 
+                                height: '40px',
+                                minWidth: '40px',
+                                minHeight: '40px'
+                              }}
+                              onError={(e) => {
+                                // Se l'immagine non si carica, mostra l'iniziale
+                                const target = e.currentTarget;
+                                target.style.display = 'none';
+                                if (target.nextElementSibling) {
+                                  (target.nextElementSibling as HTMLElement).style.display = 'flex';
+                                }
+                              }}
+                            />
+                          ) : null;
+                        })()}
+                        <div 
+                          className={`bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white font-bold text-base flex-shrink-0 ${
+                            (() => {
+                              const photoURL = notification.senderPhotoURL || (notification.senderId ? userPhotos[notification.senderId] : null);
+                              return photoURL && photoURL.trim() !== '' ? 'hidden' : '';
+                            })()
+                          }`}
+                          style={{ 
+                            width: '40px', 
+                            height: '40px',
+                            minWidth: '40px',
+                            minHeight: '40px'
+                          }}
+                        >
+                          {notification.senderName ? notification.senderName.charAt(0).toUpperCase() : '?'}
+                        </div>
                         <div className="flex-1 min-w-0">
                           <p className={`text-xs sm:text-sm ${!notification.read ? 'font-semibold' : 'font-medium'} text-gray-900`}>
                             {notification.title}

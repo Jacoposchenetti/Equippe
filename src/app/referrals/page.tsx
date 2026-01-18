@@ -125,7 +125,13 @@ export default function ReferralsPage() {
     );
   }
 
-  const displayReferrals = tab === 'received' ? receivedReferrals : sentReferrals;
+  const displayReferrals = (tab === 'received' ? receivedReferrals : sentReferrals)
+    .sort((a, b) => {
+      // Ordina dal più recente al meno recente
+      const dateA = a.createdAt?.toDate?.() || a.createdAt || new Date(0);
+      const dateB = b.createdAt?.toDate?.() || b.createdAt || new Date(0);
+      return dateB.getTime() - dateA.getTime();
+    });
 
   return (
     <div className="min-h-screen bg-gray-50">

@@ -25,5 +25,5 @@
     "src",
     "vite-env.d.ts"
   ],
-  "exclude": ["node_modules", "functions", "src/app", "src/components/Header_old.tsx", "src/components/Header_old_backup.tsx"]
+  "exclude": ["node_modules", "functions", "src/components/Header_old.tsx", "src/components/Header_old_backup.tsx"]
 }

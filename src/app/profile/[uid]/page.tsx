@@ -1,5 +1,3 @@
-'use client';
-
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useEffect, useState } from 'react';
@@ -63,12 +61,12 @@ export default function ProfilePage() {
 
   useEffect(() => {
     if (!currentUser) {
-      router.push('/login');
+      navigate('/login');
       return;
     }
 
     if (currentUser.uid === uid) {
-      router.push('/dashboard');
+      navigate('/dashboard');
       return;
     }
 
@@ -82,7 +80,7 @@ export default function ProfilePage() {
       
       if (!userDoc.exists()) {
         console.error('Utente non trovato');
-        router.push('/dashboard');
+        navigate('/dashboard');
         return;
       }
 
@@ -92,7 +90,7 @@ export default function ProfilePage() {
       } as User);
     } catch (error) {
       console.error('Errore caricamento profilo:', error);
-      router.push('/dashboard');
+      navigate('/dashboard');
     } finally {
       setLoading(false);
     }
@@ -223,7 +221,7 @@ export default function ProfilePage() {
       if (existingConversation) {
         // Conversazione già esistente, vai direttamente ai messaggi
         console.log('Found existing conversation:', existingConversation.id);
-        router.push(`/messages?conversation=${existingConversation.id}`);
+        navigate(`/messages?conversation=${existingConversation.id}`);
         return;
       }
 
@@ -251,7 +249,7 @@ export default function ProfilePage() {
 
       const docRef = await addDoc(collection(db, 'conversations'), conversationData);
       console.log('Conversation created:', docRef.id);
-      router.push(`/messages?conversation=${docRef.id}`);
+      navigate(`/messages?conversation=${docRef.id}`);
     } catch (error) {
       console.error('Errore avvio conversazione:', error);
       alert('Errore durante l\'avvio della conversazione. Verifica di essere autenticato.');

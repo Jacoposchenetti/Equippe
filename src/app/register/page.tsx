@@ -1,8 +1,6 @@
-'use client';
-
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import Link from 'next/link';
+import { useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { doc, setDoc, Timestamp } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
@@ -81,7 +79,7 @@ export default function RegisterPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const { signUp } = useAuth();
-  const router = useRouter();
+  const navigate = useNavigate();
 
   const addStudio = () => {
     if (!currentStudio.indirizzo || !currentStudio.coordinate) {
@@ -216,7 +214,7 @@ export default function RegisterPage() {
       
       await setDoc(doc(db, 'users', currentUser.uid), profileData);
       
-      router.push('/dashboard');
+      navigate('/dashboard');
     } catch (err: any) {
       console.error('Errore registrazione:', err);
       if (err.code === 'auth/email-already-in-use') {
@@ -241,7 +239,7 @@ export default function RegisterPage() {
           <h2 className="mt-4 text-2xl font-bold">Registrati come professionista</h2>
           <p className="mt-2 text-sm text-gray-600">
             Hai già un account?{' '}
-            <Link href="/login" className="text-blue-600 hover:text-blue-500">Accedi</Link>
+            <Link to="/login" className="text-blue-600 hover:text-blue-500">Accedi</Link>
           </p>
           <div className="mt-4 flex justify-center gap-2">
             <div className={`h-2 w-20 rounded ${step >= 1 ? 'bg-blue-600' : 'bg-gray-300'}`}></div>
@@ -449,7 +447,7 @@ export default function RegisterPage() {
                     <AddressAutocomplete
                       value={currentStudio.indirizzo}
                       coordinate={currentStudio.coordinate}
-                      onChange={(location) => {
+                      onChange={(location: any) => {
                         setCurrentStudio({
                           ...currentStudio,
                           indirizzo: location.indirizzo || '',
@@ -513,7 +511,7 @@ export default function RegisterPage() {
                   />
                   <span className="text-sm leading-relaxed">
                     Ho letto e accetto i{' '}
-                    <Link href="/legal/termini" className="text-blue-600 underline hover:text-blue-800" target="_blank">
+                    <Link to="/legal/termini" className="text-blue-600 underline hover:text-blue-800" target="_blank">
                       Termini e Condizioni di Servizio
                     </Link>{' '}
                     di Equipé <span className="text-red-500">*</span>
@@ -529,7 +527,7 @@ export default function RegisterPage() {
                   />
                   <span className="text-sm leading-relaxed">
                     Ho letto e accetto l'
-                    <Link href="/legal/privacy" className="text-blue-600 underline hover:text-blue-800" target="_blank">
+                    <Link to="/legal/privacy" className="text-blue-600 underline hover:text-blue-800" target="_blank">
                       Informativa Privacy
                     </Link>{' '}
                     e autorizzo il trattamento dei miei dati professionali per le finalità del servizio <span className="text-red-500">*</span>
@@ -545,7 +543,7 @@ export default function RegisterPage() {
                   />
                   <span className="text-sm leading-relaxed">
                     Vorrei ricevere comunicazioni informative sui nuovi servizi di Equipé{' '}
-                    <Link href="/legal/privacy#marketing" className="text-blue-600 underline hover:text-blue-800" target="_blank">
+                    <Link to="/legal/privacy#marketing" className="text-blue-600 underline hover:text-blue-800" target="_blank">
                       (facoltativo)
                     </Link>
                   </span>

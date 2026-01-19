@@ -1,12 +1,10 @@
-'use client';
-
 import { useAuth } from '@/contexts/AuthContext';
-import { useRouter } from 'next/navigation';
+import { useNavigate } from 'react-router-dom';
 import { useState, useEffect, useRef } from 'react';
 import { collection, addDoc, Timestamp, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { User, RoleCercato } from '@/types/equippe';
-import Link from 'next/link';
+import { Link } from 'react-router-dom';
 import Header from '@/components/Header';
 import MapSelector from '@/components/MapSelector';
 import { uploadTeamPhoto, validateTeamPhoto } from '@/lib/teamPhotoUpload';
@@ -33,7 +31,7 @@ const SPECIALIZZAZIONI = [
 
 export default function CreateTeamPage() {
   const { user, userProfile } = useAuth();
-  const router = useRouter();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [allUsers, setAllUsers] = useState<User[]>([]);
@@ -62,7 +60,7 @@ export default function CreateTeamPage() {
 
   useEffect(() => {
     if (!user) {
-      router.push('/login');
+      navigate('/login');
       return;
     }
     loadUsers();
@@ -263,7 +261,7 @@ export default function CreateTeamPage() {
       console.log('📤 Salvando team con dati:', teamData);
       await addDoc(collection(db, 'teams'), teamData);
 
-      router.push('/teams');
+      navigate('/teams');
     } catch (err: any) {
       console.error('Errore creazione team:', err);
       setError(err.message || 'Errore durante la creazione dell\'Equipé');
@@ -277,7 +275,7 @@ export default function CreateTeamPage() {
       <Header />
 
       <div className="max-w-4xl mx-auto px-6 py-8">
-        <Link href="/teams" className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700 mb-6 font-medium">
+        <Link to="/teams" className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700 mb-6 font-medium">
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
           </svg>
@@ -427,18 +425,18 @@ export default function CreateTeamPage() {
                 coordinate={formData.coordinate}
                 raggioKm={formData.raggioKm}
                 indirizzo={formData.indirizzo}
-                onCoordinateChange={(coord) => {
+                onCoordinateChange={(coord: { lat: number; lng: number } | null) => {
                   console.log('📝 onCoordinateChange chiamato con:', coord);
                   setFormData(prev => {
                     console.log('📝 Aggiornando formData da:', prev.coordinate, 'a:', coord);
                     return { ...prev, coordinate: coord };
                   });
                 }}
-                onIndirizzoChange={(addr) => {
+                onIndirizzoChange={(addr: string) => {
                   console.log('📝 onIndirizzoChange chiamato con:', addr);
                   setFormData(prev => ({ ...prev, indirizzo: addr }));
                 }}
-                onRaggioChange={(raggio) => {
+                onRaggioChange={(raggio: number) => {
                   console.log('📝 onRaggioChange chiamato con:', raggio);
                   setFormData(prev => ({ ...prev, raggioKm: raggio }));
                 }}
@@ -586,7 +584,7 @@ export default function CreateTeamPage() {
               {loading ? 'Creazione in corso...' : 'Crea Equipé'}
             </button>
             <Link
-              href="/teams"
+              to="/teams"
               className="px-6 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 text-center"
             >
               Annulla

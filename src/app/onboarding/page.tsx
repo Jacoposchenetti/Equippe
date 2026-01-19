@@ -1,7 +1,5 @@
-'use client';
-
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { doc, setDoc, Timestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
@@ -46,7 +44,7 @@ const TEMATICHE = [
 
 export default function OnboardingPage() {
   const { user } = useAuth();
-  const router = useRouter();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [formData, setFormData] = useState({
@@ -60,8 +58,8 @@ export default function OnboardingPage() {
   });
 
   useEffect(() => {
-    if (!user) router.push('/login');
-  }, [user, router]);
+    if (!user) navigate('/login');
+  }, [user, navigate]);
 
   const toggleArray = (array: string[], item: string) => {
     return array.includes(item) ? array.filter(i => i !== item) : [...array, item];
@@ -121,7 +119,7 @@ export default function OnboardingPage() {
         createdAt: Timestamp.now(),
         updatedAt: Timestamp.now(),
       });
-      router.push('/dashboard');
+      navigate('/dashboard');
     } catch (err: any) {
       setError(err.message);
     } finally {

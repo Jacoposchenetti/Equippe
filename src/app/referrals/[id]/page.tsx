@@ -1,13 +1,11 @@
-'use client';
-
 import { useAuth } from '@/contexts/AuthContext';
-import { useRouter, useParams } from 'next/navigation';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { doc, getDoc, updateDoc, Timestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { User } from '@/types/equippe';
 import { importKey, decryptData } from '@/lib/encryption';
-import Link from 'next/link';
+import { Link } from 'react-router-dom';
 import { notifyReferralAccepted } from '@/lib/notifications';
 
 interface Referral {
@@ -35,7 +33,7 @@ interface DecryptedData {
 
 export default function PazienteDetailPage() {
   const { user, userProfile } = useAuth();
-  const router = useRouter();
+  const navigate = useNavigate();
   const params = useParams();
   const referralId = params.id as string;
   
@@ -48,7 +46,7 @@ export default function PazienteDetailPage() {
 
   useEffect(() => {
     if (!user) {
-      router.push('/login');
+      navigate('/login');
       return;
     }
     loadReferralData();
@@ -59,7 +57,7 @@ export default function PazienteDetailPage() {
       // Carica paziente
       const referralDoc = await getDoc(doc(db, 'referrals', referralId));
       if (!referralDoc.exists()) {
-        router.push('/referrals');
+        navigate('/referrals');
         return;
       }
 
@@ -67,7 +65,7 @@ export default function PazienteDetailPage() {
       
       // Verifica accesso
       if (referralData.senderUid !== user?.uid && referralData.receiverUid !== user?.uid) {
-        router.push('/referrals');
+        navigate('/referrals');
         return;
       }
 
@@ -159,7 +157,7 @@ export default function PazienteDetailPage() {
       <header className="bg-white shadow">
         <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
           <h1 className="text-2xl font-bold text-blue-600">Equipé</h1>
-          <Link href="/referrals" className="text-blue-600 hover:underline">← Torna ai Referral</Link>
+          <Link to="/referrals" className="text-blue-600 hover:underline">← Torna ai Referral</Link>
         </div>
       </header>
 

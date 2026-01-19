@@ -1,25 +1,23 @@
-'use client';
-
 import { useAuth } from '@/contexts/AuthContext';
-import { useRouter } from 'next/navigation';
+import { useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Team, User } from '@/types/equippe';
-import Link from 'next/link';
+import { Link } from 'react-router-dom';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 
 export default function TeamsPage() {
   const { user, userProfile } = useAuth();
-  const router = useRouter();
+  const navigate = useNavigate();
   const [myTeams, setMyTeams] = useState<(Team & { id: string })[]>([]);
   const [teamMembers, setTeamMembers] = useState<Record<string, User[]>>({});
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!user) {
-      router.push('/login');
+      navigate('/login');
       return;
     }
 
@@ -123,7 +121,7 @@ export default function TeamsPage() {
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6 sm:mb-8">
           <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900">Le Mie Equipé</h1>
           <Link
-            href="/teams/create"
+            to="/teams/create"
             className="w-full sm:w-auto px-4 sm:px-6 py-3 bg-amber-500 text-white rounded-lg font-medium hover:bg-amber-600 transition shadow-sm text-center touch-friendly"
           >
             + Crea Nuova Equipé
@@ -137,7 +135,7 @@ export default function TeamsPage() {
               Crea la tua prima Equipé per iniziare a collaborare con altri professionisti
             </p>
             <Link
-              href="/teams/create"
+              to="/teams/create"
               className="inline-block w-full sm:w-auto px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 touch-friendly"
             >
               Crea la tua Equipé
@@ -148,7 +146,7 @@ export default function TeamsPage() {
             {myTeams.map((team) => (
               <Link
                 key={team.id}
-                href={`/teams/${team.id}`}
+                to={`/teams/${team.id}`}
                 className="bg-white p-6 rounded-lg shadow hover:shadow-xl transition"
               >
                 <div className="flex items-start gap-4 mb-4">

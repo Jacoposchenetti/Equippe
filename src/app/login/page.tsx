@@ -1,8 +1,6 @@
-'use client';
-
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import Link from 'next/link';
+import { useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 
 export default function LoginPage() {
@@ -11,7 +9,7 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const { signIn } = useAuth();
-  const router = useRouter();
+  const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -20,7 +18,7 @@ export default function LoginPage() {
 
     try {
       await signIn(email, password);
-      router.push('/dashboard');
+      navigate('/dashboard');
     } catch (err: any) {
       setError(err.message || 'Errore durante il login');
     } finally {
@@ -40,7 +38,7 @@ export default function LoginPage() {
           </h2>
           <p className="mt-2 text-center text-sm text-gray-600">
             O{' '}
-            <Link href="/register" className="font-medium text-blue-600 hover:text-blue-500">
+            <Link to="/register" className="font-medium text-blue-600 hover:text-blue-500">
               registrati come professionista
             </Link>
           </p>

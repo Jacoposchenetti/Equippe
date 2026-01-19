@@ -1,5 +1,3 @@
-'use client';
-
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useEffect, useState, useRef } from 'react';
@@ -73,7 +71,7 @@ export default function MessagesPage() {
       
       if (existingSnapshot.empty) {
         // Crea nuova conversazione di team
-        const teamMembers = team.memberIds || team.members?.map(m => m.uid) || [];
+        const teamMembers = team.memberIds || team.members?.map((m: any) => m.uid) || [];
         
         const participantsData: { [key: string]: { name: string; photoURL?: string } } = {};
         
@@ -111,7 +109,7 @@ export default function MessagesPage() {
           participantsData,
           lastMessage: 'Chat di gruppo creata',
           lastMessageTime: Timestamp.now(),
-          unreadCount: Object.fromEntries(teamMembers.map(id => [id, 0])),
+          unreadCount: Object.fromEntries(teamMembers.map((id: string) => [id, 0])),
           createdAt: Timestamp.now()
         });
       }
@@ -400,7 +398,7 @@ export default function MessagesPage() {
           file,
           selectedConversation,
           user.uid,
-          (progress) => {
+          (progress: number) => {
             setUploadProgress(prev => ({ ...prev, [fileName]: progress }));
           }
         );
@@ -468,14 +466,14 @@ export default function MessagesPage() {
       let recipientIds: string[] = [];
       
       if (conversation.type === 'team') {
-        conversation.participants.forEach(participantId => {
+        conversation.participants.forEach((participantId: string) => {
           if (participantId !== user.uid) {
             newUnreadCount[participantId] = (newUnreadCount[participantId] || 0) + 1;
             recipientIds.push(participantId);
           }
         });
       } else {
-        const receiverId = conversation.participants.find(id => id !== user.uid)!;
+        const receiverId = conversation.participants.find((id: string) => id !== user.uid)!;
         newUnreadCount[receiverId] = (newUnreadCount[receiverId] || 0) + 1;
         recipientIds = [receiverId];
       }
@@ -537,7 +535,7 @@ export default function MessagesPage() {
   }
 
   const selectedConvData = conversations.find(c => c.id === selectedConversation);
-  const otherUserId = selectedConvData?.participants.find(id => id !== user?.uid);
+  const otherUserId = selectedConvData?.participants.find((id: string) => id !== user?.uid);
   const otherUserName = otherUserId ? selectedConvData?.participantsData[otherUserId]?.name : '';
 
   return (
@@ -573,7 +571,7 @@ export default function MessagesPage() {
                     displayName = `Équipe: ${conv.teamName || 'Senza nome'}`;
                     photoURL = ''; // Icona team
                   } else {
-                    const otherId = conv.participants.find(id => id !== user?.uid);
+                    const otherId = conv.participants.find((id: string) => id !== user?.uid);
                     displayName = otherId && conv.participantsData?.[otherId]?.name || 'Sconosciuto';
                     photoURL = otherId && conv.participantsData?.[otherId]?.photoURL || '';
                   }
@@ -757,7 +755,7 @@ export default function MessagesPage() {
                               {/* Allegati */}
                               {msg.attachments && msg.attachments.length > 0 && (
                                 <div className="space-y-2 mb-2">
-                                  {msg.attachments.map((attachment) => (
+                                  {msg.attachments.map((attachment: FileAttachment) => (
                                     <div key={attachment.id} className={`border rounded-lg p-2 ${isMine ? 'border-blue-300 bg-blue-500' : 'border-gray-300 bg-white'}`}>
                                       <div className="flex items-center gap-2">
                                         <span className="text-lg">{getFileIcon(attachment.type)}</span>

@@ -1,12 +1,10 @@
-'use client';
-
 import { useAuth } from '@/contexts/AuthContext';
-import { useRouter, useParams } from 'next/navigation';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { doc, getDoc, updateDoc, Timestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Team, RoleCercato } from '@/types/equippe';
-import Link from 'next/link';
+import { Link } from 'react-router-dom';
 import Header from '@/components/Header';
 import MapSelector from '@/components/MapSelector';
 import { uploadTeamPhoto } from '@/lib/teamPhotoUpload';
@@ -33,7 +31,7 @@ const SPECIALIZZAZIONI = [
 
 export default function EditTeamPage() {
   const { user } = useAuth();
-  const router = useRouter();
+  const navigate = useNavigate();
   const params = useParams();
   const teamId = params.id as string;
   
@@ -65,7 +63,7 @@ export default function EditTeamPage() {
 
   useEffect(() => {
     if (!user) {
-      router.push('/login');
+      navigate('/login');
       return;
     }
     loadTeam();
@@ -75,7 +73,7 @@ export default function EditTeamPage() {
     try {
       const teamDoc = await getDoc(doc(db, 'teams', teamId));
       if (!teamDoc.exists()) {
-        router.push('/teams');
+        navigate('/teams');
         return;
       }
 
@@ -84,7 +82,7 @@ export default function EditTeamPage() {
       // Verifica che l'utente sia admin
       if (teamData.createdBy !== user?.uid) {
         alert('Solo l\'amministratore può modificare le impostazioni');
-        router.push(`/teams/${teamId}`);
+        navigate(`/teams/${teamId}`);
         return;
       }
 
@@ -258,7 +256,7 @@ export default function EditTeamPage() {
 
       await updateDoc(doc(db, 'teams', teamId), updateData);
 
-      router.push(`/teams/${teamId}`);
+      navigate(`/teams/${teamId}`);
     } catch (err: any) {
       console.error('Errore aggiornamento team:', err);
       setError(err.message || 'Errore durante l\'aggiornamento');
@@ -284,7 +282,7 @@ export default function EditTeamPage() {
       <Header />
 
       <div className="max-w-4xl mx-auto px-6 py-8">
-        <Link href={`/teams/${teamId}`} className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700 mb-6 font-medium">
+        <Link to={`/teams/${teamId}`} className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700 mb-6 font-medium">
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
           </svg>
@@ -393,9 +391,9 @@ export default function EditTeamPage() {
                 coordinate={formData.coordinate}
                 raggioKm={formData.raggioKm}
                 indirizzo={formData.indirizzo}
-                onCoordinateChange={(coord) => setFormData(prev => ({ ...prev, coordinate: coord }))}
-                onIndirizzoChange={(addr) => setFormData(prev => ({ ...prev, indirizzo: addr }))}
-                onRaggioChange={(raggio) => setFormData(prev => ({ ...prev, raggioKm: raggio }))}
+                onCoordinateChange={(coord: { lat: number; lng: number } | null) => setFormData(prev => ({ ...prev, coordinate: coord }))}
+                onIndirizzoChange={(addr: string) => setFormData(prev => ({ ...prev, indirizzo: addr }))}
+                onRaggioChange={(raggio: number) => setFormData(prev => ({ ...prev, raggioKm: raggio }))}
               />
             </div>
 
@@ -499,7 +497,7 @@ export default function EditTeamPage() {
               {saving ? 'Salvataggio...' : 'Salva Modifiche'}
             </button>
             <Link
-              href={`/teams/${teamId}`}
+              to={`/teams/${teamId}`}
               className="px-6 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 text-center"
             >
               Annulla

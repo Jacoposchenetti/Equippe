@@ -1,7 +1,5 @@
-'use client';
-
 import { useAuth } from '@/contexts/AuthContext';
-import { useRouter } from 'next/navigation';
+import { useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { collection, query, where, getDocs, getDoc, doc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
@@ -12,7 +10,7 @@ import EnhancedSearch, { SearchFilters } from '@/components/EnhancedSearch';
 
 export default function Dashboard() {
   const { user, userProfile } = useAuth();
-  const router = useRouter();
+  const navigate = useNavigate();
   const [professionisti, setProfessionisti] = useState<User[]>([]);
   const [teams, setTeams] = useState<Team[]>([]);
   const [loading, setLoading] = useState(true);
@@ -45,7 +43,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (!user) {
-      router.push('/login');
+      navigate('/login');
       return;
     }
 
@@ -457,7 +455,7 @@ export default function Dashboard() {
 
                     {/* Button */}
                     <button 
-                      onClick={() => router.push(`/profile/${p.uid}`)}
+                      onClick={() => navigate(`/profile/${p.uid}`)}
                       className="w-full py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition"
                     >
                       Vedi Profilo
@@ -605,7 +603,7 @@ export default function Dashboard() {
 
                     {/* Button */}
                     <button 
-                      onClick={() => router.push(`/teams/${team.teamId || team.id}`)}
+                      onClick={() => navigate(`/teams/${team.teamId || team.id}`)}
                       className="w-full py-3 bg-blue-500 text-white font-medium rounded-lg hover:bg-blue-600 transition"
                     >
                       Vedi Equipé

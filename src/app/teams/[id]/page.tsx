@@ -1,12 +1,10 @@
-'use client';
-
 import { useAuth } from '@/contexts/AuthContext';
-import { useRouter, useParams } from 'next/navigation';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useEffect, useState, useRef } from 'react';
 import { doc, getDoc, updateDoc, arrayUnion, arrayRemove, Timestamp, collection, getDocs, addDoc, deleteDoc, query, where, onSnapshot, orderBy } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Team, User, Conversation, Message, ConversationType } from '@/types/equippe';
-import Link from 'next/link';
+import { Link } from 'react-router-dom';
 import Header from '@/components/Header';
 import MapSelector from '@/components/MapSelector';
 import { notifyTeamRequest, notifyTeamRequestAccepted, notifyTeamRemoval, notifyTeamAdminPromotion, notifyTeamMemberLeft, notifyTeamInviteReceived } from '@/lib/notifications';
@@ -14,7 +12,7 @@ import { occupyPositions, freePositions } from '@/lib/teamPositions';
 
 export default function TeamDetailPage() {
   const { user, userProfile } = useAuth();
-  const router = useRouter();
+  const navigate = useNavigate();
   const params = useParams();
   const teamId = params.id as string;
   
@@ -65,7 +63,7 @@ export default function TeamDetailPage() {
 
   useEffect(() => {
     if (!user) {
-      router.push('/login');
+      navigate('/login');
       return;
     }
     loadTeamData();
@@ -76,7 +74,7 @@ export default function TeamDetailPage() {
       // Carica team
       const teamDoc = await getDoc(doc(db, 'teams', teamId));
       if (!teamDoc.exists()) {
-        router.push('/teams');
+        navigate('/teams');
         return;
       }
 
@@ -209,7 +207,7 @@ export default function TeamDetailPage() {
           }
         }
 
-        router.push('/teams');
+        navigate('/teams');
       } catch (error) {
         console.error('Errore uscita dal team:', error);
         alert('Errore durante l\'uscita dal team');
@@ -255,7 +253,7 @@ export default function TeamDetailPage() {
           await deleteDoc(teamRef);
         }
 
-        router.push('/teams');
+        navigate('/teams');
       } catch (error) {
         console.error('Errore uscita dal team:', error);
         alert('Errore durante l\'uscita dal team');
@@ -279,7 +277,7 @@ export default function TeamDetailPage() {
       // await Promise.all(invitesSnapshot.docs.map(doc => deleteDoc(doc.ref)));
 
       alert('Equipé eliminata con successo');
-      router.push('/teams');
+      navigate('/teams');
     } catch (error) {
       console.error('Errore eliminazione team:', error);
       alert('Errore durante l\'eliminazione del team');
@@ -684,7 +682,7 @@ export default function TeamDetailPage() {
       <Header />
 
       <div className="max-w-5xl mx-auto px-6 py-8">
-        <Link href="/teams" className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700 mb-6 font-medium">
+        <Link to="/teams" className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700 mb-6 font-medium">
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
           </svg>
@@ -1377,7 +1375,7 @@ export default function TeamDetailPage() {
                   <div className="flex items-center gap-2 ml-4">
                     {!isCurrentUser && (
                       <button
-                        onClick={() => router.push(`/messages?userId=${member.uid}`)}
+                        onClick={() => navigate(`/messages?userId=${member.uid}`)}
                         className="p-3 text-blue-600 hover:bg-blue-50 rounded-lg font-medium transition flex items-center gap-2"
                         title="Invia messaggio"
                       >

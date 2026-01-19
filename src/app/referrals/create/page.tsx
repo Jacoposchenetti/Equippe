@@ -1,18 +1,16 @@
-'use client';
-
 import { useAuth } from '@/contexts/AuthContext';
-import { useRouter } from 'next/navigation';
+import { useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { collection, addDoc, getDocs, query, where, Timestamp, getDoc, doc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { User, Team } from '@/types/equippe';
 import { generateEncryptionKey, exportKey, encryptData } from '@/lib/encryption';
-import Link from 'next/link';
+import { Link } from 'react-router-dom';
 import { notifyReferralReceived } from '@/lib/notifications';
 
 export default function CreatePazientePage() {
   const { user, userProfile } = useAuth();
-  const router = useRouter();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [professionisti, setProfessionisti] = useState<User[]>([]);
@@ -34,7 +32,7 @@ export default function CreatePazientePage() {
 
   useEffect(() => {
     if (!user) {
-      router.push('/login');
+      navigate('/login');
       return;
     }
     loadProfessionisti();
@@ -170,7 +168,7 @@ export default function CreatePazientePage() {
         referralRef.id
       );
 
-      router.push('/referrals');
+      navigate('/referrals');
     } catch (err: any) {
       console.error('Errore creazione paziente:', err);
       setError(err.message || 'Errore durante la creazione del paziente');
@@ -184,7 +182,7 @@ export default function CreatePazientePage() {
       <header className="bg-white shadow">
         <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
           <h1 className="text-2xl font-bold text-blue-600">Equipé</h1>
-          <Link href="/referrals" className="text-blue-600 hover:underline">← Torna ai Pazienti</Link>
+          <Link to="/referrals" className="text-blue-600 hover:underline">← Torna ai Pazienti</Link>
         </div>
       </header>
 
@@ -388,7 +386,7 @@ export default function CreatePazientePage() {
               {loading ? 'Invio in corso...' : 'Invia Paziente'}
             </button>
             <Link
-              href="/referrals"
+              to="/referrals"
               className="px-6 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 text-center"
             >
               Annulla

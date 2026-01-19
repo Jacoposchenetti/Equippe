@@ -1,12 +1,14 @@
-import type { Metadata, Viewport } from 'next';
+// File Next.js - non utilizzato in Vite (il layout Ã¨ gestito in src/App.tsx)
+// import type { Metadata, Viewport } from 'next';
 import { AuthProvider } from '@/contexts/AuthContext';
 import PushNotificationManager from '@/components/PushNotificationManager';
 import './globals.css';
 import 'leaflet/dist/leaflet.css';
 
+/*
 export const metadata: Metadata = {
-  title: 'Equipé - Piattaforma per professionisti sociosanitari',
-  description: 'Trova colleghi, forma equipé multidisciplinari e collabora',
+  title: 'EquipÃ© - Piattaforma per professionisti sociosanitari',
+  description: 'Trova colleghi, forma equipÃ© multidisciplinari e collabora',
 };
 
 export const viewport: Viewport = {
@@ -15,6 +17,7 @@ export const viewport: Viewport = {
   maximumScale: 1,
   userScalable: false,
 };
+*/
 
 export default function RootLayout({
   children,

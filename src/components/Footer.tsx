@@ -1,6 +1,6 @@
 'use client';
 
-import Link from 'next/link';
+import { Link } from 'react-router-dom';
 
 export default function Footer() {
   return (
@@ -24,11 +24,11 @@ export default function Footer() {
           <div>
             <h4 className="font-semibold mb-4">Servizi</h4>
             <ul className="space-y-3 text-sm">
-              <li><Link href="/dashboard" className="text-gray-400 hover:text-white transition">Cerca Professionisti</Link></li>
-              <li><Link href="/teams" className="text-gray-400 hover:text-white transition">Le Mie Équipe</Link></li>
-              <li><Link href="/messages" className="text-gray-400 hover:text-white transition">Messaggi</Link></li>
-              <li><Link href="/referrals" className="text-gray-400 hover:text-white transition">Pazienti</Link></li>
-              <li><Link href="/invites" className="text-gray-400 hover:text-white transition">Inviti</Link></li>
+              <li><Link to="/dashboard" className="text-gray-400 hover:text-white transition">Cerca Professionisti</Link></li>
+              <li><Link to="/teams" className="text-gray-400 hover:text-white transition">Le Mie Équipe</Link></li>
+              <li><Link to="/messages" className="text-gray-400 hover:text-white transition">Messaggi</Link></li>
+              <li><Link to="/referrals" className="text-gray-400 hover:text-white transition">Pazienti</Link></li>
+              <li><Link to="/invites" className="text-gray-400 hover:text-white transition">Inviti</Link></li>
             </ul>
           </div>
 
@@ -47,9 +47,9 @@ export default function Footer() {
           <div>
             <h4 className="font-semibold mb-4">Informazioni Legali</h4>
             <ul className="space-y-3 text-sm">
-              <li><Link href="/legal/termini" className="text-gray-400 hover:text-white transition">Termini e Condizioni</Link></li>
-              <li><Link href="/legal/privacy" className="text-gray-400 hover:text-white transition">Privacy Policy</Link></li>
-              <li><Link href="/legal/cookie" className="text-gray-400 hover:text-white transition">Cookie Policy</Link></li>
+              <li><Link to="/legal/termini" className="text-gray-400 hover:text-white transition">Termini e Condizioni</Link></li>
+              <li><Link to="/legal/privacy" className="text-gray-400 hover:text-white transition">Privacy Policy</Link></li>
+              <li><Link to="/legal/cookie" className="text-gray-400 hover:text-white transition">Cookie Policy</Link></li>
               <li><a href="mailto:dpo@equippe.it" className="text-gray-400 hover:text-white transition">Data Protection Officer</a></li>
               <li><a href="mailto:legal@equippe.it" className="text-gray-400 hover:text-white transition">Ufficio Legale</a></li>
             </ul>

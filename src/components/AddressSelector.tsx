@@ -56,7 +56,7 @@ export default function MapSelector({
   }, [inputValue]);
 
   const searchAddresses = async (query: string) => {
-    const token = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
+    const token = import.meta.env.VITE_MAPBOX_TOKEN;
     if (!token) {
       console.error('Mapbox token non configurato');
       return;

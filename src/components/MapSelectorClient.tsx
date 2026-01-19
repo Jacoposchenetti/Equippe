@@ -43,6 +43,9 @@ export default function MapSelector({
   const [suggestions, setSuggestions] = useState<AddressSuggestion[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [selectedSuggestionIndex, setSelectedSuggestionIndex] = useState(-1);
+  
+  // Default coordinates (Rome center) if no coordinates provided
+  const currentCoordinate = coordinate || { lat: 41.9028, lng: 12.4964 };
 
   useEffect(() => {
     setIsClient(true);
@@ -60,15 +63,19 @@ export default function MapSelector({
       useMap = reactLeaflet.useMap;
       L = leaflet.default;
       
-      // Fix per i marker di Leaflet in Next.js
-      delete (L.Icon.Default.prototype as any)._getIconUrl;
-      L.Icon.Default.mergeOptions({
-        iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
-        iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
-        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-      });
+      // Fix per i marker di Leaflet
+      if (typeof window !== 'undefined') {
+        delete (L.Icon.Default.prototype as any)._getIconUrl;
+        L.Icon.Default.mergeOptions({
+          iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
+          iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+          shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+        });
+      }
       
       setIsMapReady(true);
+    }).catch(error => {
+      console.error('Error loading map components:', error);
     });
   }, []);
 
@@ -87,7 +94,7 @@ export default function MapSelector({
   }, [searchAddress]);
 
   const fetchMapboxSuggestions = async (query: string) => {
-    const token = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
+    const token = import.meta.env.VITE_MAPBOX_TOKEN;
     if (!token) {
       console.error('Mapbox token non configurato');
       return;
@@ -126,7 +133,7 @@ export default function MapSelector({
   const geocodeAddress = async () => {
     if (!searchAddress.trim()) return;
     
-    const token = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
+    const token = import.meta.env.VITE_MAPBOX_TOKEN;
     if (!token) {
       alert('Token Mapbox non configurato');
       return;
@@ -178,7 +185,7 @@ export default function MapSelector({
     }
   };
 
-  const defaultCenter = coordinate || { lat: 41.9028, lng: 12.4964 }; // Roma di default
+  const defaultCenter = currentCoordinate; // Use current coordinate or Rome default
 
   // Componenti per la mappa (definiti qui per accedere agli hooks)
   const MapClickHandler = ({ onLocationSelect }: { onLocationSelect: (lat: number, lng: number) => void }) => {
@@ -191,12 +198,12 @@ export default function MapSelector({
     return null;
   };
 
-  const MapUpdater = ({ coordinate, raggioKm }: { coordinate: { lat: number; lng: number } | null; raggioKm: number }) => {
+  const MapUpdater = ({ coordinate, raggioKm }: { coordinate: { lat: number; lng: number }; raggioKm: number }) => {
     if (!useMap) return null;
     const map = useMap();
     
     useEffect(() => {
-      if (coordinate && map) {
+      if (map) {
         let zoom = 13;
         if (raggioKm <= 2) zoom = 15;
         else if (raggioKm <= 5) zoom = 14;
@@ -235,26 +242,20 @@ export default function MapSelector({
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
-          <MapUpdater coordinate={coordinate} raggioKm={raggioKm} />
+          <MapUpdater coordinate={currentCoordinate} raggioKm={raggioKm} />
           <MapClickHandler
             onLocationSelect={(lat, lng) => {
               console.log('🖱️ Click sulla mappa:', { lat, lng });
               onCoordinateChange({ lat, lng });
             }}
           />
-          {coordinate ? (
-            <>
-              {console.log('✅ Rendering marker at:', coordinate)}
-              <Marker position={[coordinate.lat, coordinate.lng]} />
-              <Circle
-                center={[coordinate.lat, coordinate.lng]}
-                radius={raggioKm * 1000}
-                pathOptions={{ color: 'blue', fillColor: 'blue', fillOpacity: 0.1 }}
-              />
-            </>
-          ) : (
-            console.log('❌ No coordinate, no marker')
-          )}
+          {console.log('✅ Rendering marker at:', currentCoordinate)}
+          <Marker position={[currentCoordinate.lat, currentCoordinate.lng]} />
+          <Circle
+            center={[currentCoordinate.lat, currentCoordinate.lng]}
+            radius={raggioKm * 1000}
+            pathOptions={{ color: 'blue', fillColor: 'blue', fillOpacity: 0.1 }}
+          />
         </MapContainer>
         
         <div className="absolute top-2 left-2 bg-white px-3 py-2 rounded shadow-lg text-sm z-[1000]">

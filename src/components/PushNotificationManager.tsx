@@ -2,12 +2,13 @@
 
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { usePathname } from 'next/navigation';
+import { useLocation } from 'react-router-dom';
 import { requestNotificationPermission, saveFCMToken, onMessageListener } from '@/lib/notifications';
 
 export default function PushNotificationManager() {
   const { user, userProfile } = useAuth();
-  const pathname = usePathname();
+  const location = useLocation();
+  const pathname = location.pathname;
   const [permission, setPermission] = useState<NotificationPermission>('default');
   const [showPrompt, setShowPrompt] = useState(false);
 

@@ -5,11 +5,11 @@ import { useAuth } from '@/contexts/AuthContext';
 import { db } from '@/lib/firebase';
 import { collection, query, where, onSnapshot, orderBy, updateDoc, doc, Timestamp, getDoc } from 'firebase/firestore';
 import { Notification } from '@/types/equippe';
-import { useRouter } from 'next/navigation';
+import { useNavigate } from 'react-router-dom';
 
 export default function NotificationBell() {
   const { user } = useAuth();
-  const router = useRouter();
+  const navigate = useNavigate();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [showDropdown, setShowDropdown] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -101,22 +101,22 @@ export default function NotificationBell() {
     // Naviga in base al tipo di notifica
     switch (notification.type) {
       case 'team_request':
-        if (notification.teamId) router.push(`/teams/${notification.teamId}`);
+        if (notification.teamId) navigate(`/teams/${notification.teamId}`);
         break;
       case 'message':
-        if (notification.conversationId) router.push(`/messages?conversation=${notification.conversationId}`);
+        if (notification.conversationId) navigate(`/messages?conversation=${notification.conversationId}`);
         break;
       case 'team_request_accepted':
       case 'team_removed':
       case 'team_admin':
-        if (notification.teamId) router.push(`/teams/${notification.teamId}`);
+        if (notification.teamId) navigate(`/teams/${notification.teamId}`);
         break;
       case 'team_invite_response':
-        router.push('/teams');
+        navigate('/teams');
         break;
       case 'referral_received':
       case 'referral_accepted':
-        if (notification.referralId) router.push(`/referrals/${notification.referralId}`);
+        if (notification.referralId) navigate(`/referrals/${notification.referralId}`);
         break;
     }
   };

@@ -1,8 +1,8 @@
 'use client';
 
-import Link from 'next/link';
+import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { usePathname, useRouter } from 'next/navigation';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
@@ -11,8 +11,9 @@ import NotificationBell from './NotificationBell';
 
 export default function Header() {
   const { user, userProfile, signOut } = useAuth();
-  const pathname = usePathname();
-  const router = useRouter();
+  const location = useLocation();
+  const pathname = location.pathname;
+  const navigate = useNavigate();
   const [showDropdown, setShowDropdown] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [unreadMessages, setUnreadMessages] = useState(0);
@@ -26,7 +27,7 @@ export default function Header() {
 
   const handleLogout = async () => {
     await signOut();
-    router.push('/');
+    navigate('/');
   };
 
   const getInitials = () => {
@@ -50,7 +51,7 @@ export default function Header() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
-          <Link href="/dashboard" className="flex items-center gap-2 hover:opacity-80 transition">
+          <Link to="/dashboard" className="flex items-center gap-2 hover:opacity-80 transition">
             <div className="bg-blue-500 p-2 rounded-lg">
               <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 0 0-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 0 1 5.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 0 1 9.288 0M15 7a3 3 0 1 1-6 0 3 3 0 0 1 6 0zm6 3a2 2 0 1 1-4 0 2 2 0 0 1 4 0zM7 10a2 2 0 1 1-4 0 2 2 0 0 1 4 0z" />
@@ -64,7 +65,7 @@ export default function Header() {
             {navLinks.map((link) => (
               <Link
                 key={link.href}
-                href={link.href}
+                to={link.href}
                 className={`text-sm font-medium transition hover:text-blue-400 relative ${
                   pathname === link.href ? 'text-blue-400' : 'text-gray-300'
                 }`}
@@ -113,11 +114,11 @@ export default function Header() {
                       <p className="text-xs text-gray-500">{user?.email}</p>
                     </div>
                     <Link
-                      href="/profile/edit"
+                      to="/profile/edit"
                       onClick={() => setShowDropdown(false)}
                       className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition"
                     >
-                      Modifica Profilo
+                      Il Mio Profilo
                     </Link>
                     <button
                       onClick={handleLogout}
@@ -152,7 +153,7 @@ export default function Header() {
               {navLinks.map((link) => (
                 <Link
                   key={link.href}
-                  href={link.href}
+                  to={link.href}
                   className={`flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition ${
                     pathname === link.href 
                       ? 'text-blue-400 bg-gray-700' 
@@ -190,11 +191,11 @@ export default function Header() {
                 </div>
                 
                 <Link
-                  href="/profile/edit"
+                  to="/profile/edit"
                   className="flex items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded-lg transition"
                   onClick={() => setShowMobileMenu(false)}
                 >
-                  Modifica Profilo
+                  Il Mio Profilo
                 </Link>
                 
                 <button

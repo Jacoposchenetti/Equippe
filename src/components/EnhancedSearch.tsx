@@ -32,7 +32,7 @@ export default function EnhancedSearch({ onSearch, availableSpecializations = []
   const geocodeAddress = async (address: string) => {
     if (!address.trim()) return;
     
-    const token = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
+    const token = import.meta.env.VITE_MAPBOX_TOKEN;
     if (!token) {
       console.error('Mapbox token non configurato');
       return;

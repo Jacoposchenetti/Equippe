@@ -281,7 +281,7 @@ export async function requestNotificationPermission(): Promise<string | null> {
 
     // Ottieni token FCM
     const token = await getToken(messaging, {
-      vapidKey: process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY
+      vapidKey: import.meta.env.VITE_FIREBASE_VAPID_KEY
     });
 
     if (token) {

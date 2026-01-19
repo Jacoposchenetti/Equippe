@@ -1,12 +1,12 @@
-ï»¿import type { Metadata, Viewport } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { AuthProvider } from '@/contexts/AuthContext';
 import PushNotificationManager from '@/components/PushNotificationManager';
 import './globals.css';
 import 'leaflet/dist/leaflet.css';
 
 export const metadata: Metadata = {
-  title: 'EquipÃ© - Piattaforma per professionisti sociosanitari',
-  description: 'Trova colleghi, forma equipÃ© multidisciplinari e collabora',
+  title: 'Equipé - Piattaforma per professionisti sociosanitari',
+  description: 'Trova colleghi, forma equipé multidisciplinari e collabora',
 };
 
 export const viewport: Viewport = {

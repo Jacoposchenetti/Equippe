@@ -1,7 +1,7 @@
 'use client';
 
 import { useAuth } from '@/contexts/AuthContext';
-import { useRouter, useParams } from 'next/navigation';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { doc, getDoc, collection, query, where, getDocs, addDoc, Timestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
@@ -11,7 +11,7 @@ import { notifyTeamInviteReceived } from '@/lib/notifications';
 
 export default function ProfilePage() {
   const { user: currentUser, userProfile } = useAuth();
-  const router = useRouter();
+  const navigate = useNavigate();
   const params = useParams();
   const uid = params.uid as string;
 

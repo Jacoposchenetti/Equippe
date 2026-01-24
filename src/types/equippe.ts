@@ -111,7 +111,9 @@ export interface RoleCercato {
   specializzazione: string; // es: "Psichiatra", "Fisioterapista"
   numero: number; // quanti ne servono
   descrizione?: string; // cosa si cerca in questa figura
-  occupati: number; // quanti già trovati
+  occupati: number; // quanti già trovati (legacy)
+  postiTotali?: number; // Totale posti disponibili (nuovo)
+  postiOccupati?: number; // Posti occupati (nuovo)
 }
 
 export interface Team {

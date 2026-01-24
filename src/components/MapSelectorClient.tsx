@@ -13,12 +13,17 @@ let useMap: any;
 let L: any;
 
 interface MapSelectorProps {
-  coordinate: { lat: number; lng: number } | null;
-  raggioKm: number;
-  indirizzo: string;
-  onCoordinateChange: (coord: { lat: number; lng: number }) => void;
-  onIndirizzoChange: (addr: string) => void;
-  onRaggioChange: (raggio: number) => void;
+  coordinate?: { lat: number; lng: number } | null;
+  raggioKm?: number;
+  indirizzo?: string;
+  onCoordinateChange?: (coord: { lat: number; lng: number }) => void;
+  onIndirizzoChange?: (addr: string) => void;
+  onRaggioChange?: (raggio: number) => void;
+  // Nuove props per compatibilità
+  initialCenter?: { lat: number; lng: number };
+  initialZoom?: number;
+  onLocationSelect?: (location: { coordinate: { lat: number; lng: number }; address: string }) => void;
+  selectedLocation?: { coordinate: { lat: number; lng: number }; address: string };
 }
 
 interface AddressSuggestion {
@@ -30,14 +35,43 @@ interface AddressSuggestion {
 
 export default function MapSelector({
   coordinate,
-  raggioKm,
-  indirizzo,
+  raggioKm = 10,
+  indirizzo = '',
   onCoordinateChange,
   onIndirizzoChange,
   onRaggioChange,
+  // Nuove props
+  initialCenter,
+  initialZoom,
+  onLocationSelect,
+  selectedLocation,
 }: MapSelectorProps) {
   const [isClient, setIsClient] = useState(false);
   const [isMapReady, setIsMapReady] = useState(false);
+  
+  // Usa le nuove props se disponibili, altrimenti le vecchie
+  const effectiveCoordinate = selectedLocation?.coordinate || coordinate || initialCenter || { lat: 41.9028, lng: 12.4964 };
+  const effectiveIndirizzo = selectedLocation?.address || indirizzo;
+  const effectiveRaggio = raggioKm;
+  
+  // Wrapper per compatibilità
+  const handleCoordinateChange = (coord: { lat: number; lng: number }) => {
+    if (onLocationSelect) {
+      onLocationSelect({ coordinate: coord, address: effectiveIndirizzo });
+    }
+    if (onCoordinateChange) {
+      onCoordinateChange(coord);
+    }
+  };
+  
+  const handleIndirizzoChange = (addr: string) => {
+    if (onLocationSelect && effectiveCoordinate) {
+      onLocationSelect({ coordinate: effectiveCoordinate, address: addr });
+    }
+    if (onIndirizzoChange) {
+      onIndirizzoChange(addr);
+    }
+  };
   const [searchAddress, setSearchAddress] = useState(indirizzo);
   const [isGeocoding, setIsGeocoding] = useState(false);
   const [suggestions, setSuggestions] = useState<AddressSuggestion[]>([]);
@@ -45,7 +79,7 @@ export default function MapSelector({
   const [selectedSuggestionIndex, setSelectedSuggestionIndex] = useState(-1);
   
   // Default coordinates (Rome center) if no coordinates provided
-  const currentCoordinate = coordinate || { lat: 41.9028, lng: 12.4964 };
+  const currentCoordinate = effectiveCoordinate;
 
   useEffect(() => {
     setIsClient(true);
@@ -123,8 +157,8 @@ export default function MapSelector({
 
   const selectSuggestion = (suggestion: AddressSuggestion) => {
     setSearchAddress(suggestion.display_name);
-    onCoordinateChange({ lat: parseFloat(suggestion.lat), lng: parseFloat(suggestion.lon) });
-    onIndirizzoChange(suggestion.display_name);
+    handleCoordinateChange({ lat: parseFloat(suggestion.lat), lng: parseFloat(suggestion.lon) });
+    handleIndirizzoChange(suggestion.display_name);
     setShowSuggestions(false);
     setSuggestions([]);
     setSelectedSuggestionIndex(-1);
@@ -150,8 +184,8 @@ export default function MapSelector({
         const feature = data.features[0];
         const [lng, lat] = feature.center;
         console.log('📍 Geocoding trovato:', { lat, lng, address: feature.place_name });
-        onCoordinateChange({ lat, lng });
-        onIndirizzoChange(feature.place_name);
+        handleCoordinateChange({ lat, lng });
+        handleIndirizzoChange(feature.place_name);
         setSearchAddress(feature.place_name);
       } else {
         alert('Indirizzo non trovato. Prova a essere più specifico.');
@@ -246,7 +280,7 @@ export default function MapSelector({
           <MapClickHandler
             onLocationSelect={(lat, lng) => {
               console.log('🖱️ Click sulla mappa:', { lat, lng });
-              onCoordinateChange({ lat, lng });
+              handleCoordinateChange({ lat, lng });
             }}
           />
           {console.log('✅ Rendering marker at:', currentCoordinate)}

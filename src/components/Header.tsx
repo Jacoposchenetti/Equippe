@@ -46,6 +46,9 @@ export default function Header() {
     { href: '/messages', label: 'Messaggi', badge: unreadMessages },
   ];
 
+  // Link admin visibile solo per admin
+  const isAdmin = user?.email === 'jschenetti@gmail.com';
+
   return (
     <header className="bg-gray-800 text-white shadow-lg">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -78,6 +81,18 @@ export default function Header() {
                 )}
               </Link>
             ))}
+            
+            {/* Admin link */}
+            {isAdmin && (
+              <Link
+                to="/admin/verifications"
+                className={`text-sm font-medium transition hover:text-yellow-400 relative ${
+                  pathname === '/admin/verifications' ? 'text-yellow-400' : 'text-gray-300'
+                }`}
+              >
+                ⚙️ Admin
+              </Link>
+            )}
           </nav>
 
           {/* Desktop User Area */}

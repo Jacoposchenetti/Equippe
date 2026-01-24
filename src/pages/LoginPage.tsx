@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { auth } from '@/lib/firebase';
+import { sendEmailVerification } from 'firebase/auth';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -17,6 +19,21 @@ export default function LoginPage() {
 
     try {
       await signIn(email, password);
+      
+      // Verifica che l'email sia stata verificata
+      const currentUser = auth.currentUser;
+      if (currentUser && !currentUser.emailVerified) {
+        try {
+          await sendEmailVerification(currentUser);
+        } catch (e) {
+          console.error('Errore invio email di verifica:', e);
+        }
+        // Mantieni l'utente autenticato temporaneamente e reindirizza alla pagina di verifica
+        navigate('/verify-email');
+        setLoading(false);
+        return;
+      }
+
       navigate('/dashboard');
     } catch (err: any) {
       setError(err.message || 'Errore durante il login');

@@ -1,47 +1,93 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    
     function isAuthenticated() {
       return request.auth != null;
     }
+    
     function isOwner(uid) {
       return request.auth.uid == uid;
     }
+    
+    function isAdmin() {
+      return request.auth.token.email == 'jschenetti@gmail.com';
+    }
+    
+    // Funzione per verificare se l'utente può interagire
+    // Deve avere email verificata E status approvato
+    function canInteract() {
+      let userData = get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+      return isAuthenticated() 
+        && request.auth.token.email_verified == true
+        && userData.profile.verificationInfo.status == 'approved';
+    }
+    
+    // Versione semplificata per operazioni write (crea nuovi documenti)
+    // Non può fare get() durante la creazione, quindi controlla solo email_verified
+    function canWrite() {
+      return isAuthenticated() && request.auth.token.email_verified == true;
+    }
+    
     match /users/{userId} {
       allow read: if isAuthenticated();
-      allow write: if isAuthenticated() && isOwner(userId);
+      // Permetti la creazione del proprio profilo durante la registrazione (anche senza email verificata)
+      // Permetti aggiornamento solo se proprietario o admin
+      allow create: if isAuthenticated() && isOwner(userId);
+      allow update, delete: if isAuthenticated() && (isOwner(userId) || isAdmin());
     }
+    
     match /teams/{teamId} {
       allow read: if isAuthenticated();
-      allow write: if isAuthenticated();
+      // Solo utenti verificati possono creare/modificare team
+      allow create: if canWrite();
+      allow update, delete: if canInteract();
     }
+    
     match /referrals/{refId} {
       allow read: if isAuthenticated() && (request.auth.uid == resource.data.senderUid || request.auth.uid == resource.data.receiverUid);
-      allow create: if isAuthenticated();
-      allow update: if isAuthenticated() && (request.auth.uid == resource.data.senderUid || request.auth.uid == resource.data.receiverUid);
-      allow delete: if isAuthenticated() && request.auth.uid == resource.data.senderUid;
+      // Solo utenti verificati possono creare/modificare referral
+      allow create: if canWrite();
+      allow update: if canInteract() && (request.auth.uid == resource.data.senderUid || request.auth.uid == resource.data.receiverUid);
+      allow delete: if canInteract() && request.auth.uid == resource.data.senderUid;
     }
+    
     match /teamInvites/{inviteId} {
       allow list: if isAuthenticated();
       allow get: if isAuthenticated() && (request.auth.uid == resource.data.fromUserId || request.auth.uid == resource.data.toUserId);
-      allow create: if isAuthenticated() && request.auth.uid == request.resource.data.fromUserId;
+      // Solo utenti verificati possono inviare inviti
+      allow create: if canWrite() && request.auth.uid == request.resource.data.fromUserId;
       allow update: if isAuthenticated() && (request.auth.uid == resource.data.fromUserId || request.auth.uid == resource.data.toUserId);
       allow delete: if isAuthenticated() && request.auth.uid == resource.data.fromUserId;
     }
+
     match /teamRequests/{requestId} {
       allow read: if isAuthenticated();
-      allow create: if isAuthenticated() && request.auth.uid == request.resource.data.userId;
+      // Solo utenti verificati possono creare richieste
+      allow create: if canWrite() && request.auth.uid == request.resource.data.userId;
       allow update: if isAuthenticated();
       allow delete: if isAuthenticated();
     }
+
     match /notifications/{notificationId} {
-      allow read, write: if isAuthenticated();
+      allow read: if isAuthenticated() && request.auth.uid == resource.data.userId;
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() && request.auth.uid == resource.data.userId;
+      allow delete: if isAuthenticated() && request.auth.uid == resource.data.userId;
     }
+
     match /conversations/{conversationId} {
-      allow read, write: if isAuthenticated();
+      // Solo utenti verificati possono creare/modificare conversazioni
+      allow read: if isAuthenticated();
+      allow create: if canWrite();
+      allow update, delete: if canInteract();
     }
+
     match /messages/{messageId} {
-      allow read, write: if isAuthenticated();
+      // Solo utenti verificati possono creare/leggere messaggi
+      allow read: if canInteract();
+      allow create: if canWrite();
+      allow update, delete: if canInteract();
     }
   }
 }

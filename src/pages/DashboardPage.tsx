@@ -9,10 +9,13 @@ import { User, Team } from '../types/equippe';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import EnhancedSearch, { SearchFilters } from '../components/EnhancedSearch';
+import VerificationBanner from '../components/VerificationBanner';
+import { useCanInteract } from '../hooks/useCanInteract';
 
 export default function DashboardPage() {
   const { user, userProfile } = useAuth();
   const navigate = useNavigate();
+  const { canInteract } = useCanInteract();
   const [professionisti, setProfessionisti] = useState<User[]>([]);
   const [teams, setTeams] = useState<Team[]>([]);
   const [loading, setLoading] = useState(true);
@@ -324,11 +327,19 @@ export default function DashboardPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
+      <VerificationBanner />
 
       <div className="max-w-7xl mx-auto px-6 py-8">
         <h1 className="text-4xl font-bold text-gray-900 mb-8">
           {currentFilters.type === 'professionista' ? 'Cerca Professionisti' : 'Cerca Equipé'}
         </h1>
+        {!canInteract && (
+          <div className="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <p className="text-sm text-blue-700">
+              ℹ️ Puoi navigare il sito, ma dovrai completare la verifica per poter interagire con altri professionisti
+            </p>
+          </div>
+        )}
 
         {/* Enhanced Search */}
         <div className="mb-8">

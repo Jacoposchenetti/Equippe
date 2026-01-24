@@ -1,5 +1,21 @@
 import { Timestamp } from 'firebase/firestore';
 
+// Verification Types
+export type VerificationStatus = 
+  | 'pending'      // In attesa di verifica (nuovo utente)
+  | 'approved'     // Verificato e abilitato
+  | 'rejected'     // Verifica fallita, serve nuova documentazione
+  | 'suspended';   // Sospeso (per violazioni, ecc.)
+
+export interface VerificationInfo {
+  status: VerificationStatus;
+  submittedAt: Timestamp;          // Quando ha inviato la documentazione
+  lastCheckedAt?: Timestamp;       // Ultima verifica da parte di admin
+  checkedBy?: string;              // UID dell'admin che ha verificato
+  rejectionReason?: string;        // Motivo del rifiuto
+  notes?: string;                  // Note interne per admin
+}
+
 // User Profile Types
 export interface Location {
   lat: number;
@@ -19,16 +35,34 @@ export interface Studio {
   raggioKm?: number; // Raggio di copertura in km
 }
 
+// Documenti e informazioni di verifica per ogni professione
+export interface DocumentoVerifica {
+  tipo: 'albo' | 'certificato' | 'altro';
+  nome: string;
+  valore: string; // Il valore inserito dall'utente (numero albo, ecc.)
+  fileURL?: string; // URL del file caricato su Firebase Storage (opzionale)
+}
+
+export interface ProfessioneConDocumenti {
+  professione: string; // Nome della professione
+  documenti: DocumentoVerifica[]; // Documenti richiesti per questa professione
+  note?: string; // Note aggiuntive dell'utente
+  tematiche?: string[]; // Tematiche specifiche per questa professione
+  anniEsperienza?: string; // Anni di esperienza in questa professione
+}
+
 export interface UserProfile {
   nome: string;
-  albo: string;
-  specializzazioni: string[];
+  albo: string; // @deprecated - mantenuto per retrocompatibilità
+  specializzazioni: string[]; // @deprecated - usare professioniConDocumenti
+  professioniConDocumenti?: ProfessioneConDocumenti[]; // NUOVO: lista professioni con relativi documenti
   tematiche: string[];
   esperienza: string;
   location: Location; // Mantengo per compatibilità
   studi: Studio[]; // Nuovi studi multipli
   disponibilità: string;
-  verified: boolean;
+  verified: boolean; // @deprecated - usare verificationInfo.status === 'approved'
+  verificationInfo?: VerificationInfo; // Sistema di verifica avanzato
   bio?: string;
   telefono?: string;
   linkedin?: string;

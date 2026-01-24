@@ -19,7 +19,7 @@ interface AuthContextType {
   userProfile: User | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string, displayName: string) => Promise<void>;
+  signUp: (email: string, password: string, displayName: string) => Promise<FirebaseUser>;
   signOut: () => Promise<void>;
   refreshUserProfile: () => Promise<void>;
   refreshProfile: () => Promise<void>;
@@ -78,10 +78,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await signInWithEmailAndPassword(auth, email, password);
   };
 
-  const signUp = async (email: string, password: string, displayName: string): Promise<void> => {
+  const signUp = async (email: string, password: string, displayName: string): Promise<FirebaseUser> => {
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     await updateProfile(userCredential.user, { displayName });
     await sendEmailVerification(userCredential.user);
+    return userCredential.user;
   };
 
   const signOut = async () => {

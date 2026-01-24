@@ -1,5 +1,6 @@
-import { Routes, Route, Navigate } from 'react-router-dom'
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from './contexts/AuthContext'
+import VerifyEmailPage from './pages/VerifyEmailPage'
 
 // Pages
 import LoginPage from './pages/LoginPage'
@@ -21,10 +22,11 @@ import LegalPage from './pages/LegalPage'
 import PrivacyPolicyPage from './pages/PrivacyPolicyPage'
 import TerminiServizioPage from './pages/TerminiServizioPage'
 import CookiePolicyPage from './pages/CookiePolicyPage'
+import AdminVerificationsPage from './pages/AdminVerificationsPage'
 
 // Protected Route Component
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useAuth()
+  const { user, userProfile, loading } = useAuth()
   
   if (loading) {
     return (
@@ -37,6 +39,17 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   if (!user) {
     return <Navigate to="/login" replace />
   }
+
+  // Se l'utente ha un profilo Firestore con status approved, lascialo passare
+  // (backward compatibility con utenti creati prima del sistema di verifica email)
+  if (userProfile?.profile?.verificationInfo?.status === 'approved') {
+    return <>{children}</>
+  }
+
+  // Altrimenti, se l'email non è verificata, reindirizza alla pagina di verifica
+  if (!user.emailVerified) {
+    return <Navigate to="/verify-email" replace />
+  }
   
   return <>{children}</>
 }
@@ -44,6 +57,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 // Public Route Component (redirect to dashboard if authenticated)
 function PublicRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth()
+  const location = useLocation();
   
   if (loading) {
     return (
@@ -53,7 +67,8 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
     )
   }
   
-  if (user) {
+  // Allow authenticated users to access the verify page
+  if (user && location.pathname !== '/verify-email') {
     return <Navigate to="/dashboard" replace />
   }
   
@@ -70,6 +85,7 @@ function App() {
             <LoginPage />
           </PublicRoute>
         } />
+        <Route path="/verify-email" element={<VerifyEmailPage />} />
         <Route path="/register" element={
           <PublicRoute>
             <RegisterPage />
@@ -145,6 +161,13 @@ function App() {
         <Route path="/referrals/:id" element={
           <ProtectedRoute>
             <ReferralDetailPage />
+          </ProtectedRoute>
+        } />
+        
+        {/* Admin Routes */}
+        <Route path="/admin/verifications" element={
+          <ProtectedRoute>
+            <AdminVerificationsPage />
           </ProtectedRoute>
         } />
         

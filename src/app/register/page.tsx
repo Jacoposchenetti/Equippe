@@ -5,46 +5,11 @@ import { useAuth } from '@/contexts/AuthContext';
 import { doc, setDoc, Timestamp } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, auth, storage } from '@/lib/firebase';
-import { Studio } from '@/types/equippe';
+import { Studio, ProfessioneConDocumenti } from '@/types/equippe';
 import { CITTA_ITALIANE, PROVINCE_ITALIANE } from '@/lib/comuni';
 import AddressAutocomplete from '@/components/AddressAutocomplete';
-
-const SPECIALIZZAZIONI = [
-  'Psicologo',
-  'Psicoterapeuta',
-  'Psichiatra',
-  'Nutrizionista',
-  'Dietista',
-  'Dietologo',
-  'Assistente Sociale',
-  'Educatore Professionale',
-  'Logopedista',
-  'Fisioterapista',
-  'Terapista Occupazionale',
-  'Infermiere',
-  'Medico di Base',
-  'Medico Specialista',
-  'Ginecologo',
-  'Andrologo',
-  'Sessuologo'
-];
-
-const TEMATICHE = [
-  'Disturbi d\'ansia',
-  'Depressione',
-  'Disturbi alimentari',
-  'Trauma e PTSD',
-  'Dipendenze',
-  'Disturbi di personalità',
-  'Autismo',
-  'ADHD',
-  'Disturbi dell\'umore',
-  'Terapia di coppia',
-  'Terapia familiare',
-  'Neuropsicologia',
-  'Psicologia dello sport',
-  'Psicologia giuridica'
-];
+import DocumentiProfessioneForm from '@/components/DocumentiProfessioneForm';
+import { PROFESSIONI_DISPONIBILI } from '@/lib/professioni';
 
 export default function RegisterPage() {
   const [step, setStep] = useState(1);
@@ -54,13 +19,10 @@ export default function RegisterPage() {
     confirmPassword: '',
     nome: '',
     dataNascita: '',
-    albo: '',
-    specializzazioni: [] as string[],
-    tematiche: [] as string[],
-    esperienza: '',
     città: '', // Mantieni per backward compatibility
     disponibilità: '',
     studi: [] as Studio[],
+    professioniConDocumenti: [] as ProfessioneConDocumenti[],
   });
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string>('');
@@ -76,6 +38,11 @@ export default function RegisterPage() {
     remoto: false,
     coordinate: undefined,
   });
+  
+  // Stati per la gestione delle professioni
+  const [selectedProfessione, setSelectedProfessione] = useState('');
+  const [showDocumentiForm, setShowDocumentiForm] = useState(false);
+  
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const { signUp } = useAuth();
@@ -105,6 +72,46 @@ export default function RegisterPage() {
     setFormData({
       ...formData,
       studi: formData.studi.filter((_, i) => i !== index),
+    });
+  };
+  
+  // Gestione professioni
+  const handleAddProfessione = () => {
+    if (!selectedProfessione) {
+      setError('Seleziona una professione');
+      return;
+    }
+    
+    // Verifica che la professione non sia già stata aggiunta
+    if (formData.professioniConDocumenti.some(p => p.professione === selectedProfessione)) {
+      setError('Questa professione è già stata aggiunta');
+      return;
+    }
+    
+    setError('');
+    setShowDocumentiForm(true);
+  };
+  
+  const handleProfessioneComplete = (data: ProfessioneConDocumenti) => {
+    console.log('✅ Professione completata in app/register:', data);
+    setFormData({
+      ...formData,
+      professioniConDocumenti: [...formData.professioniConDocumenti, data]
+    });
+    setShowDocumentiForm(false);
+    setSelectedProfessione('');
+    setError('');
+  };
+  
+  const handleProfessioneCancel = () => {
+    setShowDocumentiForm(false);
+    setSelectedProfessione('');
+  };
+  
+  const removeProfessione = (index: number) => {
+    setFormData({
+      ...formData,
+      professioniConDocumenti: formData.professioniConDocumenti.filter((_, i) => i !== index)
     });
   };
 
@@ -139,13 +146,8 @@ export default function RegisterPage() {
       return;
     }
 
-    if (formData.specializzazioni.length === 0) {
-      setError('Seleziona almeno una specializzazione');
-      return;
-    }
-
-    if (formData.tematiche.length === 0) {
-      setError('Seleziona almeno una tematica');
+    if (formData.professioniConDocumenti.length === 0) {
+      setError('Aggiungi almeno una professione con i relativi documenti');
       return;
     }
 
@@ -180,6 +182,15 @@ export default function RegisterPage() {
         }
       }
       
+      // Costruisci lista specializzazioni per retrocompatibilità
+      const specializzazioni = formData.professioniConDocumenti.map(p => p.professione);
+      
+      // Aggrega tematiche ed esperienza da tutte le professioni per retrocompatibilità
+      const tematicheAggregate = Array.from(new Set(
+        formData.professioniConDocumenti.flatMap(p => p.tematiche || [])
+      ));
+      const esperienzaAggregata = formData.professioniConDocumenti.find(p => p.anniEsperienza)?.anniEsperienza || '';
+
       // Salva profilo completo in Firestore
       const profileData: any = {
         uid: currentUser.uid,
@@ -187,14 +198,19 @@ export default function RegisterPage() {
         profile: {
           nome: formData.nome,
           dataNascita: formData.dataNascita,
-          albo: formData.albo,
-          specializzazioni: formData.specializzazioni,
-          tematiche: formData.tematiche,
-          esperienza: formData.esperienza,
+          albo: '', // Campo deprecato, lasciato vuoto
+          specializzazioni: specializzazioni, // Per retrocompatibilità
+          professioniConDocumenti: formData.professioniConDocumenti, // NUOVO
+          tematiche: tematicheAggregate, // Aggregate da professioni per retrocompatibilità
+          esperienza: esperienzaAggregata, // Presa da professioni per retrocompatibilità
           location: { lat: 0, lng: 0, città: formData.città }, // Legacy
           studi: formData.studi, // Nuovo campo multi-studio
           disponibilità: formData.disponibilità,
           verified: false,
+          verificationInfo: {
+            status: 'pending',
+            submittedAt: Timestamp.now()
+          }
         },
         teams: [],
         stats: { referralsSent: 0, referralsReceived: 0 },
@@ -343,73 +359,82 @@ export default function RegisterPage() {
               </button>
             </form>
           ) : (
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <>
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-lg font-semibold">Profilo professionale</h3>
                 <button type="button" onClick={() => setStep(1)} className="text-sm text-blue-600">← Indietro</button>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium mb-1">Numero albo *</label>
-                <input
-                  type="text"
-                  required
-                  className="w-full px-3 py-2 border rounded"
-                  placeholder="es. AA_12345"
-                  value={formData.albo}
-                  onChange={(e) => setFormData({ ...formData, albo: e.target.value })}
-                />
+              {/* NUOVO: Sezione Professioni con documenti - FUORI DAL FORM */}
+              <div className="mb-6">
+                <label className="block text-sm font-medium mb-2">
+                  Le tue professioni *
+                </label>
+                <p className="text-xs text-gray-600 mb-3">
+                  Aggiungi le tue professioni e fornisci i documenti necessari per la verifica
+                </p>
+
+                {/* Lista professioni aggiunte */}
+                {formData.professioniConDocumenti.length > 0 && (
+                  <div className="mb-4 space-y-2">
+                    {formData.professioniConDocumenti.map((prof, index) => (
+                      <div key={index} className="flex items-center justify-between p-3 bg-green-50 border border-green-200 rounded">
+                        <div className="flex-1">
+                          <div className="font-medium text-green-900">{prof.professione}</div>
+                          <div className="text-xs text-green-700">
+                            {prof.documenti.length} documento/i caricato/i
+                            {prof.note && ' • Con note aggiuntive'}
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => removeProfessione(index)}
+                          className="text-red-600 hover:text-red-800 text-sm font-medium ml-3"
+                        >
+                          Rimuovi
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Form per aggiungere nuova professione */}
+                {!showDocumentiForm ? (
+                  <div className="border rounded p-4 space-y-3 bg-gray-50">
+                    <div>
+                      <label className="block text-xs font-medium mb-1">Seleziona professione</label>
+                      <select
+                        className="w-full px-3 py-2 border rounded"
+                        value={selectedProfessione}
+                        onChange={(e) => setSelectedProfessione(e.target.value)}
+                      >
+                        <option value="">-- Seleziona una professione --</option>
+                        {PROFESSIONI_DISPONIBILI.filter(
+                          p => !formData.professioniConDocumenti.some(pc => pc.professione === p)
+                        ).map(prof => (
+                          <option key={prof} value={prof}>{prof}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleAddProfessione}
+                      disabled={!selectedProfessione}
+                      className="w-full py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
+                    >
+                      + Aggiungi Professione
+                    </button>
+                  </div>
+                ) : (
+                  <DocumentiProfessioneForm
+                    professione={selectedProfessione}
+                    onComplete={handleProfessioneComplete}
+                    onCancel={handleProfessioneCancel}
+                  />
+                )}
               </div>
 
-              <div>
-                <label className="block text-sm font-medium mb-2">Specializzazioni *</label>
-                <div className="grid grid-cols-2 gap-2">
-                  {SPECIALIZZAZIONI.map((s) => (
-                    <label key={s} className="flex items-center p-2 border rounded cursor-pointer hover:bg-gray-50">
-                      <input
-                        type="checkbox"
-                        checked={formData.specializzazioni.includes(s)}
-                        onChange={() => setFormData({ ...formData, specializzazioni: toggleArray(formData.specializzazioni, s) })}
-                        className="mr-2"
-                      />
-                      <span className="text-sm">{s}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-2">Tematiche *</label>
-                <div className="grid grid-cols-2 gap-2">
-                  {TEMATICHE.map((t) => (
-                    <label key={t} className="flex items-center p-2 border rounded cursor-pointer hover:bg-gray-50">
-                      <input
-                        type="checkbox"
-                        checked={formData.tematiche.includes(t)}
-                        onChange={() => setFormData({ ...formData, tematiche: toggleArray(formData.tematiche, t) })}
-                        className="mr-2"
-                      />
-                      <span className="text-sm">{t}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-1">Anni di esperienza *</label>
-                <select
-                  required
-                  className="w-full px-3 py-2 border rounded"
-                  value={formData.esperienza}
-                  onChange={(e) => setFormData({ ...formData, esperienza: e.target.value })}
-                >
-                  <option value="">Seleziona...</option>
-                  <option value="0-2 anni">0-2 anni</option>
-                  <option value="3-5 anni">3-5 anni</option>
-                  <option value="6-10 anni">6-10 anni</option>
-                  <option value="10+ anni">10+ anni</option>
-                </select>
-              </div>
+              <form onSubmit={handleSubmit} className="space-y-6">
 
               <div>
                 <label className="block text-sm font-medium mb-2">Studi professionali *</label>
@@ -572,6 +597,7 @@ export default function RegisterPage() {
                 </p>
               )}
             </form>
+            </>
           )}
         </div>
       </div>

@@ -342,7 +342,7 @@ export default function EditProfilePage() {
 
     // Verifica che abbia almeno una professione (approvata o pending)
     if (professioniApprovate.length === 0 && professioniPending.length === 0) {
-      alert('Devi avere almeno una professione. Usa la sezione "Professioni Aggiuntive" per aggiungerne una.');
+      alert('Devi avere almeno una professione. Usa la sezione "Professioni" per aggiungerne una.');
       return;
     }
 
@@ -761,44 +761,9 @@ export default function EditProfilePage() {
             )}
           </div>
 
-          {/* Specializzazioni - DEPRECATA: ora si gestiscono solo tramite Professioni Aggiuntive */}
+          {/* Gestione Professioni */}
           <div className="bg-white rounded-xl shadow-sm p-6">
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">Specializzazioni Attuali</h2>
-            <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-4">
-              <div className="flex items-start">
-                <div className="flex-shrink-0">
-                  <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                  </svg>
-                </div>
-                <div className="ml-3">
-                  <p className="text-sm text-yellow-700">
-                    <strong>Importante:</strong> Per aggiungere nuove professioni usa la sezione "Professioni Aggiuntive" qui sotto. 
-                    Ogni nuova professione richiede documentazione e approvazione dall'amministratore.
-                  </p>
-                </div>
-              </div>
-            </div>
-            
-            <div className="flex flex-wrap gap-2">
-              {professioniApprovate && professioniApprovate.length > 0 ? (
-                professioniApprovate.map((prof, index) => (
-                  <span
-                    key={index}
-                    className="px-4 py-2 bg-green-100 text-green-800 rounded-full text-sm font-medium border-2 border-green-300"
-                  >
-                    ✓ {prof.professione}
-                  </span>
-                ))
-              ) : (
-                <p className="text-gray-500 text-sm">Nessuna professione approvata ancora. Usa la sezione "Professioni Aggiuntive" per aggiungerne.</p>
-              )}
-            </div>
-          </div>
-
-          {/* Gestione Professioni Aggiuntive */}
-          <div className="bg-white rounded-xl shadow-sm p-6">
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">Professioni Aggiuntive</h2>
+            <h2 className="text-2xl font-bold text-gray-900 mb-4">Professioni</h2>
             <p className="text-gray-600 mb-4">
               Aggiungi nuove professioni al tuo profilo. Ogni professione richiede documentazione che sarà verificata dall'amministratore.
             </p>
@@ -913,22 +878,25 @@ export default function EditProfilePage() {
 
           {/* Tematiche per Professione */}
           <div className="bg-white rounded-xl shadow-sm p-6">
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">Tematiche di Interesse per Professione</h2>
+            <h2 className="text-2xl font-bold text-gray-900 mb-4">Tematiche di Interesse</h2>
             <p className="text-gray-600 mb-6">
-              Seleziona le tematiche specifiche per ogni professione che eserciti.
+              Seleziona le tematiche specifiche per ogni tua professione.
             </p>
             
-            {/* Tematiche per professioni approvate */}
-            {professioniApprovate.length > 0 && (
-              <div className="space-y-4 mb-6">
-                <h3 className="text-lg font-semibold text-green-700">✓ Professioni Approvate</h3>
+            {/* Tutte le professioni (approvate e pending insieme) */}
+            {[...professioniApprovate, ...professioniPending].length > 0 ? (
+              <div className="space-y-4">
+                {/* Professioni approvate */}
                 {professioniApprovate.map((prof, profIndex) => {
                   const config = getConfigurazioneProfessione(prof.professione);
                   if (!config || !config.tematiche || config.tematiche.length === 0) return null;
                   
                   return (
-                    <div key={profIndex} className="border-2 border-green-200 rounded-lg p-4 bg-green-50">
-                      <h4 className="font-semibold text-gray-900 mb-3">{prof.professione}</h4>
+                    <div key={`approvata-${profIndex}`} className="border-2 border-green-200 rounded-lg p-4 bg-green-50">
+                      <h4 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                        <span className="text-green-600">✓</span>
+                        {prof.professione}
+                      </h4>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                         {config.tematiche.map((tema) => {
                           const isChecked = prof.tematiche?.includes(tema) || false;
@@ -966,20 +934,19 @@ export default function EditProfilePage() {
                     </div>
                   );
                 })}
-              </div>
-            )}
-            
-            {/* Tematiche per professioni pending */}
-            {professioniPending.length > 0 && (
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold text-yellow-700">⏳ Professioni in Attesa di Approvazione</h3>
+                
+                {/* Professioni pending */}
                 {professioniPending.map((prof, profIndex) => {
                   const config = getConfigurazioneProfessione(prof.professione);
                   if (!config || !config.tematiche || config.tematiche.length === 0) return null;
                   
                   return (
-                    <div key={profIndex} className="border-2 border-yellow-200 rounded-lg p-4 bg-yellow-50">
-                      <h4 className="font-semibold text-gray-900 mb-3">{prof.professione}</h4>
+                    <div key={`pending-${profIndex}`} className="border-2 border-yellow-200 rounded-lg p-4 bg-yellow-50">
+                      <h4 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                        <span className="text-yellow-600">⏳</span>
+                        {prof.professione}
+                        <span className="text-xs text-yellow-700">(in attesa di approvazione)</span>
+                      </h4>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                         {config.tematiche.map((tema) => {
                           const isChecked = prof.tematiche?.includes(tema) || false;
@@ -1018,9 +985,7 @@ export default function EditProfilePage() {
                   );
                 })}
               </div>
-            )}
-            
-            {professioniApprovate.length === 0 && professioniPending.length === 0 && (
+            ) : (
               <div className="text-center py-8 text-gray-500">
                 <p>Aggiungi prima una professione per selezionare le tematiche di interesse.</p>
               </div>

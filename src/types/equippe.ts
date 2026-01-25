@@ -55,7 +55,8 @@ export interface UserProfile {
   nome: string;
   albo: string; // @deprecated - mantenuto per retrocompatibilità
   specializzazioni: string[]; // @deprecated - usare professioniConDocumenti
-  professioniConDocumenti?: ProfessioneConDocumenti[]; // NUOVO: lista professioni con relativi documenti
+  professioniConDocumenti?: ProfessioneConDocumenti[]; // Lista professioni approvate con relativi documenti
+  professioniPending?: ProfessioneConDocumenti[]; // Professioni in attesa di approvazione admin
   tematiche: string[];
   esperienza: string;
   location: Location; // Mantengo per compatibilità

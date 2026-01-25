@@ -3,12 +3,15 @@
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
-import { doc, updateDoc } from 'firebase/firestore';
+import { doc, updateDoc, deleteField } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '@/lib/firebase';
 import { requestNotificationPermission, saveFCMToken } from '@/lib/notifications';
 import Header from '@/components/Header';
 import LocationAutocomplete from '@/components/LocationAutocomplete';
+import DocumentiProfessioneForm from '@/components/DocumentiProfessioneForm';
+import { ProfessioneConDocumenti } from '@/types/equippe';
+import { getConfigurazioneProfessione } from '@/lib/professioni';
 
 const SPECIALIZZAZIONI = [
   'Psicologo',
@@ -67,6 +70,12 @@ export default function EditProfilePage() {
   const [photoPreview, setPhotoPreview] = useState<string>('');
   const [notificationEnabled, setNotificationEnabled] = useState(false);
   const [notificationLoading, setNotificationLoading] = useState(false);
+  
+  // Gestione nuove professioni
+  const [professioniApprovate, setProfessioniApprovate] = useState<ProfessioneConDocumenti[]>([]);
+  const [professioniPending, setProfessioniPending] = useState<ProfessioneConDocumenti[]>([]);
+  const [selectedProfessione, setSelectedProfessione] = useState<string>('');
+  const [showDocumentiForm, setShowDocumentiForm] = useState(false);
 
   useEffect(() => {
     if (!user) {
@@ -142,11 +151,44 @@ export default function EditProfilePage() {
       setPhotoPreview(userProfile.profile.photoURL || '');
       setDataNascita(userProfile.profile.dataNascita || '');
       
-      // Controlla stato notifiche
-      if (typeof window !== 'undefined' && 'Notification' in window) {
-        const hasPermission = Notification.permission === 'granted';
-        const hasToken = !!userProfile.fcmToken;
-        setNotificationEnabled(hasPermission && hasToken);
+      // Carica professioni approvate e pending
+      if (userProfile.profile.professioniConDocumenti && userProfile.profile.professioniConDocumenti.length > 0) {
+        setProfessioniApprovate(userProfile.profile.professioniConDocumenti);
+        
+        // Raccogli tutte le tematiche dalle professioni approvate
+        const tutteTematiche = new Set<string>();
+        userProfile.profile.professioniConDocumenti.forEach(prof => {
+          if (prof.tematiche) {
+            prof.tematiche.forEach(t => tutteTematiche.add(t));
+          }
+        });
+        
+        // Unisci con le tematiche generali
+        const tematicheUnite = [...new Set([...normalizedTematiche, ...Array.from(tutteTematiche)])];
+        setTematiche(tematicheUnite);
+      } else if (normalizedSpecs.length > 0) {
+        // Migrazione: se ha solo specializzazioni vecchie, creale come professioni approvate senza documenti
+        const professioniMigrate = normalizedSpecs.map(spec => ({
+          professione: spec,
+          documenti: [],
+          note: 'Migrato da sistema precedente'
+        }));
+        setProfessioniApprovate(professioniMigrate);
+      }
+      
+      if (userProfile.profile.professioniPending && userProfile.profile.professioniPending.length > 0) {
+        setProfessioniPending(userProfile.profile.professioniPending);
+        
+        // Raccogli anche le tematiche dalle professioni pending
+        const tutteTematichePending = new Set<string>();
+        userProfile.profile.professioniPending.forEach(prof => {
+          if (prof.tematiche) {
+            prof.tematiche.forEach(t => tutteTematichePending.add(t));
+          }
+        });
+        
+        // Unisci con le tematiche già presenti
+        setTematiche(prev => [...new Set([...prev, ...Array.from(tutteTematichePending)])]);
       }
       
       // Controlla stato notifiche
@@ -227,7 +269,49 @@ export default function EditProfilePage() {
       setNotificationLoading(false);
     }
   };
+  const handleAddProfessione = () => {
+    if (!selectedProfessione) {
+      alert('Seleziona una professione da aggiungere');
+      return;
+    }
+    
+    // Controlla se la professione è già presente (approvata o pending)
+    const giaPresente = professioniApprovate.some(p => p.professione === selectedProfessione) ||
+                        professioniPending.some(p => p.professione === selectedProfessione);
+    
+    if (giaPresente) {
+      alert('Questa professione è già presente nel tuo profilo');
+      return;
+    }
+    
+    setShowDocumentiForm(true);
+  };
 
+  const handleDocumentiComplete = (professioneData: ProfessioneConDocumenti) => {
+    // Aggiungi la professione alle pending (in attesa di approvazione)
+    setProfessioniPending([...professioniPending, professioneData]);
+    
+    // Aggiungi le tematiche della professione alle tematiche generali
+    if (professioneData.tematiche && professioneData.tematiche.length > 0) {
+      const nuoveTematiche = [...new Set([...tematiche, ...professioneData.tematiche])];
+      setTematiche(nuoveTematiche);
+    }
+    
+    setShowDocumentiForm(false);
+    setSelectedProfessione('');
+    alert('✅ Professione aggiunta! Sarà visibile dopo l\'approvazione dell\'amministratore.');
+  };
+
+  const handleCancelDocumenti = () => {
+    setShowDocumentiForm(false);
+    setSelectedProfessione('');
+  };
+
+  const handleRemoveProfessionePending = (index: number) => {
+    if (confirm('Vuoi rimuovere questa professione in attesa di approvazione?')) {
+      setProfessioniPending(professioniPending.filter((_, i) => i !== index));
+    }
+  };
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -256,8 +340,9 @@ export default function EditProfilePage() {
       }
     }
 
-    if (specializzazioni.length === 0) {
-      alert('Seleziona almeno una specializzazione');
+    // Verifica che abbia almeno una professione (approvata o pending)
+    if (professioniApprovate.length === 0 && professioniPending.length === 0) {
+      alert('Devi avere almeno una professione. Usa la sezione "Professioni Aggiuntive" per aggiungerne una.');
       return;
     }
 
@@ -299,53 +384,122 @@ export default function EditProfilePage() {
         
         return {
           indirizzo: studio.indirizzo.trim(),
-          città: città,
-          provincia: provincia,
-          remoto: studio.remoto,
-          coordinate: studio.coordinate || { lat: 0, lng: 0 }
+          città: città || '',
+          provincia: provincia || '',
+          remoto: studio.remoto || false,
+          coordinate: {
+            lat: studio.coordinate?.lat || 0,
+            lng: studio.coordinate?.lng || 0
+          }
         };
       }) : [];
       
       // Mantieni compatibilità con location principale (usa primo studio se disponibile)
       const mainLocation = studiData.length > 0 ? {
-        indirizzo: studiData[0].indirizzo,
-        città: studiData[0].città,
-        provincia: studiData[0].provincia,
+        indirizzo: studiData[0].indirizzo || '',
+        città: studiData[0].città || '',
+        provincia: studiData[0].provincia || '',
         lat: studiData[0].coordinate?.lat || 0,
         lng: studiData[0].coordinate?.lng || 0
       } : {
-        indirizzo: indirizzo.trim(),
+        indirizzo: indirizzo.trim() || '',
         città: '',
         provincia: '',
         lat: coordinate?.lat || 0,
         lng: coordinate?.lng || 0
       };
       
+      // Sincronizza specializzazioni con professioni approvate (per retrocompatibilità)
+      const specializzazioniAggiornate = professioniApprovate.length > 0 
+        ? professioniApprovate.map(p => p.professione) 
+        : [];
+      
+      // Sincronizza tematiche: raccogli tutte le tematiche dalle professioni + quelle generali
+      const tutteTematicheProfessioni = new Set<string>();
+      
+      // Raccogli da professioni approvate
+      professioniApprovate.forEach(prof => {
+        if (prof.tematiche) {
+          prof.tematiche.forEach(t => tutteTematicheProfessioni.add(t));
+        }
+      });
+      
+      // Raccogli da professioni pending
+      professioniPending.forEach(prof => {
+        if (prof.tematiche) {
+          prof.tematiche.forEach(t => tutteTematicheProfessioni.add(t));
+        }
+      });
+      
+      // Unisci con le tematiche generali selezionate dall'utente
+      const tematicheFinali = [...new Set([...tematiche, ...Array.from(tutteTematicheProfessioni)])];
+      
+      console.log('Debug - professioniApprovate:', professioniApprovate);
+      console.log('Debug - professioniPending:', professioniPending);
+      console.log('Debug - specializzazioniAggiornate:', specializzazioniAggiornate);
+      console.log('Debug - tematicheFinali:', tematicheFinali);
+      console.log('Debug - studiData:', JSON.stringify(studiData, null, 2));
+      
       const updateData: any = {
-        'profile.nome': nome.trim(),
-        'profile.dataNascita': dataNascita,
-        'profile.specializzazioni': specializzazioni,
-        'profile.tematiche': tematiche,
-        'profile.bio': bio.trim(),
-        'profile.linkedin': linkedin.trim(),
-        'profile.website': website.trim(),
-        'profile.telefono': telefono.trim(),
+        'profile.nome': nome.trim() || '',
+        'profile.dataNascita': dataNascita || '',
+        'profile.specializzazioni': specializzazioniAggiornate,
+        'profile.tematiche': tematicheFinali,
+        'profile.bio': bio.trim() || '',
+        'profile.linkedin': linkedin.trim() || '',
+        'profile.website': website.trim() || '',
+        'profile.telefono': telefono.trim() || '',
         'profile.location.indirizzo': mainLocation.indirizzo,
         'profile.location.città': mainLocation.città,
         'profile.location.provincia': mainLocation.provincia,
         'profile.location.lat': mainLocation.lat,
         'profile.location.lng': mainLocation.lng,
-        'profile.studi': studiData, // Aggiunge gli studi multipli
+        'profile.studi': studiData,
         updatedAt: new Date()
       };
+      
+      // Gestisci professioniConDocumenti
+      if (professioniApprovate && professioniApprovate.length > 0) {
+        updateData['profile.professioniConDocumenti'] = professioniApprovate;
+      } else {
+        updateData['profile.professioniConDocumenti'] = deleteField();
+      }
+      
+      // Gestisci professioniPending
+      if (professioniPending && professioniPending.length > 0) {
+        updateData['profile.professioniPending'] = professioniPending;
+      } else {
+        updateData['profile.professioniPending'] = deleteField();
+      }
       
       // Aggiungi photoURL solo se esiste
       if (photoURL) {
         updateData['profile.photoURL'] = photoURL;
       }
       
-      console.log('Salvataggio profilo...', updateData);
-      await updateDoc(userRef, updateData);
+      // Funzione helper per rimuovere undefined ricorsivamente
+      const removeUndefined = (obj: any): any => {
+        if (Array.isArray(obj)) {
+          return obj.map(item => removeUndefined(item));
+        }
+        if (obj !== null && typeof obj === 'object') {
+          const cleaned: any = {};
+          Object.keys(obj).forEach(key => {
+            const value = obj[key];
+            if (value !== undefined) {
+              cleaned[key] = removeUndefined(value);
+            }
+          });
+          return cleaned;
+        }
+        return obj;
+      };
+      
+      // Pulisci updateData da eventuali undefined rimasti
+      const cleanedUpdateData = removeUndefined(updateData);
+      
+      console.log('Salvataggio profilo...', cleanedUpdateData);
+      await updateDoc(userRef, cleanedUpdateData);
 
       await refreshProfile();
       alert('Profilo aggiornato con successo!');
@@ -607,58 +761,270 @@ export default function EditProfilePage() {
             )}
           </div>
 
-          {/* Specializzazioni */}
+          {/* Specializzazioni - DEPRECATA: ora si gestiscono solo tramite Professioni Aggiuntive */}
           <div className="bg-white rounded-xl shadow-sm p-6">
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">Specializzazioni *</h2>
-            <p className="text-gray-600 mb-4">Seleziona le tue aree professionali</p>
+            <h2 className="text-2xl font-bold text-gray-900 mb-4">Specializzazioni Attuali</h2>
+            <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-4">
+              <div className="flex items-start">
+                <div className="flex-shrink-0">
+                  <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <div className="ml-3">
+                  <p className="text-sm text-yellow-700">
+                    <strong>Importante:</strong> Per aggiungere nuove professioni usa la sezione "Professioni Aggiuntive" qui sotto. 
+                    Ogni nuova professione richiede documentazione e approvazione dall'amministratore.
+                  </p>
+                </div>
+              </div>
+            </div>
             
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-              {SPECIALIZZAZIONI.map((spec) => (
-                <label
-                  key={spec}
-                  className={`flex items-center gap-2 p-3 border-2 rounded-lg cursor-pointer transition ${
-                    specializzazioni.includes(spec)
-                      ? 'border-blue-500 bg-blue-50'
-                      : 'border-gray-200 hover:border-gray-300'
-                  }`}
-                >
-                  <input
-                    type="checkbox"
-                    checked={specializzazioni.includes(spec)}
-                    onChange={() => handleSpecChange(spec)}
-                    className="w-4 h-4 text-blue-600"
-                  />
-                  <span className="text-sm font-medium">{spec}</span>
-                </label>
-              ))}
+            <div className="flex flex-wrap gap-2">
+              {professioniApprovate && professioniApprovate.length > 0 ? (
+                professioniApprovate.map((prof, index) => (
+                  <span
+                    key={index}
+                    className="px-4 py-2 bg-green-100 text-green-800 rounded-full text-sm font-medium border-2 border-green-300"
+                  >
+                    ✓ {prof.professione}
+                  </span>
+                ))
+              ) : (
+                <p className="text-gray-500 text-sm">Nessuna professione approvata ancora. Usa la sezione "Professioni Aggiuntive" per aggiungerne.</p>
+              )}
             </div>
           </div>
 
-          {/* Tematiche */}
+          {/* Gestione Professioni Aggiuntive */}
           <div className="bg-white rounded-xl shadow-sm p-6">
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">Tematiche di Interesse</h2>
-            <p className="text-gray-600 mb-4">Seleziona le tematiche su cui lavori</p>
+            <h2 className="text-2xl font-bold text-gray-900 mb-4">Professioni Aggiuntive</h2>
+            <p className="text-gray-600 mb-4">
+              Aggiungi nuove professioni al tuo profilo. Ogni professione richiede documentazione che sarà verificata dall'amministratore.
+            </p>
+
+            {/* Professioni Approvate */}
+            {professioniApprovate.length > 0 && (
+              <div className="mb-6">
+                <h3 className="text-lg font-semibold text-green-700 mb-3">✓ Professioni Approvate</h3>
+                <div className="space-y-2">
+                  {professioniApprovate.map((prof, index) => (
+                    <div key={index} className="flex items-center justify-between p-3 bg-green-50 border border-green-200 rounded-lg">
+                      <div>
+                        <p className="font-medium text-green-900">{prof.professione}</p>
+                        {prof.tematiche && prof.tematiche.length > 0 && (
+                          <p className="text-sm text-green-700">Tematiche: {prof.tematiche.join(', ')}</p>
+                        )}
+                        {prof.anniEsperienza && (
+                          <p className="text-sm text-green-700">Esperienza: {prof.anniEsperienza} anni</p>
+                        )}
+                      </div>
+                      <span className="px-3 py-1 bg-green-200 text-green-800 rounded-full text-sm font-medium">
+                        Approvata
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Professioni in Attesa */}
+            {professioniPending.length > 0 && (
+              <div className="mb-6">
+                <h3 className="text-lg font-semibold text-yellow-700 mb-3">⏳ In Attesa di Approvazione</h3>
+                <div className="space-y-2">
+                  {professioniPending.map((prof, index) => (
+                    <div key={index} className="flex items-center justify-between p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                      <div>
+                        <p className="font-medium text-yellow-900">{prof.professione}</p>
+                        {prof.tematiche && prof.tematiche.length > 0 && (
+                          <p className="text-sm text-yellow-700">Tematiche: {prof.tematiche.join(', ')}</p>
+                        )}
+                        {prof.anniEsperienza && (
+                          <p className="text-sm text-yellow-700">Esperienza: {prof.anniEsperienza} anni</p>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="px-3 py-1 bg-yellow-200 text-yellow-800 rounded-full text-sm font-medium">
+                          In Attesa
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveProfessionePending(index)}
+                          className="text-red-600 hover:text-red-800 p-1"
+                          title="Rimuovi"
+                        >
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Aggiungi Nuova Professione */}
+            {!showDocumentiForm ? (
+              <div className="border-2 border-dashed border-gray-300 rounded-lg p-6">
+                <h3 className="text-lg font-semibold mb-4">Aggiungi una Nuova Professione</h3>
+                <div className="flex gap-3 items-end">
+                  <div className="flex-1">
+                    <label className="block text-sm font-medium mb-2">Seleziona Professione</label>
+                    <select
+                      value={selectedProfessione}
+                      onChange={(e) => setSelectedProfessione(e.target.value)}
+                      className="w-full px-3 py-2 border rounded-lg"
+                    >
+                      <option value="">Seleziona...</option>
+                      {SPECIALIZZAZIONI
+                        .filter(spec => 
+                          !professioniApprovate.some(p => p.professione === spec) &&
+                          !professioniPending.some(p => p.professione === spec)
+                        )
+                        .map((spec) => (
+                          <option key={spec} value={spec}>{spec}</option>
+                        ))
+                      }
+                    </select>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleAddProfessione}
+                    disabled={!selectedProfessione}
+                    className="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+                  >
+                    Aggiungi
+                  </button>
+                </div>
+                <p className="text-sm text-gray-500 mt-3">
+                  Quando aggiungi una professione, dovrai fornire la documentazione necessaria. La professione sarà visibile nel tuo profilo solo dopo l'approvazione dell'amministratore.
+                </p>
+              </div>
+            ) : (
+              <DocumentiProfessioneForm
+                professione={selectedProfessione}
+                onComplete={handleDocumentiComplete}
+                onCancel={handleCancelDocumenti}
+              />
+            )}
+          </div>
+
+          {/* Tematiche per Professione */}
+          <div className="bg-white rounded-xl shadow-sm p-6">
+            <h2 className="text-2xl font-bold text-gray-900 mb-4">Tematiche di Interesse per Professione</h2>
+            <p className="text-gray-600 mb-6">
+              Seleziona le tematiche specifiche per ogni professione che eserciti.
+            </p>
             
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-              {TEMATICHE.map((tema) => (
-                <label
-                  key={tema}
-                  className={`flex items-center gap-2 p-3 border-2 rounded-lg cursor-pointer transition ${
-                    tematiche.includes(tema)
-                      ? 'border-green-500 bg-green-50'
-                      : 'border-gray-200 hover:border-gray-300'
-                  }`}
-                >
-                  <input
-                    type="checkbox"
-                    checked={tematiche.includes(tema)}
-                    onChange={() => handleTemaChange(tema)}
-                    className="w-4 h-4 text-green-600"
-                  />
-                  <span className="text-sm font-medium">{tema}</span>
-                </label>
-              ))}
-            </div>
+            {/* Tematiche per professioni approvate */}
+            {professioniApprovate.length > 0 && (
+              <div className="space-y-4 mb-6">
+                <h3 className="text-lg font-semibold text-green-700">✓ Professioni Approvate</h3>
+                {professioniApprovate.map((prof, profIndex) => {
+                  const config = getConfigurazioneProfessione(prof.professione);
+                  if (!config || !config.tematiche || config.tematiche.length === 0) return null;
+                  
+                  return (
+                    <div key={profIndex} className="border-2 border-green-200 rounded-lg p-4 bg-green-50">
+                      <h4 className="font-semibold text-gray-900 mb-3">{prof.professione}</h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                        {config.tematiche.map((tema) => {
+                          const isChecked = prof.tematiche?.includes(tema) || false;
+                          return (
+                            <label
+                              key={tema}
+                              className={`flex items-center gap-2 p-2 border rounded-lg cursor-pointer transition ${
+                                isChecked
+                                  ? 'border-green-500 bg-white'
+                                  : 'border-gray-200 hover:border-gray-300 bg-white'
+                              }`}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={isChecked}
+                                onChange={(e) => {
+                                  const newProfessioni = [...professioniApprovate];
+                                  const currentTematiche = newProfessioni[profIndex].tematiche || [];
+                                  
+                                  if (e.target.checked) {
+                                    newProfessioni[profIndex].tematiche = [...currentTematiche, tema];
+                                  } else {
+                                    newProfessioni[profIndex].tematiche = currentTematiche.filter(t => t !== tema);
+                                  }
+                                  
+                                  setProfessioniApprovate(newProfessioni);
+                                }}
+                                className="w-4 h-4 text-green-600"
+                              />
+                              <span className="text-sm">{tema}</span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+            
+            {/* Tematiche per professioni pending */}
+            {professioniPending.length > 0 && (
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold text-yellow-700">⏳ Professioni in Attesa di Approvazione</h3>
+                {professioniPending.map((prof, profIndex) => {
+                  const config = getConfigurazioneProfessione(prof.professione);
+                  if (!config || !config.tematiche || config.tematiche.length === 0) return null;
+                  
+                  return (
+                    <div key={profIndex} className="border-2 border-yellow-200 rounded-lg p-4 bg-yellow-50">
+                      <h4 className="font-semibold text-gray-900 mb-3">{prof.professione}</h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                        {config.tematiche.map((tema) => {
+                          const isChecked = prof.tematiche?.includes(tema) || false;
+                          return (
+                            <label
+                              key={tema}
+                              className={`flex items-center gap-2 p-2 border rounded-lg cursor-pointer transition ${
+                                isChecked
+                                  ? 'border-yellow-500 bg-white'
+                                  : 'border-gray-200 hover:border-gray-300 bg-white'
+                              }`}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={isChecked}
+                                onChange={(e) => {
+                                  const newProfessioni = [...professioniPending];
+                                  const currentTematiche = newProfessioni[profIndex].tematiche || [];
+                                  
+                                  if (e.target.checked) {
+                                    newProfessioni[profIndex].tematiche = [...currentTematiche, tema];
+                                  } else {
+                                    newProfessioni[profIndex].tematiche = currentTematiche.filter(t => t !== tema);
+                                  }
+                                  
+                                  setProfessioniPending(newProfessioni);
+                                }}
+                                className="w-4 h-4 text-yellow-600"
+                              />
+                              <span className="text-sm">{tema}</span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+            
+            {professioniApprovate.length === 0 && professioniPending.length === 0 && (
+              <div className="text-center py-8 text-gray-500">
+                <p>Aggiungi prima una professione per selezionare le tematiche di interesse.</p>
+              </div>
+            )}
           </div>
 
           {/* Bio */}

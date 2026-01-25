@@ -20,7 +20,7 @@ export default function AdminVerificationsPage() {
   const [selectedUser, setSelectedUser] = useState<PendingUser | null>(null);
   const [rejectionReason, setRejectionReason] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
-  const [filterStatus, setFilterStatus] = useState<VerificationStatus | 'all'>('pending');
+  const [filterStatus, setFilterStatus] = useState<VerificationStatus | 'all' | 'with-pending-professions'>('pending');
 
   useEffect(() => {
     if (!user) {
@@ -43,7 +43,13 @@ export default function AdminVerificationsPage() {
     try {
       let q;
       
-      if (filterStatus === 'all') {
+      if (filterStatus === 'with-pending-professions') {
+        // Carica TUTTI gli utenti e filtra poi in memoria quelli con professioniPending
+        q = query(
+          collection(db, 'users'),
+          orderBy('createdAt', 'desc')
+        );
+      } else if (filterStatus === 'all') {
         // Carica tutti gli utenti
         q = query(
           collection(db, 'users'),
@@ -59,7 +65,7 @@ export default function AdminVerificationsPage() {
       }
 
       const snapshot = await getDocs(q);
-      const users: PendingUser[] = [];
+      let users: PendingUser[] = [];
       snapshot.docs.forEach(docSnap => {
         const data = docSnap.data() as User;
         users.push({
@@ -67,6 +73,13 @@ export default function AdminVerificationsPage() {
           ...data
         });
       });
+
+      // Se filtro per professioni pending, mantieni solo quelli con professioniPending
+      if (filterStatus === 'with-pending-professions') {
+        users = users.filter(u => 
+          u.profile.professioniPending && u.profile.professioniPending.length > 0
+        );
+      }
 
       setPendingUsers(users);
     } catch (error) {
@@ -186,6 +199,88 @@ export default function AdminVerificationsPage() {
     }
   };
 
+  const handleApproveProfessione = async (userId: string, professioneIndex: number) => {
+    const userToUpdate = pendingUsers.find(u => u.id === userId);
+    if (!userToUpdate || !userToUpdate.profile.professioniPending) return;
+
+    const professioneToApprove = userToUpdate.profile.professioniPending[professioneIndex];
+    if (!confirm(`Confermi di voler APPROVARE la professione "${professioneToApprove.professione}"?`)) {
+      return;
+    }
+
+    setActionLoading(true);
+    try {
+      // Sposta la professione da pending ad approvate
+      const professioniApprovate = userToUpdate.profile.professioniConDocumenti || [];
+      const professioniPending = userToUpdate.profile.professioniPending.filter((_, idx) => idx !== professioneIndex);
+      
+      professioniApprovate.push(professioneToApprove);
+
+      // Aggiorna anche l'array specializzazioni per retrocompatibilità
+      const specializzazioni = [...new Set([
+        ...userToUpdate.profile.specializzazioni,
+        professioneToApprove.professione
+      ])];
+
+      // Aggiungi le tematiche della professione alle tematiche generali
+      const tematiche = userToUpdate.profile.tematiche || [];
+      const nuoveTematiche = professioneToApprove.tematiche || [];
+      const tematicheAggiornate = [...new Set([...tematiche, ...nuoveTematiche])];
+
+      await updateDoc(doc(db, 'users', userId), {
+        'profile.professioniConDocumenti': professioniApprovate,
+        'profile.professioniPending': professioniPending,
+        'profile.specializzazioni': specializzazioni,
+        'profile.tematiche': tematicheAggiornate,
+        updatedAt: Timestamp.now()
+      });
+
+      alert(`✅ Professione "${professioneToApprove.professione}" approvata con successo!`);
+      loadPendingUsers();
+    } catch (error) {
+      console.error('Errore approvazione professione:', error);
+      alert('Errore durante l\'approvazione della professione');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleRejectProfessione = async (userId: string, professioneIndex: number) => {
+    const userToUpdate = pendingUsers.find(u => u.id === userId);
+    if (!userToUpdate || !userToUpdate.profile.professioniPending) return;
+
+    const professioneToReject = userToUpdate.profile.professioniPending[professioneIndex];
+    const motivo = prompt(`Inserisci il motivo del rifiuto per "${professioneToReject.professione}":`);
+    
+    if (!motivo || !motivo.trim()) {
+      alert('Devi inserire un motivo per il rifiuto');
+      return;
+    }
+
+    if (!confirm(`Confermi di voler RIFIUTARE la professione "${professioneToReject.professione}"?`)) {
+      return;
+    }
+
+    setActionLoading(true);
+    try {
+      // Rimuovi la professione dalle pending
+      const professioniPending = userToUpdate.profile.professioniPending.filter((_, idx) => idx !== professioneIndex);
+
+      await updateDoc(doc(db, 'users', userId), {
+        'profile.professioniPending': professioniPending,
+        updatedAt: Timestamp.now()
+      });
+
+      alert(`❌ Professione "${professioneToReject.professione}" rifiutata. Motivo: ${motivo}`);
+      loadPendingUsers();
+    } catch (error) {
+      console.error('Errore rifiuto professione:', error);
+      alert('Errore durante il rifiuto della professione');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   const getStatusBadge = (status?: VerificationStatus) => {
     const statusConfig = {
       pending: { color: 'bg-yellow-100 text-yellow-800', text: 'In attesa' },
@@ -219,7 +314,7 @@ export default function AdminVerificationsPage() {
 
         {/* Filtri */}
         <div className="bg-white rounded-lg shadow p-4 mb-6">
-          <div className="flex gap-3">
+          <div className="flex flex-wrap gap-3">
             <button
               onClick={() => setFilterStatus('pending')}
               className={`px-4 py-2 rounded-lg font-medium ${
@@ -229,6 +324,17 @@ export default function AdminVerificationsPage() {
               }`}
             >
               In attesa ({pendingUsers.filter(u => u.profile.verificationInfo?.status === 'pending').length})
+            </button>
+            <button
+              onClick={() => setFilterStatus('with-pending-professions')}
+              className={`px-4 py-2 rounded-lg font-medium flex items-center gap-2 ${
+                filterStatus === 'with-pending-professions' 
+                  ? 'bg-orange-500 text-white' 
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              <span className="text-lg">🆕</span>
+              Nuove Professioni da Approvare
             </button>
             <button
               onClick={() => setFilterStatus('approved')}
@@ -294,6 +400,11 @@ export default function AdminVerificationsPage() {
                           {pendingUser.profile.nome}
                         </h3>
                         {getStatusBadge(pendingUser.profile.verificationInfo?.status)}
+                        {pendingUser.profile.professioniPending && pendingUser.profile.professioniPending.length > 0 && (
+                          <span className="px-2 py-1 bg-orange-100 text-orange-800 rounded-full text-xs font-medium">
+                            {pendingUser.profile.professioniPending.length} Professione{pendingUser.profile.professioniPending.length > 1 ? 'i' : ''} da approvare
+                          </span>
+                        )}
                       </div>
                       <p className="text-gray-600 text-sm">{pendingUser.email}</p>
                       <p className="text-gray-500 text-xs mt-1">
@@ -496,6 +607,94 @@ export default function AdminVerificationsPage() {
                         <div className="mb-6 p-4 bg-red-50 border-l-4 border-red-400">
                           <p className="text-sm font-medium text-red-900 mb-1">Motivo rifiuto precedente:</p>
                           <p className="text-sm text-red-800">{pendingUser.profile.verificationInfo.rejectionReason}</p>
+                        </div>
+                      )}
+
+                      {/* Professioni in Attesa di Approvazione */}
+                      {pendingUser.profile.professioniPending && pendingUser.profile.professioniPending.length > 0 && (
+                        <div className="mb-6">
+                          <h5 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                            <span className="px-2 py-1 bg-yellow-100 text-yellow-800 rounded text-sm">Nuove</span>
+                            Professioni in Attesa di Approvazione
+                          </h5>
+                          <div className="space-y-4">
+                            {pendingUser.profile.professioniPending.map((prof, profIdx) => (
+                              <div key={profIdx} className="p-4 bg-yellow-50 border-2 border-yellow-300 rounded-lg">
+                                <h6 className="font-semibold text-lg text-yellow-900 mb-3">{prof.professione}</h6>
+
+                                {/* Tematiche */}
+                                {prof.tematiche && prof.tematiche.length > 0 && (
+                                  <div className="mb-3">
+                                    <p className="text-sm font-medium text-gray-700 mb-1">Tematiche:</p>
+                                    <div className="flex flex-wrap gap-1">
+                                      {prof.tematiche.map((tem, idx) => (
+                                        <span key={idx} className="px-2 py-0.5 bg-white text-gray-700 rounded text-xs">
+                                          {tem}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+
+                                {/* Esperienza */}
+                                {prof.anniEsperienza && (
+                                  <div className="mb-3">
+                                    <p className="text-sm font-medium text-gray-700">
+                                      Esperienza: <span className="font-normal">{prof.anniEsperienza}</span>
+                                    </p>
+                                  </div>
+                                )}
+
+                                {/* Documenti */}
+                                <div className="space-y-2 mb-4">
+                                  {prof.documenti.map((doc, docIdx) => (
+                                    <div key={docIdx} className="bg-white p-3 rounded border">
+                                      <p className="font-medium text-sm text-gray-900">{doc.nome}</p>
+                                      <p className="text-sm text-gray-600 mt-1">
+                                        <span className="font-medium">Valore:</span> {doc.valore}
+                                      </p>
+                                      {doc.fileURL && (
+                                        <a
+                                          href={doc.fileURL}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="inline-block mt-2 text-sm text-blue-600 hover:text-blue-800 underline"
+                                        >
+                                          📎 Visualizza documento allegato
+                                        </a>
+                                      )}
+                                    </div>
+                                  ))}
+                                </div>
+
+                                {prof.note && (
+                                  <div className="mb-4 p-2 bg-blue-50 border-l-4 border-blue-400">
+                                    <p className="text-sm text-gray-700">
+                                      <span className="font-medium">Note:</span> {prof.note}
+                                    </p>
+                                  </div>
+                                )}
+
+                                {/* Azioni per questa professione */}
+                                <div className="flex gap-2">
+                                  <button
+                                    onClick={() => handleApproveProfessione(pendingUser.id, profIdx)}
+                                    disabled={actionLoading}
+                                    className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium disabled:opacity-50 text-sm"
+                                  >
+                                    ✓ Approva {prof.professione}
+                                  </button>
+                                  <button
+                                    onClick={() => handleRejectProfessione(pendingUser.id, profIdx)}
+                                    disabled={actionLoading}
+                                    className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium disabled:opacity-50 text-sm"
+                                  >
+                                    ✗ Rifiuta {prof.professione}
+                                  </button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
                         </div>
                       )}
 

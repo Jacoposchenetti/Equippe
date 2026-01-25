@@ -442,14 +442,27 @@ export default function ProfilePage() {
         <div className="bg-white rounded-lg shadow-md p-6 mb-6">
           <h2 className="text-xl font-bold text-gray-900 mb-4">Specializzazioni</h2>
           <div className="flex flex-wrap gap-2">
-            {[...new Set(profileUser.profile.specializzazioni.map(spec => normalizeSpecialization(spec)))].map((spec, index) => (
-              <span
-                key={index}
-                className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm"
-              >
-                {spec}
-              </span>
-            ))}
+            {/* Mostra solo professioni approvate se disponibili */}
+            {profileUser.profile.professioniConDocumenti && profileUser.profile.professioniConDocumenti.length > 0 ? (
+              profileUser.profile.professioniConDocumenti.map((prof, index) => (
+                <span
+                  key={index}
+                  className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm"
+                >
+                  {prof.professione}
+                </span>
+              ))
+            ) : (
+              // Fallback per vecchi dati
+              [...new Set(profileUser.profile.specializzazioni.map(spec => normalizeSpecialization(spec)))].map((spec, index) => (
+                <span
+                  key={index}
+                  className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm"
+                >
+                  {spec}
+                </span>
+              ))
+            )}
           </div>
         </div>
 

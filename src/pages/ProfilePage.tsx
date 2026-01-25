@@ -6,9 +6,11 @@ import { db } from '@/lib/firebase';
 import { User, Conversation, Team } from '@/types/equippe';
 import Header from '@/components/Header';
 import { notifyTeamInviteReceived } from '@/lib/notifications';
+import { useCanInteract } from '@/hooks/useCanInteract';
 
 export default function ProfilePage() {
   const { user: currentUser, userProfile } = useAuth();
+  const { canInteract, message: canInteractMessage } = useCanInteract();
   const navigate = useNavigate();
   const params = useParams();
   const uid = params.uid as string;
@@ -357,28 +359,64 @@ export default function ProfilePage() {
             <div className="flex gap-3">
               {/* Pulsante Invita in Équipe */}
               {adminTeams.length > 0 && (
-                <button
-                  onClick={() => setShowInviteModal(true)}
-                  className="px-6 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors flex items-center gap-2"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                  </svg>
-                  Invita in Équipe
-                </button>
+                canInteract ? (
+                  <button
+                    onClick={() => setShowInviteModal(true)}
+                    className="px-6 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors flex items-center gap-2"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                    </svg>
+                    Invita in Équipe
+                  </button>
+                ) : (
+                  <div className="relative group">
+                    <button
+                      disabled
+                      className="px-6 py-3 bg-gray-300 text-gray-500 rounded-lg cursor-not-allowed opacity-60 flex items-center gap-2"
+                      title={canInteractMessage || 'Funzionalità non disponibile'}
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                      </svg>
+                      Invita in Équipe
+                    </button>
+                    <div className="hidden group-hover:block absolute z-10 w-64 p-2 mt-2 text-sm bg-gray-800 text-white rounded-lg shadow-lg left-0">
+                      {canInteractMessage}
+                    </div>
+                  </div>
+                )
               )}
 
               {/* Pulsante messaggio */}
-              <button
-                onClick={handleStartConversation}
-                disabled={startingConversation}
-                className="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-3.582 8-8 8a8.959 8.959 0 01-4.906-1.456L3 21l2.544-5.906A8.959 8.959 0 013 12c0-4.418 3.582-8 8-8s8 3.582 8 8z" />
-                </svg>
-                {startingConversation ? 'Caricamento...' : 'Invia Messaggio'}
-              </button>
+              {canInteract ? (
+                <button
+                  onClick={handleStartConversation}
+                  disabled={startingConversation}
+                  className="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-3.582 8-8 8a8.959 8.959 0 01-4.906-1.456L3 21l2.544-5.906A8.959 8.959 0 013 12c0-4.418 3.582-8 8-8s8 3.582 8 8z" />
+                  </svg>
+                  {startingConversation ? 'Caricamento...' : 'Invia Messaggio'}
+                </button>
+              ) : (
+                <div className="relative group">
+                  <button
+                    disabled
+                    className="px-6 py-3 bg-gray-300 text-gray-500 rounded-lg cursor-not-allowed opacity-60 flex items-center gap-2"
+                    title={canInteractMessage || 'Funzionalità non disponibile'}
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-3.582 8-8 8a8.959 8.959 0 01-4.906-1.456L3 21l2.544-5.906A8.959 8.959 0 013 12c0-4.418 3.582-8 8-8s8 3.582 8 8z" />
+                    </svg>
+                    Invia Messaggio
+                  </button>
+                  <div className="hidden group-hover:block absolute z-10 w-64 p-2 mt-2 text-sm bg-gray-800 text-white rounded-lg shadow-lg left-0">
+                    {canInteractMessage}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>

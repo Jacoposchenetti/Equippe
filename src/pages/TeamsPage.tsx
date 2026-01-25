@@ -7,10 +7,12 @@ import { Team, User } from '@/types/equippe';
 import { Link } from 'react-router-dom';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import { useCanInteract } from '@/hooks/useCanInteract';
 
 export default function TeamsPage() {
   const { user, userProfile } = useAuth();
   const navigate = useNavigate();
+  const { canInteract, message } = useCanInteract();
   const [myTeams, setMyTeams] = useState<(Team & { id: string })[]>([]);
   const [teamMembers, setTeamMembers] = useState<Record<string, User[]>>({});
   const [loading, setLoading] = useState(true);
@@ -120,12 +122,27 @@ export default function TeamsPage() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6 sm:mb-8">
           <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900">Le Mie Equipé</h1>
-          <Link
-            to="/teams/create"
-            className="w-full sm:w-auto px-4 sm:px-6 py-3 bg-amber-500 text-white rounded-lg font-medium hover:bg-amber-600 transition shadow-sm text-center touch-friendly"
-          >
-            + Crea Nuova Equipé
-          </Link>
+          {canInteract ? (
+            <Link
+              to="/teams/create"
+              className="w-full sm:w-auto px-4 sm:px-6 py-3 bg-amber-500 text-white rounded-lg font-medium hover:bg-amber-600 transition shadow-sm text-center touch-friendly"
+            >
+              + Crea Nuova Equipé
+            </Link>
+          ) : (
+            <div className="relative group">
+              <button
+                disabled
+                className="w-full sm:w-auto px-4 sm:px-6 py-3 bg-gray-300 text-gray-500 rounded-lg font-medium cursor-not-allowed shadow-sm text-center touch-friendly opacity-60"
+                title={message || 'Funzionalità non disponibile'}
+              >
+                + Crea Nuova Equipé
+              </button>
+              <div className="hidden group-hover:block absolute z-10 w-64 p-2 mt-2 text-sm bg-gray-800 text-white rounded-lg shadow-lg right-0">
+                {message}
+              </div>
+            </div>
+          )}
         </div>
 
         {myTeams.length === 0 ? (
@@ -134,12 +151,25 @@ export default function TeamsPage() {
             <p className="text-sm sm:text-base text-gray-600 mb-6">
               Crea la tua prima Equipé per iniziare a collaborare con altri professionisti
             </p>
-            <Link
-              to="/teams/create"
-              className="inline-block w-full sm:w-auto px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 touch-friendly"
-            >
-              Crea la tua Equipé
-            </Link>
+            {canInteract ? (
+              <Link
+                to="/teams/create"
+                className="inline-block w-full sm:w-auto px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 touch-friendly"
+              >
+                Crea la tua Equipé
+              </Link>
+            ) : (
+              <div className="inline-block">
+                <button
+                  disabled
+                  className="w-full sm:w-auto px-6 py-3 bg-gray-300 text-gray-500 rounded-lg cursor-not-allowed opacity-60"
+                  title={message || 'Funzionalità non disponibile'}
+                >
+                  Crea la tua Equipé
+                </button>
+                <p className="text-sm text-gray-500 mt-3">{message}</p>
+              </div>
+            )}
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

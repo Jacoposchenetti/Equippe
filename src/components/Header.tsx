@@ -8,12 +8,14 @@ import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Conversation } from '@/types/equippe';
 import NotificationBell from './NotificationBell';
+import { useCanInteract } from '@/hooks/useCanInteract';
 
 export default function Header() {
   const { user, userProfile, signOut } = useAuth();
   const location = useLocation();
   const pathname = location.pathname;
   const navigate = useNavigate();
+  const { canInteract, message } = useCanInteract();
   const [showDropdown, setShowDropdown] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [unreadMessages, setUnreadMessages] = useState(0);
@@ -65,22 +67,38 @@ export default function Header() {
 
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center gap-6">
-            {navLinks.map((link) => (
-              <Link
-                key={link.href}
-                to={link.href}
-                className={`text-sm font-medium transition hover:text-blue-400 relative ${
-                  pathname === link.href ? 'text-blue-400' : 'text-gray-300'
-                }`}
-              >
-                {link.label}
-                {link.badge > 0 && (
-                  <span className="absolute -top-2 -right-2 px-1.5 py-0.5 bg-red-500 text-white text-xs font-bold rounded-full min-w-[20px] text-center">
-                    {link.badge}
-                  </span>
-                )}
-              </Link>
-            ))}
+            {navLinks.map((link) => {
+              const isDisabled = !canInteract && (link.href === '/messages');
+              return isDisabled ? (
+                <div
+                  key={link.href}
+                  className="text-sm font-medium text-gray-500 relative cursor-not-allowed opacity-50"
+                  title={message || 'Funzionalità non disponibile'}
+                >
+                  {link.label}
+                  {link.badge > 0 && (
+                    <span className="absolute -top-2 -right-2 px-1.5 py-0.5 bg-red-500 text-white text-xs font-bold rounded-full min-w-[20px] text-center">
+                      {link.badge}
+                    </span>
+                  )}
+                </div>
+              ) : (
+                <Link
+                  key={link.href}
+                  to={link.href}
+                  className={`text-sm font-medium transition hover:text-blue-400 relative ${
+                    pathname === link.href ? 'text-blue-400' : 'text-gray-300'
+                  }`}
+                >
+                  {link.label}
+                  {link.badge > 0 && (
+                    <span className="absolute -top-2 -right-2 px-1.5 py-0.5 bg-red-500 text-white text-xs font-bold rounded-full min-w-[20px] text-center">
+                      {link.badge}
+                    </span>
+                  )}
+                </Link>
+              );
+            })}
             
             {/* Admin link */}
             {isAdmin && (
@@ -165,25 +183,41 @@ export default function Header() {
         {showMobileMenu && (
           <div className="md:hidden border-t border-gray-700 bg-gray-800">
             <div className="px-2 pt-2 pb-3 space-y-1">
-              {navLinks.map((link) => (
-                <Link
-                  key={link.href}
-                  to={link.href}
-                  className={`flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition ${
-                    pathname === link.href 
-                      ? 'text-blue-400 bg-gray-700' 
-                      : 'text-gray-300 hover:text-white hover:bg-gray-700'
-                  }`}
-                  onClick={() => setShowMobileMenu(false)}
-                >
-                  <span>{link.label}</span>
-                  {link.badge > 0 && (
-                    <span className="px-2 py-1 bg-red-500 text-white text-xs font-bold rounded-full min-w-[20px] text-center">
-                      {link.badge}
-                    </span>
-                  )}
-                </Link>
-              ))}
+              {navLinks.map((link) => {
+                const isDisabled = !canInteract && (link.href === '/messages');
+                return isDisabled ? (
+                  <div
+                    key={link.href}
+                    className="flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium text-gray-500 opacity-50 cursor-not-allowed"
+                    title={message || 'Funzionalità non disponibile'}
+                  >
+                    <span>{link.label}</span>
+                    {link.badge > 0 && (
+                      <span className="px-2 py-1 bg-red-500 text-white text-xs font-bold rounded-full min-w-[20px] text-center">
+                        {link.badge}
+                      </span>
+                    )}
+                  </div>
+                ) : (
+                  <Link
+                    key={link.href}
+                    to={link.href}
+                    className={`flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition ${
+                      pathname === link.href 
+                        ? 'text-blue-400 bg-gray-700' 
+                        : 'text-gray-300 hover:text-white hover:bg-gray-700'
+                    }`}
+                    onClick={() => setShowMobileMenu(false)}
+                  >
+                    <span>{link.label}</span>
+                    {link.badge > 0 && (
+                      <span className="px-2 py-1 bg-red-500 text-white text-xs font-bold rounded-full min-w-[20px] text-center">
+                        {link.badge}
+                      </span>
+                    )}
+                  </Link>
+                );
+              })}
               
               {/* Profile section in mobile menu */}
               <div className="border-t border-gray-700 pt-3 mt-3">

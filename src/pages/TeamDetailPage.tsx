@@ -9,9 +9,11 @@ import Header from '@/components/Header';
 import MapSelector from '@/components/MapSelector';
 import { notifyTeamRequest, notifyTeamRequestAccepted, notifyTeamRemoval, notifyTeamAdminPromotion, notifyTeamMemberLeft, notifyTeamInviteReceived } from '@/lib/notifications';
 import { occupyPositions, freePositions } from '@/lib/teamPositions';
+import { useCanInteract } from '@/hooks/useCanInteract';
 
 export default function TeamDetailPage() {
   const { user, userProfile } = useAuth();
+  const { canInteract, message: canInteractMessage } = useCanInteract();
   const navigate = useNavigate();
   const params = useParams();
   const teamId = params.id as string;
@@ -1402,15 +1404,33 @@ export default function TeamDetailPage() {
         {/* Pulsanti azioni per non membri */}
         {!isMember && (
           <div className="bg-white rounded-xl shadow-sm p-6">
-            <button
-              onClick={() => setShowRequestModal(true)}
-              className="w-full px-6 py-3 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition shadow-sm flex items-center justify-center gap-2"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
-              </svg>
-              Fai Richiesta per Aderire
-            </button>
+            {canInteract ? (
+              <button
+                onClick={() => setShowRequestModal(true)}
+                className="w-full px-6 py-3 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition shadow-sm flex items-center justify-center gap-2"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                </svg>
+                Fai Richiesta per Aderire
+              </button>
+            ) : (
+              <div className="relative group">
+                <button
+                  disabled
+                  className="w-full px-6 py-3 bg-gray-300 text-gray-500 rounded-lg font-medium cursor-not-allowed opacity-60 flex items-center justify-center gap-2"
+                  title={canInteractMessage || 'Funzionalità non disponibile'}
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                  </svg>
+                  Fai Richiesta per Aderire
+                </button>
+                <div className="hidden group-hover:block absolute z-10 w-full p-3 mt-2 text-sm bg-gray-800 text-white rounded-lg shadow-lg">
+                  {canInteractMessage}
+                </div>
+              </div>
+            )}
           </div>
         )}
 

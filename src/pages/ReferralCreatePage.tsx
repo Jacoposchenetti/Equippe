@@ -74,7 +74,11 @@ export default function ReferralCreatePage() {
         uid: doc.id,
         ...doc.data()
       } as User));
-      const filteredUsers = users.filter(u => u.uid !== user?.uid);
+      // Filtra solo utenti approvati e non se stesso
+      const filteredUsers = users.filter(u => 
+        u.uid !== user?.uid && 
+        u.profile?.verificationInfo?.status === 'approved'
+      );
       setAllProfessionisti(filteredUsers);
       setProfessionisti(filteredUsers);
     } catch (error) {

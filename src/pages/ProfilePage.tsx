@@ -276,6 +276,27 @@ export default function ProfilePage() {
       <Header />
 
       <div className="max-w-4xl mx-auto px-4 py-8">
+        {/* Banner verifica documentazione */}
+        {profileUser.profile.verificationInfo?.status !== 'approved' && (
+          <div className="mb-6 bg-yellow-50 border-l-4 border-yellow-400 rounded-lg p-4 shadow-sm">
+            <div className="flex items-start gap-3">
+              <svg className="w-6 h-6 text-yellow-600 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+              </svg>
+              <div className="flex-1">
+                <h3 className="text-sm font-semibold text-yellow-900 mb-1">
+                  ⚠️ Documentazione professionale in fase di verifica
+                </h3>
+                <p className="text-sm text-yellow-800">
+                  Questo professionista è visibile sulla piattaforma ma la sua documentazione professionale non è ancora stata validata dal nostro team. 
+                  {profileUser.profile.verificationInfo?.status === 'pending' && ' La verifica è in corso.'}
+                  {profileUser.profile.verificationInfo?.status === 'rejected' && ' La documentazione è stata rifiutata e richiede aggiornamento.'}
+                  {!profileUser.profile.verificationInfo && ' La verifica non è stata ancora richiesta.'}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
         {/* Header del profilo */}
         <div className="bg-white rounded-lg shadow-md p-6 mb-6">
           <div className="flex items-start justify-between">
@@ -359,14 +380,11 @@ export default function ProfilePage() {
             <div className="flex gap-3">
               {/* Pulsante Invita in Équipe */}
               {adminTeams.length > 0 && (
-                canInteract ? (
+                (canInteract && profileUser.profile.verificationInfo?.status === 'approved') ? (
                   <button
                     onClick={() => setShowInviteModal(true)}
                     className="px-6 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors flex items-center gap-2"
                   >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                    </svg>
                     Invita in Équipe
                   </button>
                 ) : (
@@ -374,30 +392,28 @@ export default function ProfilePage() {
                     <button
                       disabled
                       className="px-6 py-3 bg-gray-300 text-gray-500 rounded-lg cursor-not-allowed opacity-60 flex items-center gap-2"
-                      title={canInteractMessage || 'Funzionalità non disponibile'}
+                      title={profileUser.profile.verificationInfo?.status !== 'approved' 
+                        ? 'Questo professionista non è ancora stato approvato' 
+                        : (canInteractMessage || 'Funzionalità non disponibile')}
                     >
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                      </svg>
                       Invita in Équipe
                     </button>
                     <div className="hidden group-hover:block absolute z-10 w-64 p-2 mt-2 text-sm bg-gray-800 text-white rounded-lg shadow-lg left-0">
-                      {canInteractMessage}
+                      {profileUser.profile.verificationInfo?.status !== 'approved' 
+                        ? 'Non puoi invitare questo professionista perché la sua documentazione non è ancora stata approvata.' 
+                        : canInteractMessage}
                     </div>
                   </div>
                 )
               )}
 
               {/* Pulsante messaggio */}
-              {canInteract ? (
+              {(canInteract && profileUser.profile.verificationInfo?.status === 'approved') ? (
                 <button
                   onClick={handleStartConversation}
                   disabled={startingConversation}
                   className="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
                 >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-3.582 8-8 8a8.959 8.959 0 01-4.906-1.456L3 21l2.544-5.906A8.959 8.959 0 013 12c0-4.418 3.582-8 8-8s8 3.582 8 8z" />
-                  </svg>
                   {startingConversation ? 'Caricamento...' : 'Invia Messaggio'}
                 </button>
               ) : (
@@ -405,15 +421,16 @@ export default function ProfilePage() {
                   <button
                     disabled
                     className="px-6 py-3 bg-gray-300 text-gray-500 rounded-lg cursor-not-allowed opacity-60 flex items-center gap-2"
-                    title={canInteractMessage || 'Funzionalità non disponibile'}
+                    title={profileUser.profile.verificationInfo?.status !== 'approved' 
+                      ? 'Questo professionista non è ancora stato approvato' 
+                      : (canInteractMessage || 'Funzionalità non disponibile')}
                   >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-3.582 8-8 8a8.959 8.959 0 01-4.906-1.456L3 21l2.544-5.906A8.959 8.959 0 013 12c0-4.418 3.582-8 8-8s8 3.582 8 8z" />
-                    </svg>
                     Invia Messaggio
                   </button>
                   <div className="hidden group-hover:block absolute z-10 w-64 p-2 mt-2 text-sm bg-gray-800 text-white rounded-lg shadow-lg left-0">
-                    {canInteractMessage}
+                    {profileUser.profile.verificationInfo?.status !== 'approved' 
+                      ? 'Non puoi inviare messaggi a questo professionista perché la sua documentazione non è ancora stata approvata.' 
+                      : canInteractMessage}
                   </div>
                 </div>
               )}

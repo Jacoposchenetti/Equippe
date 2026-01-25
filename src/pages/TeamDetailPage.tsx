@@ -107,9 +107,10 @@ export default function TeamDetailPage() {
           ...doc.data()
         } as User));
         
-        // Filtra utenti non già membri (usa memberIds che è un array semplice)
+        // Filtra utenti non già membri E solo quelli approvati
         const available = allUsers.filter(u => 
-          !teamData.memberIds?.includes(u.uid)
+          !teamData.memberIds?.includes(u.uid) &&
+          u.profile?.verificationInfo?.status === 'approved'
         );
         setAvailableUsers(available);
 

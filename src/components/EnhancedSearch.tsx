@@ -2,12 +2,15 @@
 
 import { useState, useEffect } from 'react';
 import MapSelector from './MapSelector';
+import LocationAutocomplete from './LocationAutocomplete';
+import { getConfigurazioneProfessione } from '../lib/professioni';
 
 export type SearchType = 'professionista' | 'equipé';
 
 export interface SearchFilters {
   type: SearchType;
   specializzazione?: string;
+  areaInteresse?: string;
   coordinate?: { lat: number; lng: number } | null;
   raggioKm?: number;
   indirizzo?: string;
@@ -22,53 +25,22 @@ interface EnhancedSearchProps {
 export default function EnhancedSearch({ onSearch, availableSpecializations = [] }: EnhancedSearchProps) {
   const [searchType, setSearchType] = useState<SearchType>('professionista');
   const [specializzazione, setSpecializzazione] = useState<string>('');
+  const [areaInteresse, setAreaInteresse] = useState<string>('');
   const [coordinate, setCoordinate] = useState<{ lat: number; lng: number } | null>(null);
   const [raggioKm, setRaggioKm] = useState<number>(10);
   const [indirizzo, setIndirizzo] = useState<string>('');
   const [remoto, setRemoto] = useState<boolean>(false);
   const [showMap, setShowMap] = useState<boolean>(false);
 
-  // Geocoding function per convertire indirizzo in coordinate
-  const geocodeAddress = async (address: string) => {
-    if (!address.trim()) return;
-    
-    const token = import.meta.env.VITE_MAPBOX_TOKEN;
-    if (!token) {
-      console.error('Mapbox token non configurato');
-      return;
-    }
-
-    try {
-      const response = await fetch(
-        `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(address)}.json?country=it&limit=1&language=it&access_token=${token}`
-      );
-      const data = await response.json();
-      
-      if (data.features && data.features.length > 0) {
-        const [lng, lat] = data.features[0].center;
-        setCoordinate({ lat, lng });
-        console.log('✅ Geocoded address:', address, '→', { lat, lng });
-      }
-    } catch (error) {
-      console.error('Errore nel geocoding:', error);
-    }
-  };
-
-  // Geocoding automatico quando l'utente smette di digitare
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (indirizzo.trim().length > 3) {
-        geocodeAddress(indirizzo);
-      }
-    }, 1000); // Aspetta 1 secondo dopo che l'utente smette di digitare
-
-    return () => clearTimeout(timer);
-  }, [indirizzo]);
-
   // Aggiorna automaticamente quando cambia il tipo di ricerca
   useEffect(() => {
     handleSearch();
   }, [searchType]);
+
+  // Reset area interesse quando cambia specializzazione
+  useEffect(() => {
+    setAreaInteresse('');
+  }, [specializzazione]);
 
   // Aggiorna automaticamente quando si resettano i filtri aggiuntivi
   useEffect(() => {
@@ -81,6 +53,7 @@ export default function EnhancedSearch({ onSearch, availableSpecializations = []
     onSearch({
       type: searchType,
       specializzazione: specializzazione || undefined,
+      areaInteresse: areaInteresse || undefined,
       coordinate,
       raggioKm,
       indirizzo: indirizzo || undefined,
@@ -181,20 +154,53 @@ export default function EnhancedSearch({ onSearch, availableSpecializations = []
         </select>
       </div>
 
+      {/* Area d'interesse - visibile solo se c'è una specializzazione selezionata */}
+      {specializzazione && searchType === 'professionista' && (() => {
+        const config = getConfigurazioneProfessione(specializzazione);
+        const tematiche = config?.tematiche || [];
+        
+        if (tematiche.length === 0) return null;
+        
+        return (
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Area d'interesse
+            </label>
+            <select
+              value={areaInteresse}
+              onChange={(e) => setAreaInteresse(e.target.value)}
+              className="w-full border border-gray-300 rounded-lg px-3 py-3 text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">Tutte le aree</option>
+              {tematiche.map((tema) => (
+                <option key={tema} value={tema}>
+                  {tema}
+                </option>
+              ))}
+            </select>
+          </div>
+        );
+      })()}
+
       {/* Località con Mappa */}
       <div className="mb-4">
         <label className="block text-sm font-medium text-gray-700 mb-2">
           Zona di interesse
         </label>
         
-        {/* Input indirizzo */}
-        <input
-          type="text"
-          value={indirizzo}
-          onChange={(e) => setIndirizzo(e.target.value)}
-          placeholder="es. Via Roma 123, Milano"
-          className="w-full border border-gray-300 rounded-lg px-3 py-3 text-base focus:outline-none focus:ring-2 focus:ring-blue-500 mb-3"
-        />
+        {/* Autocomplete indirizzo */}
+        <div className="mb-3">
+          <LocationAutocomplete
+            value={indirizzo}
+            onChange={(address, coords) => {
+              setIndirizzo(address);
+              if (coords) {
+                setCoordinate(coords);
+              }
+            }}
+            placeholder="es. Via Roma 123, Milano"
+          />
+        </div>
         
         {/* Selettore raggio sempre visibile */}
         <div className="mb-3">

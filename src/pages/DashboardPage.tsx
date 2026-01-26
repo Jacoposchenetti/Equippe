@@ -172,6 +172,14 @@ export default function DashboardPage() {
       }
     }
 
+    // Area d'interesse - filtra per tematica specifica
+    if (currentFilters.areaInteresse) {
+      const hasTematica = p.profile.tematiche?.includes(currentFilters.areaInteresse);
+      if (!hasTematica) {
+        return false;
+      }
+    }
+
     // Location - verifica distanza dalla posizione del professionista
     if (currentFilters.coordinate && currentFilters.raggioKm) {
       let hasLocationInRange = false;

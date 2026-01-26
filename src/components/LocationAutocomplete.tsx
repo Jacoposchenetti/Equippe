@@ -26,6 +26,7 @@ export default function LocationAutocomplete({
   const [suggestions, setSuggestions] = useState<AddressSuggestion[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(-1);
+  const [isSelecting, setIsSelecting] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const suggestionsRef = useRef<HTMLDivElement>(null);
 
@@ -35,6 +36,12 @@ export default function LocationAutocomplete({
 
   // Debounced autocomplete
   useEffect(() => {
+    // Non fare fetch se abbiamo appena selezionato un suggerimento
+    if (isSelecting) {
+      setIsSelecting(false);
+      return;
+    }
+
     const timer = setTimeout(() => {
       if (searchText.trim().length > 2) {
         fetchSuggestions(searchText);
@@ -95,6 +102,7 @@ export default function LocationAutocomplete({
   };
 
   const selectSuggestion = (suggestion: AddressSuggestion) => {
+    setIsSelecting(true);
     setSearchText(suggestion.display_name);
     onChange(suggestion.display_name, {
       lat: parseFloat(suggestion.lat),

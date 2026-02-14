@@ -738,27 +738,6 @@ export default function EditProfilePage() {
                 </button>
               </div>
             )}
-
-            {/* Campo legacy nascosto per compatibilità */}
-            {indirizzo && (
-              <div className="mt-4">
-                <LocationAutocomplete
-                  value={indirizzo}
-                  onChange={(address, coords) => {
-                    setIndirizzo(address);
-                    if (coords) {
-                      setCoordinate(coords);
-                      console.log('📍 Coordinate salvate (legacy):', coords);
-                    }
-                  }}
-                  placeholder="Via, Città, Zona..."
-                  label="Indirizzo Principal (Legacy)"
-                />
-                <p className="text-xs text-gray-500 mt-2">
-                  Questo è il vecchio campo indirizzo. Convertilo in uno studio per gestire più sedi.
-                </p>
-              </div>
-            )}
           </div>
 
           {/* Gestione Professioni */}

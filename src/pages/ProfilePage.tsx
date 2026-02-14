@@ -298,9 +298,9 @@ export default function ProfilePage() {
           </div>
         )}
         {/* Header del profilo */}
-        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-          <div className="flex items-start justify-between">
-            <div className="flex items-center gap-4">
+        <div className="bg-white rounded-lg shadow-md p-4 sm:p-6 mb-6">
+          <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+            <div className="flex items-start sm:items-center gap-3 sm:gap-4 flex-1">
               {/* Avatar */}
               {profileUser.profile.photoURL ? (
                 <img
@@ -319,8 +319,8 @@ export default function ProfilePage() {
               )}
 
               {/* Nome e info base */}
-              <div>
-                <h1 className="text-3xl font-bold text-gray-900">{profileUser.profile.nome}</h1>
+              <div className="flex-1 min-w-0">
+                <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 break-words">{profileUser.profile.nome}</h1>
                 
                 {/* Studi multipli */}
                 <div className="mt-2 space-y-1">
@@ -377,13 +377,13 @@ export default function ProfilePage() {
             </div>
 
             {/* Pulsanti azione */}
-            <div className="flex gap-3">
+            <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 w-full lg:w-auto">
               {/* Pulsante Invita in Équipe */}
               {adminTeams.length > 0 && (
                 (canInteract && profileUser.profile.verificationInfo?.status === 'approved') ? (
                   <button
                     onClick={() => setShowInviteModal(true)}
-                    className="px-6 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors flex items-center gap-2"
+                    className="px-4 sm:px-6 py-2 sm:py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors flex items-center justify-center gap-2 text-sm sm:text-base whitespace-nowrap"
                   >
                     Invita in Équipe
                   </button>
@@ -391,7 +391,7 @@ export default function ProfilePage() {
                   <div className="relative group">
                     <button
                       disabled
-                      className="px-6 py-3 bg-gray-300 text-gray-500 rounded-lg cursor-not-allowed opacity-60 flex items-center gap-2"
+                      className="px-4 sm:px-6 py-2 sm:py-3 bg-gray-300 text-gray-500 rounded-lg cursor-not-allowed opacity-60 flex items-center justify-center gap-2 text-sm sm:text-base whitespace-nowrap"
                       title={profileUser.profile.verificationInfo?.status !== 'approved' 
                         ? 'Questo professionista non è ancora stato approvato' 
                         : (canInteractMessage || 'Funzionalità non disponibile')}
@@ -412,7 +412,7 @@ export default function ProfilePage() {
                 <button
                   onClick={handleStartConversation}
                   disabled={startingConversation}
-                  className="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
+                  className="px-4 sm:px-6 py-2 sm:py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2 text-sm sm:text-base whitespace-nowrap"
                 >
                   {startingConversation ? 'Caricamento...' : 'Invia Messaggio'}
                 </button>
@@ -467,22 +467,27 @@ export default function ProfilePage() {
         </div>
 
         {/* Tematiche */}
-        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-          <h2 className="text-xl font-bold text-gray-900 mb-4">Tematiche di Interesse</h2>
-          <div className="flex flex-wrap gap-2">
-            {[...new Set(profileUser.profile.tematiche
-              .map(tema => normalizeTematica(tema))
-              .filter(t => t !== '')
-            )].map((tema, index) => (
-              <span
-                key={index}
-                className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm"
-              >
-                {tema}
-              </span>
-            ))}
+        {profileUser.profile.tematiche && [...new Set(profileUser.profile.tematiche
+          .map(tema => normalizeTematica(tema))
+          .filter(t => t !== '')
+        )].length > 0 && (
+          <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+            <h2 className="text-xl font-bold text-gray-900 mb-4">Tematiche di Interesse</h2>
+            <div className="flex flex-wrap gap-2">
+              {[...new Set(profileUser.profile.tematiche
+                .map(tema => normalizeTematica(tema))
+                .filter(t => t !== '')
+              )].map((tema, index) => (
+                <span
+                  key={index}
+                  className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm"
+                >
+                  {tema}
+                </span>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Studi e Sedi di Lavoro */}
         {profileUser.profile.studi && profileUser.profile.studi.length > 0 && (

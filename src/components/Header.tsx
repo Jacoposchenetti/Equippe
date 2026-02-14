@@ -218,6 +218,21 @@ export default function Header() {
                 );
               })}
               
+              {/* Admin link in mobile menu */}
+              {isAdmin && (
+                <Link
+                  to="/admin/verifications"
+                  className={`flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition ${
+                    pathname === '/admin/verifications' 
+                      ? 'text-yellow-400 bg-gray-700' 
+                      : 'text-gray-300 hover:text-white hover:bg-gray-700'
+                  }`}
+                  onClick={() => setShowMobileMenu(false)}
+                >
+                  <span>⚙️ Admin</span>
+                </Link>
+              )}
+              
               {/* Profile section in mobile menu */}
               <div className="border-t border-gray-700 pt-3 mt-3">
                 <div className="flex items-center px-3 py-2 mb-2">

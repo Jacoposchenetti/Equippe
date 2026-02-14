@@ -36,14 +36,21 @@ export default function AddressAutocomplete({
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(-1);
+  const [isFocused, setIsFocused] = useState(false);
 
   // Sincronizza valore esterno
   useEffect(() => {
     setSearchValue(value);
   }, [value]);
 
-  // Debounced autocomplete
+  // Debounced autocomplete - solo se il campo è in focus
   useEffect(() => {
+    if (!isFocused) {
+      setSuggestions([]);
+      setShowSuggestions(false);
+      return;
+    }
+
     const timer = setTimeout(() => {
       if (searchValue.trim().length > 2) {
         fetchMapboxSuggestions(searchValue);
@@ -54,7 +61,7 @@ export default function AddressAutocomplete({
     }, 300);
 
     return () => clearTimeout(timer);
-  }, [searchValue]);
+  }, [searchValue, isFocused]);
 
   const fetchMapboxSuggestions = async (query: string) => {
     const token = import.meta.env.VITE_MAPBOX_TOKEN;
@@ -136,6 +143,14 @@ export default function AddressAutocomplete({
                 coordinate: undefined
               });
             }
+          }}
+          onFocus={() => setIsFocused(true)}
+          onBlur={() => {
+            // Delay per permettere il click sui suggerimenti
+            setTimeout(() => {
+              setIsFocused(false);
+              setShowSuggestions(false);
+            }, 200);
           }}
           onKeyDown={handleKeyDown}
           placeholder={placeholder}

@@ -27,6 +27,7 @@ export default function LocationAutocomplete({
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(-1);
   const [isSelecting, setIsSelecting] = useState(false);
+  const [isFocused, setIsFocused] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const suggestionsRef = useRef<HTMLDivElement>(null);
 
@@ -34,11 +35,13 @@ export default function LocationAutocomplete({
     setSearchText(value);
   }, [value]);
 
-  // Debounced autocomplete
+  // Debounced autocomplete - solo se il campo è in focus
   useEffect(() => {
-    // Non fare fetch se abbiamo appena selezionato un suggerimento
-    if (isSelecting) {
+    // Non fare fetch se abbiamo appena selezionato un suggerimento o se non siamo in focus
+    if (isSelecting || !isFocused) {
       setIsSelecting(false);
+      setSuggestions([]);
+      setShowSuggestions(false);
       return;
     }
 
@@ -52,24 +55,7 @@ export default function LocationAutocomplete({
     }, 300);
 
     return () => clearTimeout(timer);
-  }, [searchText]);
-
-  // Click fuori per chiudere suggestions
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (
-        inputRef.current &&
-        suggestionsRef.current &&
-        !inputRef.current.contains(event.target as Node) &&
-        !suggestionsRef.current.contains(event.target as Node)
-      ) {
-        setShowSuggestions(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+  }, [searchText, isFocused]);
 
   const fetchSuggestions = async (query: string) => {
     const token = import.meta.env.VITE_MAPBOX_TOKEN;
@@ -160,9 +146,17 @@ export default function LocationAutocomplete({
           onChange={handleInputChange}
           onKeyDown={handleKeyDown}
           onFocus={() => {
-            if (suggestions.length > 0) {
+            setIsFocused(true);
+            if (suggestions.length > 0 && searchText.trim().length > 2) {
               setShowSuggestions(true);
             }
+          }}
+          onBlur={() => {
+            // Delay per permettere il click sui suggerimenti
+            setTimeout(() => {
+              setIsFocused(false);
+              setShowSuggestions(false);
+            }, 200);
           }}
           placeholder={placeholder}
           className="w-full px-4 py-3 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"

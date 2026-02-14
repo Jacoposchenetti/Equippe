@@ -331,8 +331,7 @@ export default function ReferralCreatePage() {
               ) : (
                 professionisti.map((prof) => (
                   <option key={prof.uid} value={prof.uid}>
-                    {prof.profile?.nome || 'Nome non disponibile'} - {prof.profile?.specializzazioni?.join(', ') || 'N/D'} 
-                    {prof.profile?.location?.città ? ` (${prof.profile.location.città})` : ''}
+                    {prof.profile?.nome || 'Nome non disponibile'} - {prof.profile?.specializzazioni?.join(', ') || 'N/D'}
                   </option>
                 ))
               )}

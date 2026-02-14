@@ -284,7 +284,7 @@ export default function CreatePazientePage() {
               ) : (
                 professionisti.map((prof) => (
                   <option key={prof.uid} value={prof.uid}>
-                    {prof.profile.nome} - {prof.profile.specializzazioni.join(', ')} ({prof.profile.location.città})
+                    {prof.profile.nome} - {prof.profile.specializzazioni.join(', ')}
                   </option>
                 ))
               )}

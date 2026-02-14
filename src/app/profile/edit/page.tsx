@@ -475,15 +475,15 @@ export default function EditProfilePage() {
 
           {/* Localizzazione - Studi */}
           <div className="bg-white rounded-xl shadow-sm p-6">
-            <div className="flex items-center justify-between mb-4">
-              <div>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+              <div className="flex-1">
                 <h2 className="text-2xl font-bold text-gray-900">Studi e Sedi di Lavoro</h2>
                 <p className="text-sm text-gray-600 mt-1">Aggiungi i luoghi dove ricevi pazienti o svolgi la tua attività</p>
               </div>
               <button
                 type="button"
                 onClick={addStudio}
-                className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition text-sm font-medium"
+                className="w-full sm:w-auto px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition text-sm font-medium whitespace-nowrap"
               >
                 + Aggiungi Studio
               </button>

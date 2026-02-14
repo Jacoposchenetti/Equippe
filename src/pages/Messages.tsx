@@ -60,15 +60,28 @@ export default function MessagesPage() {
     }
   }, [messages]);
 
-  // Scroll quando si seleziona una conversazione
+  // Scroll quando si seleziona una conversazione (con retry per mobile)
   useEffect(() => {
-    if (selectedConversation && messagesContainerRef.current) {
-      setTimeout(() => {
-        if (messagesContainerRef.current) {
-          messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
-        }
-      }, 100);
-    }
+    if (!selectedConversation) return;
+    
+    const scrollToBottom = () => {
+      if (messagesContainerRef.current) {
+        messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
+      }
+    };
+    
+    // Prima chiamata immediata
+    scrollToBottom();
+    
+    // Poi retry multipli per assicurarsi che funzioni su mobile
+    const timeouts = [
+      setTimeout(scrollToBottom, 0),
+      setTimeout(scrollToBottom, 100),
+      setTimeout(scrollToBottom, 300),
+      setTimeout(scrollToBottom, 600)
+    ];
+    
+    return () => timeouts.forEach(t => clearTimeout(t));
   }, [selectedConversation]);
 
   // Crea chat di team se non esiste
@@ -663,7 +676,7 @@ export default function MessagesPage() {
             </div>
 
             {/* Area messaggi */}
-            <div className={`${selectedConversation ? 'flex-1' : 'hidden'} md:flex md:flex-col md:col-span-8 h-full overflow-hidden`}>
+            <div className={`${selectedConversation ? 'flex flex-col flex-1' : 'hidden'} md:col-span-8 h-full overflow-hidden`}>
               {!selectedConversation ? (
                 <div className="flex-1 flex items-center justify-center text-gray-500">
                   <div className="text-center">

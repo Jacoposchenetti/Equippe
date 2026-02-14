@@ -181,13 +181,13 @@ export default function CreatePazientePage() {
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white shadow">
         <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
-          <h1 className="text-2xl font-bold text-blue-600">Equipé</h1>
-          <Link to="/referrals" className="text-blue-600 hover:underline">← Torna ai Pazienti</Link>
+          <h1 className="text-xl sm:text-2xl font-bold text-blue-600">Equipé</h1>
+          <Link to="/referrals" className="text-sm sm:text-base text-blue-600 hover:underline">← Torna ai Pazienti</Link>
         </div>
       </header>
 
-      <div className="max-w-4xl mx-auto px-4 py-8">
-        <h2 className="text-3xl font-bold mb-6">Crea Nuovo Paziente</h2>
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+        <h2 className="text-2xl sm:text-3xl font-bold mb-6">Crea Nuovo Paziente</h2>
 
         {error && (
           <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
@@ -195,10 +195,10 @@ export default function CreatePazientePage() {
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="bg-white p-8 rounded-lg shadow space-y-6">
+        <form onSubmit={handleSubmit} className="bg-white p-4 sm:p-6 lg:p-8 rounded-lg shadow space-y-6">
           {/* Filtri */}
-          <div className="bg-blue-50 p-6 rounded-lg space-y-4">
-            <h3 className="text-lg font-semibold text-blue-900 mb-4">Filtri di Ricerca</h3>
+          <div className="bg-blue-50 p-4 sm:p-6 rounded-lg space-y-4">
+            <h3 className="text-base sm:text-lg font-semibold text-blue-900 mb-4">Filtri di Ricerca</h3>
             
             {/* Filtro Professionista */}
             <div>
@@ -306,7 +306,7 @@ export default function CreatePazientePage() {
           </div>
 
           <div className="border-t pt-6">
-            <h3 className="text-lg font-semibold mb-4">Dati Paziente (Crittografati)</h3>
+            <h3 className="text-base sm:text-lg font-semibold mb-4">Dati Paziente (Crittografati)</h3>
             
             {/* Nome Paziente */}
             <div className="mb-4">
@@ -377,17 +377,17 @@ export default function CreatePazientePage() {
           </div>
 
           {/* Pulsanti */}
-          <div className="flex gap-4">
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
             <button
               type="submit"
               disabled={loading}
-              className="flex-1 bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 disabled:bg-gray-400 font-semibold"
+              className="w-full sm:flex-1 bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 disabled:bg-gray-400 font-semibold"
             >
               {loading ? 'Invio in corso...' : 'Invia Paziente'}
             </button>
             <Link
               to="/referrals"
-              className="px-6 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 text-center"
+              className="w-full sm:w-auto px-6 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 text-center flex items-center justify-center"
             >
               Annulla
             </Link>

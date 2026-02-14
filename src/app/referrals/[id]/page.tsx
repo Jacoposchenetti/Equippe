@@ -156,23 +156,23 @@ export default function PazienteDetailPage() {
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white shadow">
         <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
-          <h1 className="text-2xl font-bold text-blue-600">Equipé</h1>
-          <Link to="/referrals" className="text-blue-600 hover:underline">← Torna ai Referral</Link>
+          <h1 className="text-xl sm:text-2xl font-bold text-blue-600">Equipé</h1>
+          <Link to="/referrals" className="text-sm sm:text-base text-blue-600 hover:underline">← Torna ai Referral</Link>
         </div>
       </header>
 
-      <div className="max-w-5xl mx-auto px-4 py-8">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
         {/* Header Referral */}
-        <div className="bg-white p-8 rounded-lg shadow mb-6">
-          <div className="flex justify-between items-start mb-4">
+        <div className="bg-white p-4 sm:p-6 lg:p-8 rounded-lg shadow mb-6">
+          <div className="flex flex-col gap-4 mb-4">
             <div>
-              <h2 className="text-3xl font-bold mb-2">Dettaglio Referral</h2>
-              <p className="text-gray-600">
+              <h2 className="text-2xl sm:text-3xl font-bold mb-2">Dettaglio Referral</h2>
+              <p className="text-sm sm:text-base text-gray-600">
                 Creato il {referral.createdAt?.toDate?.().toLocaleDateString('it-IT', { dateStyle: 'long' })}
               </p>
             </div>
-            <div className="flex gap-2">
-              <span className={`px-4 py-2 rounded font-semibold ${
+            <div className="flex flex-wrap gap-2">
+              <span className={`px-3 sm:px-4 py-2 rounded text-xs sm:text-sm font-semibold whitespace-nowrap ${
                 referral.urgency === 'high' ? 'bg-red-100 text-red-800' :
                 referral.urgency === 'normal' ? 'bg-yellow-100 text-yellow-800' :
                 'bg-green-100 text-green-800'
@@ -180,7 +180,7 @@ export default function PazienteDetailPage() {
                 {referral.urgency === 'high' ? '🔴 Alta urgenza' : 
                  referral.urgency === 'normal' ? '🟡 Urgenza normale' : '🟢 Bassa urgenza'}
               </span>
-              <span className={`px-4 py-2 rounded font-semibold ${
+              <span className={`px-3 sm:px-4 py-2 rounded text-xs sm:text-sm font-semibold whitespace-nowrap ${
                 referral.status === 'pending' ? 'bg-blue-100 text-blue-800' :
                 referral.status === 'accepted' ? 'bg-green-100 text-green-800' :
                 referral.status === 'rejected' ? 'bg-red-100 text-red-800' :
@@ -193,15 +193,15 @@ export default function PazienteDetailPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-6 mt-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mt-6">
             <div>
               <h3 className="text-sm font-semibold text-gray-700 mb-2">Inviato da:</h3>
               {sender && (
                 <div>
-                  <p className="font-semibold text-lg">{sender.profile.nome}</p>
-                  <p className="text-gray-600">{sender.email}</p>
-                  <p className="text-sm text-gray-500">{sender.profile.specializzazioni.join(', ')}</p>
-                  <p className="text-sm text-gray-500">{sender.profile.location.città}</p>
+                  <p className="font-semibold text-base sm:text-lg">{sender.profile.nome}</p>
+                  <p className="text-sm sm:text-base text-gray-600">{sender.email}</p>
+                  <p className="text-xs sm:text-sm text-gray-500">{sender.profile.specializzazioni.join(', ')}</p>
+                  <p className="text-xs sm:text-sm text-gray-500">{sender.profile.location.città}</p>
                 </div>
               )}
             </div>
@@ -209,10 +209,10 @@ export default function PazienteDetailPage() {
               <h3 className="text-sm font-semibold text-gray-700 mb-2">Destinatario:</h3>
               {receiver && (
                 <div>
-                  <p className="font-semibold text-lg">{receiver.profile.nome}</p>
-                  <p className="text-gray-600">{receiver.email}</p>
-                  <p className="text-sm text-gray-500">{receiver.profile.specializzazioni.join(', ')}</p>
-                  <p className="text-sm text-gray-500">{receiver.profile.location.città}</p>
+                  <p className="font-semibold text-base sm:text-lg">{receiver.profile.nome}</p>
+                  <p className="text-sm sm:text-base text-gray-600">{receiver.email}</p>
+                  <p className="text-xs sm:text-sm text-gray-500">{receiver.profile.specializzazioni.join(', ')}</p>
+                  <p className="text-xs sm:text-sm text-gray-500">{receiver.profile.location.città}</p>
                 </div>
               )}
             </div>
@@ -220,41 +220,41 @@ export default function PazienteDetailPage() {
         </div>
 
         {/* Dati Paziente Decriptati */}
-        <div className="bg-white p-8 rounded-lg shadow mb-6">
+        <div className="bg-white p-4 sm:p-6 lg:p-8 rounded-lg shadow mb-6">
           <div className="flex items-center gap-2 mb-6">
-            <h3 className="text-2xl font-bold">🔓 Dati Paziente</h3>
+            <h3 className="text-xl sm:text-2xl font-bold">🔓 Dati Paziente</h3>
             <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">Decriptato</span>
           </div>
 
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1">Nome Paziente</label>
-              <p className="text-lg">{decryptedData.patient.name}</p>
+              <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1">Nome Paziente</label>
+              <p className="text-base sm:text-lg">{decryptedData.patient.name}</p>
             </div>
 
             {decryptedData.patient.age && (
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">Età</label>
-                <p className="text-lg">{decryptedData.patient.age}</p>
+                <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1">Età</label>
+                <p className="text-base sm:text-lg">{decryptedData.patient.age}</p>
               </div>
             )}
 
             {decryptedData.patient.contact && (
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">Contatto</label>
-                <p className="text-lg">{decryptedData.patient.contact}</p>
+                <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1">Contatto</label>
+                <p className="text-base sm:text-lg">{decryptedData.patient.contact}</p>
               </div>
             )}
 
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1">Diagnosi / Motivo Referral</label>
-              <p className="text-lg whitespace-pre-wrap">{decryptedData.diagnosis}</p>
+              <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1">Diagnosi / Motivo Referral</label>
+              <p className="text-base sm:text-lg whitespace-pre-wrap">{decryptedData.diagnosis}</p>
             </div>
 
             {decryptedData.notes && (
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">Note Cliniche</label>
-                <p className="text-lg whitespace-pre-wrap">{decryptedData.notes}</p>
+                <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1">Note Cliniche</label>
+                <p className="text-base sm:text-lg whitespace-pre-wrap">{decryptedData.notes}</p>
               </div>
             )}
           </div>
@@ -262,20 +262,20 @@ export default function PazienteDetailPage() {
 
         {/* Azioni */}
         {isReceiver && referral.status === 'pending' && (
-          <div className="bg-white p-6 rounded-lg shadow">
-            <h3 className="text-xl font-bold mb-4">Azioni</h3>
-            <div className="flex gap-4">
+          <div className="bg-white p-4 sm:p-6 rounded-lg shadow">
+            <h3 className="text-lg sm:text-xl font-bold mb-4">Azioni</h3>
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
               <button
                 onClick={() => handleStatusUpdate('accepted')}
                 disabled={updating}
-                className="flex-1 px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-400 font-semibold"
+                className="w-full sm:flex-1 px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-400 font-semibold"
               >
                 ✓ Accetta Referral
               </button>
               <button
                 onClick={() => handleStatusUpdate('rejected')}
                 disabled={updating}
-                className="flex-1 px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:bg-gray-400 font-semibold"
+                className="w-full sm:flex-1 px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:bg-gray-400 font-semibold"
               >
                 ✗ Rifiuta Referral
               </button>
@@ -284,8 +284,8 @@ export default function PazienteDetailPage() {
         )}
 
         {referral.status === 'accepted' && (
-          <div className="bg-white p-6 rounded-lg shadow">
-            <h3 className="text-xl font-bold mb-4">Azioni</h3>
+          <div className="bg-white p-4 sm:p-6 rounded-lg shadow">
+            <h3 className="text-lg sm:text-xl font-bold mb-4">Azioni</h3>
             <button
               onClick={() => handleStatusUpdate('completed')}
               disabled={updating}

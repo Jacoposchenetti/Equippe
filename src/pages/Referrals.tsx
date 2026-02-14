@@ -137,12 +137,12 @@ export default function ReferralsPage() {
     <div className="min-h-screen bg-gray-50">
       <Header />
 
-      <div className="max-w-7xl mx-auto px-6 py-8">
-        <div className="flex justify-between items-center mb-8">
-          <h1 className="text-4xl font-bold text-gray-900">Pazienti</h1>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 sm:mb-8">
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900">Pazienti</h1>
           <Link
             to="/referrals/create"
-            className="px-6 py-3 bg-amber-500 text-white rounded-lg font-medium hover:bg-amber-600 transition shadow-sm"
+            className="w-full sm:w-auto px-6 py-3 bg-amber-500 text-white rounded-lg font-medium hover:bg-amber-600 transition shadow-sm text-center whitespace-nowrap"
           >
             + Nuovo Paziente
           </Link>
@@ -159,7 +159,7 @@ export default function ReferralsPage() {
           <div className="flex border-b border-gray-200">
             <button
               onClick={() => setTab('received')}
-              className={`flex-1 px-6 py-4 font-medium transition ${
+              className={`flex-1 px-3 sm:px-6 py-3 sm:py-4 text-sm sm:text-base font-medium transition ${
                 tab === 'received' 
                   ? 'text-blue-600 border-b-2 border-blue-600' 
                   : 'text-gray-600 hover:text-gray-900'
@@ -169,7 +169,7 @@ export default function ReferralsPage() {
             </button>
             <button
               onClick={() => setTab('sent')}
-              className={`flex-1 px-6 py-4 font-medium transition ${
+              className={`flex-1 px-3 sm:px-6 py-3 sm:py-4 text-sm sm:text-base font-medium transition ${
                 tab === 'sent' 
                   ? 'text-blue-600 border-b-2 border-blue-600' 
                   : 'text-gray-600 hover:text-gray-900'
@@ -217,32 +217,34 @@ export default function ReferralsPage() {
                   to={`/referrals/${referral.id}`}
                   className="block bg-white rounded-xl shadow-sm hover:shadow-md transition overflow-hidden"
                 >
-                  <div className="p-6">
-                    <div className="flex justify-between items-start">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-3">
-                          <h3 className="text-lg font-semibold">
-                            {tab === 'received' ? 'Da' : 'A'}: {otherUser?.profile.nome || 'Caricamento...'}
-                          </h3>
-                          <span className={`px-3 py-1 rounded text-sm font-semibold ${getUrgencyColor(referral.urgency)}`}>
-                            {referral.urgency === 'high' ? '🔴 Alta' : referral.urgency === 'normal' ? '🟡 Normale' : '🟢 Bassa'}
-                          </span>
-                        </div>
+                  <div className="p-4 sm:p-6">
+                    <div className="flex flex-col gap-3">
+                      <div className="flex flex-col sm:flex-row justify-between items-start gap-3">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex flex-wrap items-center gap-2 mb-2">
+                            <h3 className="text-base sm:text-lg font-semibold">
+                              {tab === 'received' ? 'Da' : 'A'}: {otherUser?.profile.nome || 'Caricamento...'}
+                            </h3>
+                            <span className={`px-2 sm:px-3 py-1 rounded text-xs sm:text-sm font-semibold whitespace-nowrap ${getUrgencyColor(referral.urgency)}`}>
+                              {referral.urgency === 'high' ? '🔴 Alta' : referral.urgency === 'normal' ? '🟡 Normale' : '🟢 Bassa'}
+                            </span>
+                          </div>
                       
-                        {otherUser && (
-                          <p className="text-gray-600 text-sm mb-2">
-                            {otherUser.profile.specializzazioni.join(', ')} • {otherUser.profile.location.città}
+                          {otherUser && (
+                            <p className="text-gray-600 text-xs sm:text-sm mb-2">
+                              {otherUser.profile.specializzazioni.join(', ')} • {otherUser.profile.location.città}
+                            </p>
+                          )}
+
+                          <p className="text-gray-500 text-xs sm:text-sm">
+                            Creato il {referral.createdAt?.toDate?.().toLocaleDateString('it-IT') || 'N/A'}
                           </p>
-                        )}
+                        </div>
 
-                        <p className="text-gray-500 text-sm">
-                          Creato il {referral.createdAt?.toDate?.().toLocaleDateString('it-IT') || 'N/A'}
-                        </p>
+                        <span className={`px-3 sm:px-4 py-2 rounded text-sm font-semibold whitespace-nowrap ${getStatusColor(referral.status)}`}>
+                          {getStatusLabel(referral.status)}
+                        </span>
                       </div>
-
-                      <span className={`px-4 py-2 rounded font-semibold ${getStatusColor(referral.status)}`}>
-                        {getStatusLabel(referral.status)}
-                      </span>
                     </div>
                   </div>
                 </Link>

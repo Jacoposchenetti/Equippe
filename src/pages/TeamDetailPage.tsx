@@ -30,11 +30,6 @@ export default function TeamDetailPage() {
   const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
   const [pendingRequests, setPendingRequests] = useState<any[]>([]);
   const [teamConversation, setTeamConversation] = useState<Conversation | null>(null);
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [messageText, setMessageText] = useState('');
-  const [showChat, setShowChat] = useState(false);
-  const [sending, setSending] = useState(false);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Stati per editing inline
   const [editingField, setEditingField] = useState<string | null>(null);
@@ -141,13 +136,6 @@ export default function TeamDetailPage() {
       setLoading(false);
     }
   };
-
-  // Auto-scroll ai nuovi messaggi
-  useEffect(() => {
-    if (showChat) {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }
-  }, [messages, showChat]);
 
   const handleRemoveMember = async (userId: string) => {
     if (!confirm('Sei sicuro di voler rimuovere questo membro?')) return;
@@ -451,13 +439,9 @@ export default function TeamDetailPage() {
         const conversationDoc = conversationSnapshot.docs[0];
         const conversationData = { id: conversationDoc.id, ...conversationDoc.data() } as Conversation;
         setTeamConversation(conversationData);
-        
-        // Carica messaggi
-        loadMessages(conversationDoc.id);
       } else {
-        // Nessuna conversazione trovata - sarà creata al primo messaggio
+        // Nessuna conversazione trovata - sarà creata quando l'utente aprirà la chat
         setTeamConversation(null);
-        setMessages([]);
       }
     } catch (error) {
       console.error('Errore caricamento chat team:', error);
@@ -524,76 +508,27 @@ export default function TeamDetailPage() {
     }
   };
 
-  const loadMessages = (conversationId: string) => {
-    const messagesRef = collection(db, 'messages');
-    const messagesQuery = query(
-      messagesRef,
-      where('conversationId', '==', conversationId),
-      orderBy('createdAt', 'asc')
-    );
-
-    const unsubscribe = onSnapshot(messagesQuery, (snapshot) => {
-      const messagesList = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      } as Message));
-      
-      setMessages(messagesList);
-      
-      // Scroll automatico verso il basso
-      setTimeout(() => {
-        if (messagesEndRef.current) {
-          messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
-        }
-      }, 100);
-    });
-
-    // Cleanup function
-    return unsubscribe;
-  };
-
-  const handleSendMessage = async () => {
-    if (!messageText.trim() || !user || sending) return;
-
-    setSending(true);
+  // Funzione per aprire la chat del team nella pagina Messaggi
+  const handleOpenTeamChat = async () => {
+    if (!team || !user) return;
 
     try {
-      let conversationId: string | null = teamConversation?.id || null;
+      let conversationId = teamConversation?.id;
 
-      // Se non esiste una conversazione, creala
+      // Se non esiste ancora una conversazione, creala
       if (!conversationId) {
         conversationId = await createTeamChat();
         if (!conversationId) {
-          throw new Error('Impossibile creare la chat');
+          alert('Errore durante la creazione della chat');
+          return;
         }
       }
 
-      // Crea il messaggio
-      await addDoc(collection(db, 'messages'), {
-        conversationId,
-        senderId: user.uid,
-        senderName: user.displayName || user.email || 'Anonimo',
-        senderPhotoURL: user.photoURL,
-        content: messageText.trim(),
-        read: false,
-        createdAt: Timestamp.now(),
-      });
-
-      // Aggiorna la conversazione con l'ultimo messaggio
-      if (conversationId) {
-        await updateDoc(doc(db, 'conversations', conversationId), {
-          lastMessage: messageText.trim(),
-          lastMessageTime: Timestamp.now(),
-          // TODO: Aggiorna unreadCount per gli altri partecipanti
-        });
-      }
-
-      setMessageText('');
+      // Naviga alla pagina messaggi con la conversazione selezionata
+      navigate(`/messages?conversation=${conversationId}`);
     } catch (error) {
-      console.error('Errore invio messaggio:', error);
-      alert('Errore durante l\'invio del messaggio');
-    } finally {
-      setSending(false);
+      console.error('Errore apertura chat team:', error);
+      alert('Errore durante l\'apertura della chat');
     }
   };
 
@@ -875,8 +810,24 @@ export default function TeamDetailPage() {
         {/* Sezione Composizione Equipé */}
         <div className="bg-white rounded-xl shadow-sm mb-6 overflow-hidden">
           <div className="px-8 py-6 border-b border-gray-200">
-            <h3 className="text-2xl font-bold text-gray-900">Composizione Equipé</h3>
-            <p className="text-sm text-gray-600 mt-1">Membri attuali del team</p>
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-2xl font-bold text-gray-900">Composizione Equipé</h3>
+                <p className="text-sm text-gray-600 mt-1">Membri attuali del team</p>
+              </div>
+              {isMember && (
+                <button
+                  onClick={handleOpenTeamChat}
+                  className="px-4 sm:px-6 py-2 sm:py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition shadow-sm flex items-center gap-2"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                  </svg>
+                  <span className="hidden sm:inline">Chat di Gruppo</span>
+                  <span className="sm:hidden">Chat</span>
+                </button>
+              )}
+            </div>
           </div>
           <div className="p-6">
             {members.length > 0 ? (
@@ -1467,108 +1418,6 @@ export default function TeamDetailPage() {
               </div>
             </div>
           </div>
-        )}
-
-        {/* Sezione Chat Equipé - Solo per membri */}
-        {isMember && (
-          <div className="bg-white rounded-xl shadow-sm overflow-hidden mt-6">
-            <div className="px-4 sm:px-8 py-6 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-xl sm:text-2xl font-bold text-gray-900 flex items-center gap-2">
-                  <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                  </svg>
-                  Chat di Gruppo
-                </h3>
-                <p className="text-sm text-gray-600 mt-1">Comunica con tutti i membri dell'equipé</p>
-              </div>
-              <button
-                onClick={() => setShowChat(!showChat)}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition shadow-sm"
-              >
-                {showChat ? 'Nascondi Chat' : 'Apri Chat'}
-              </button>
-            </div>
-          </div>
-
-          {showChat && (
-            <div className="border-t border-gray-200">
-              {/* Area Messaggi */}
-              <div 
-                ref={messagesEndRef}
-                className="h-96 overflow-y-auto p-4 space-y-3 bg-gray-50"
-              >
-                {messages.length === 0 ? (
-                  <div className="text-center py-8 text-gray-500">
-                    <p className="mb-2">Messaggio</p>
-                    <p>Nessun messaggio ancora. Inizia la conversazione!</p>
-                  </div>
-                ) : (
-                  messages.map((message) => (
-                    <div key={message.id} className="bg-white rounded-lg p-3 shadow-sm border">
-                      <div className="flex items-start gap-3">
-                        <div className="flex-shrink-0">
-                          {message.senderPhotoURL ? (
-                            <img
-                              src={message.senderPhotoURL}
-                              alt={message.senderName}
-                              className="w-8 h-8 rounded-full object-cover"
-                            />
-                          ) : (
-                            <div className="w-8 h-8 rounded-full bg-blue-500 text-white flex items-center justify-center text-sm font-bold">
-                              {message.senderName?.charAt(0).toUpperCase()}
-                            </div>
-                          )}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1">
-                            <span className="font-medium text-gray-900 text-sm">
-                              {message.senderName}
-                            </span>
-                            <span className="text-xs text-gray-500">
-                              {message.createdAt?.toDate().toLocaleString()}
-                            </span>
-                          </div>
-                          <p className="text-gray-700 text-sm break-words">{message.content}</p>
-                        </div>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-
-              {/* Area Input Messaggio */}
-              <div className="p-4 border-t border-gray-200 bg-white">
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={messageText}
-                    onChange={(e) => setMessageText(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
-                    placeholder="Scrivi un messaggio..."
-                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                  <button
-                    onClick={handleSendMessage}
-                    disabled={!messageText.trim() || sending}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition shadow-sm"
-                  >
-                    {sending ? (
-                      <svg className="w-5 h-5 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                      </svg>
-                    ) : (
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                      </svg>
-                    )}
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
         )}
 
         {/* Sezione Azioni Admin */}

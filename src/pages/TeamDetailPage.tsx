@@ -925,7 +925,7 @@ export default function TeamDetailPage() {
                             ))}
                           </div>
                           <div className="flex items-center gap-2 text-xs text-gray-500">
-                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                             </svg>
@@ -1304,103 +1304,6 @@ export default function TeamDetailPage() {
             </div>
           </div>
         )}
-
-        <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-          <div className="px-8 py-6 border-b border-gray-200 flex justify-between items-center">
-            <h3 className="text-2xl font-bold text-gray-900">Membri ({members.length})</h3>
-            {isAdmin && (
-              <button
-                onClick={() => setShowInviteModal(true)}
-                className="px-5 py-2.5 bg-amber-500 text-white rounded-lg font-medium hover:bg-amber-600 transition shadow-sm flex items-center gap-2"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
-                </svg>
-                Invita Membri
-              </button>
-            )}
-          </div>
-          <div className="p-6 space-y-4">
-            {members.map((member) => {
-              const memberInfo = team.members.find(m => m.userId === member.uid);
-              const isCurrentUser = member.uid === user?.uid;
-
-              return (
-                <div key={member.uid} className="flex items-start justify-between p-5 border border-gray-200 rounded-xl hover:border-blue-200 hover:bg-blue-50/30 transition">
-                  <div className="flex gap-4 flex-1">
-                    {member.profile.photoURL ? (
-                      <img 
-                        src={member.profile.photoURL} 
-                        alt={member.profile.nome} 
-                        className="w-12 h-12 rounded-full object-cover border-2 border-gray-300 flex-shrink-0"
-                      />
-                    ) : (
-                      <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center text-white font-bold text-lg flex-shrink-0">
-                        {member.profile.nome.charAt(0).toUpperCase()}
-                      </div>
-                    )}
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <h4 className="font-bold text-lg text-gray-900">{member.profile.nome}</h4>
-                        {memberInfo?.role === 'admin' && (
-                          <span className="bg-purple-100 text-purple-700 px-3 py-1 rounded-lg text-xs font-bold">
-                            ADMIN
-                          </span>
-                        )}
-                        {isCurrentUser && (
-                          <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-lg text-xs font-bold">
-                            TU
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-gray-600 text-sm mb-3">{member.email}</p>
-                      <div className="flex flex-wrap gap-2 mb-2">
-                        {member.profile.specializzazioni.map((spec) => (
-                          <span key={spec} className="text-xs bg-gray-100 text-gray-700 px-3 py-1 rounded-lg font-medium">
-                            {spec}
-                          </span>
-                        ))}
-                      </div>
-                      <div className="flex items-center gap-3 text-xs text-gray-500">
-                        <span className="flex items-center gap-1">
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                          </svg>
-                          {member.profile.location.città}
-                        </span>
-                        <span>•</span>
-                        <span>{member.profile.esperienza}</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2 ml-4">
-                    {!isCurrentUser && (
-                      <button
-                        onClick={() => navigate(`/messages?userId=${member.uid}`)}
-                        className="p-3 text-blue-600 hover:bg-blue-50 rounded-lg font-medium transition flex items-center gap-2"
-                        title="Invia messaggio"
-                      >
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                        </svg>
-                      </button>
-                    )}
-                    {isAdmin && !isCurrentUser && (
-                      <button
-                        onClick={() => handleRemoveMember(member.uid)}
-                        className="px-4 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg font-medium transition"
-                      >
-                        Rimuovi
-                      </button>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
 
         {/* Pulsanti azioni per non membri */}
         {!isMember && (

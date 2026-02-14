@@ -28,6 +28,7 @@ export default function MessagesPage() {
   const [uploadProgress, setUploadProgress] = useState<{[key: string]: number}>({});
   const [pendingAttachments, setPendingAttachments] = useState<FileAttachment[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -52,10 +53,23 @@ export default function MessagesPage() {
     }
   }, [searchParams, conversations]);
 
-  // Auto-scroll ai nuovi messaggi
+  // Auto-scroll ai nuovi messaggi (solo nel container, non nella pagina)
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (messagesContainerRef.current) {
+      messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
+    }
   }, [messages]);
+
+  // Scroll quando si seleziona una conversazione
+  useEffect(() => {
+    if (selectedConversation && messagesContainerRef.current) {
+      setTimeout(() => {
+        if (messagesContainerRef.current) {
+          messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
+        }
+      }, 100);
+    }
+  }, [selectedConversation]);
 
   // Crea chat di team se non esiste
   const createTeamConversationIfNeeded = async (team: Team) => {
@@ -719,7 +733,7 @@ export default function MessagesPage() {
                   </div>
 
                   {/* Lista messaggi */}
-                  <div className="flex-1 overflow-y-auto p-6 space-y-4">
+                  <div ref={messagesContainerRef} className="flex-1 overflow-y-auto p-6 space-y-4">
                     {messages.map((msg) => {
                       const isMine = msg.senderId === user?.uid;
                       const isTeamChat = selectedConvData?.type === 'team';

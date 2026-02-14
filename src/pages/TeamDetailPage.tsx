@@ -809,54 +809,53 @@ export default function TeamDetailPage() {
 
         {/* Sezione Composizione Equipé */}
         <div className="bg-white rounded-xl shadow-sm mb-6 overflow-hidden">
-          <div className="px-8 py-6 border-b border-gray-200">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-2xl font-bold text-gray-900">Composizione Equipé</h3>
-                <p className="text-sm text-gray-600 mt-1">Membri attuali del team</p>
+          <div className="px-4 sm:px-6 lg:px-8 py-4 sm:py-6 border-b border-gray-200">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
+              <div className="flex-1 min-w-0">
+                <h3 className="text-xl sm:text-2xl font-bold text-gray-900">Composizione Equipé</h3>
+                <p className="text-xs sm:text-sm text-gray-600 mt-1">Membri attuali del team</p>
               </div>
               {isMember && (
                 <button
                   onClick={handleOpenTeamChat}
-                  className="px-4 sm:px-6 py-2 sm:py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition shadow-sm flex items-center gap-2"
+                  className="w-full sm:w-auto px-4 sm:px-6 py-2.5 sm:py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition shadow-sm flex items-center justify-center gap-2 whitespace-nowrap"
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                   </svg>
-                  <span className="hidden sm:inline">Chat di Gruppo</span>
-                  <span className="sm:hidden">Chat</span>
+                  <span>Chat di Gruppo</span>
                 </button>
               )}
             </div>
           </div>
-          <div className="p-6">
+          <div className="p-4 sm:p-6">
             {members.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
                 {members.map((member) => {
                   const memberInfo = team.members.find(m => m.userId === member.uid);
                   const isCurrentUser = member.uid === user?.uid;
 
                   return (
-                    <div key={member.uid} className="border border-gray-200 rounded-lg p-4 hover:border-blue-300 hover:bg-blue-50/30 transition">
-                      <div className="flex items-start gap-3">
+                    <div key={member.uid} className="border border-gray-200 rounded-lg p-3 sm:p-4 hover:border-blue-300 hover:bg-blue-50/30 transition">
+                      <div className="flex items-start gap-2 sm:gap-3">
                         {member.profile.photoURL ? (
                           <img 
                             src={member.profile.photoURL} 
                             alt={member.profile.nome} 
-                            className="w-12 h-12 rounded-full object-cover border-2 border-gray-300 flex-shrink-0"
+                            className="w-10 h-10 sm:w-12 sm:h-12 rounded-full object-cover border-2 border-gray-300 flex-shrink-0"
                             style={{ aspectRatio: '1/1' }}
                           />
                         ) : (
                           <div 
-                            className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white font-bold text-lg flex-shrink-0"
+                            className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white font-bold text-base sm:text-lg flex-shrink-0"
                             style={{ aspectRatio: '1/1' }}
                           >
                             {member.profile.nome.charAt(0).toUpperCase()}
                           </div>
                         )}
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-1">
-                            <h4 className="font-bold text-base text-gray-900">{member.profile.nome}</h4>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1.5 sm:gap-2 mb-1 flex-wrap">
+                            <h4 className="font-bold text-sm sm:text-base text-gray-900">{member.profile.nome}</h4>
                             {memberInfo?.role === 'admin' && (
                               <span className="bg-purple-100 text-purple-700 px-2 py-0.5 rounded text-xs font-bold">
                                 ADMIN

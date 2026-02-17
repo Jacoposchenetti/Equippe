@@ -101,7 +101,7 @@ export const sendPushNotification = functions
  * Determina l'URL a cui portare l'utente quando clicca sulla notifica
  */
 function getNotificationUrl(notification: any): string {
-  const baseUrl = 'https://equippe-271f5.web.app'; // Cambia con il tuo dominio
+  const baseUrl = 'https://tuaequipe.it';
 
   switch (notification.type) {
     case 'team_request':
@@ -211,7 +211,7 @@ export const sendProfessionVerificationEmail = functions
                 `<li><strong>${doc.tipo}:</strong> ${doc.nome} - <a href="${doc.url}">Visualizza</a></li>`
               ).join('') || '<li>Nessun documento</li>'}
             </ul>
-            <p><a href="https://equippe-271f5.web.app/admin/verifications?filter=with-pending-professions">Vai al pannello di verifica</a></p>
+            <p><a href="https://tuaequipe.it/admin/verifications?filter=with-pending-professions">Vai al pannello di verifica</a></p>
           `,
         });
       }
@@ -248,7 +248,7 @@ export const sendProfessionApprovedEmail = functions
           <p>Ciao ${userName},</p>
           <p>La tua richiesta per la professione <strong>${professione}</strong> è stata approvata!</p>
           <p>Ora puoi utilizzare tutte le funzionalità della piattaforma per questa professione.</p>
-          <p><a href="https://equippe-271f5.web.app/profile/edit">Vai al tuo profilo</a></p>
+          <p><a href="https://tuaequipe.it/profile/edit">Vai al tuo profilo</a></p>
           <br>
           <p>Il team di Equipe</p>
         `,
@@ -368,7 +368,7 @@ export const sendWelcomeEmail = functions
               <li>Inviare e ricevere referral</li>
             </ul>
             <p style="text-align: center; margin: 30px 0;">
-              <a href="https://equippe-271f5.web.app/dashboard" 
+              <a href="https://tuaequipe.it/dashboard" 
                  style="background-color: #0066cc; color: white; padding: 12px 24px; 
                         text-decoration: none; border-radius: 5px; display: inline-block;">
                 Vai alla Dashboard
@@ -428,7 +428,7 @@ export const sendProfessionStatusEmail = functions
                 <li>Unirti a team che cercano questa figura professionale</li>
               </ul>
               <p style="text-align: center; margin: 30px 0;">
-                <a href="https://equippe-271f5.web.app/profile/edit" 
+                <a href="https://tuaequipe.it/profile/edit" 
                    style="background-color: #28a745; color: white; padding: 12px 24px; 
                           text-decoration: none; border-radius: 5px; display: inline-block;">
                   Visualizza Profilo
@@ -467,7 +467,7 @@ export const sendProfessionStatusEmail = functions
             </ul>
             <p>Ti invitiamo a riprovare caricando nuovamente la documentazione corretta.</p>
             <p style="text-align: center; margin: 30px 0;">
-              <a href="https://equippe-271f5.web.app/profile/edit" 
+              <a href="https://tuaequipe.it/profile/edit" 
                  style="background-color: #0066cc; color: white; padding: 12px 24px; 
                         text-decoration: none; border-radius: 5px; display: inline-block;">
                 Aggiungi Nuovamente
@@ -541,7 +541,7 @@ export const sendNewMessageEmail = functions
             <p style="margin: 0;">${messagePreview}</p>
           </div>
           <p style="text-align: center; margin: 30px 0;">
-            <a href="https://equippe-271f5.web.app/messages" 
+            <a href="https://tuaequipe.it/messages" 
                style="background-color: #0066cc; color: white; padding: 12px 24px; 
                       text-decoration: none; border-radius: 5px; display: inline-block;">
               Rispondi al Messaggio
@@ -632,7 +632,7 @@ export const sendTeamMessageEmail = functions
                   <p style="margin: 0;">${messagePreview}</p>
                 </div>
                 <p style="text-align: center; margin: 30px 0;">
-                  <a href="https://equippe-271f5.web.app/messages" 
+                  <a href="https://tuaequipe.it/messages" 
                      style="background-color: #0066cc; color: white; padding: 12px 24px; 
                             text-decoration: none; border-radius: 5px; display: inline-block;">
                     Vai alla Chat del Team
@@ -688,7 +688,7 @@ export const sendTeamInviteEmail = functions
             ${team?.descrizione ? `<p style="margin: 0; color: #666;">${team.descrizione}</p>` : ''}
           </div>
           <p style="text-align: center; margin: 30px 0;">
-            <a href="https://equippe-271f5.web.app/invites" 
+            <a href="https://tuaequipe.it/invites" 
                style="background-color: #28a745; color: white; padding: 12px 24px; 
                       text-decoration: none; border-radius: 5px; display: inline-block;">
               Visualizza Invito
@@ -745,7 +745,7 @@ export const sendTeamRequestStatusEmail = functions
                 <li>Visualizzare e gestire i referral del team</li>
               </ul>
               <p style="text-align: center; margin: 30px 0;">
-                <a href="https://equippe-271f5.web.app/teams/${context.params.teamId}" 
+                <a href="https://tuaequipe.it/teams/${context.params.teamId}" 
                    style="background-color: #28a745; color: white; padding: 12px 24px; 
                           text-decoration: none; border-radius: 5px; display: inline-block;">
                   Vai al Team
@@ -829,7 +829,7 @@ export const sendReferralReceivedEmail = functions
                     ${referral.notes ? `<p style="margin: 10px 0 0 0;"><strong>Note:</strong> ${referral.notes}</p>` : ''}
                   </div>
                   <p style="text-align: center; margin: 30px 0;">
-                    <a href="https://equippe-271f5.web.app/referrals" 
+                    <a href="https://tuaequipe.it/referrals" 
                        style="background-color: #0066cc; color: white; padding: 12px 24px; 
                               text-decoration: none; border-radius: 5px; display: inline-block;">
                       Visualizza Referral
@@ -868,7 +868,7 @@ export const sendReferralReceivedEmail = functions
               ${referral.notes ? `<p style="margin: 10px 0 0 0;"><strong>Note:</strong> ${referral.notes}</p>` : ''}
             </div>
             <p style="text-align: center; margin: 30px 0;">
-              <a href="https://equippe-271f5.web.app/referrals" 
+              <a href="https://tuaequipe.it/referrals" 
                  style="background-color: #0066cc; color: white; padding: 12px 24px; 
                         text-decoration: none; border-radius: 5px; display: inline-block;">
                 Visualizza Referral
@@ -954,7 +954,7 @@ export const sendReferralStatusEmail = functions
             ? '<p>Il destinatario prenderà in carico il cliente. Grazie per aver condiviso questa opportunità!</p>' 
             : '<p>Il destinatario non è disponibile per questo referral al momento.</p>'}
           <p style="text-align: center; margin: 30px 0;">
-            <a href="https://equippe-271f5.web.app/referrals" 
+            <a href="https://tuaequipe.it/referrals" 
                style="background-color: #0066cc; color: white; padding: 12px 24px; 
                       text-decoration: none; border-radius: 5px; display: inline-block;">
               Visualizza Tutti i Referral

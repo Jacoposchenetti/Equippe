@@ -58,7 +58,7 @@ export default function Header() {
           {/* Logo */}
           <Link to="/dashboard" className="flex items-center gap-2 hover:opacity-80 transition">
             <img 
-              src="/logo-equippe.png" 
+              src="/logo-equipe.png" 
               alt="Equipe Logo" 
               className="h-10 sm:h-12 w-auto"
             />

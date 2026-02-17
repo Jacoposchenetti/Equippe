@@ -1,4 +1,4 @@
-# Guida Setup Firebase per Equippe
+# Guida Setup Firebase per Equipe
 
 ## Passaggi Configurazione Firebase Console
 
@@ -82,7 +82,7 @@
 2. Scorri fino a "Le tue app"
 3. Clicca sull'icona **Web** (`</>`)
 4. Registra app:
-   - Nome app: `Equippe Web`
+   - Nome app: `Equipe Web`
    - ❌ Non configurare Firebase Hosting (lo faremo dopo)
 5. Copia le credenziali mostrate:
 

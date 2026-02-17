@@ -59,7 +59,7 @@ export default function Header() {
           <Link to="/dashboard" className="flex items-center gap-2 hover:opacity-80 transition">
             <img 
               src="/logo-equippe.png" 
-              alt="Equipé Logo" 
+              alt="Equipe Logo" 
               className="h-10 sm:h-12 w-auto"
             />
           </Link>

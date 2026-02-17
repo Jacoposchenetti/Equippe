@@ -1,4 +1,4 @@
-# Equippe MVP
+# Equipe MVP
 
 Piattaforma per collaborazione tra professionisti sociosanitari
 

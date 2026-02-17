@@ -1,4 +1,4 @@
-# Script Helper per Sviluppo Equippe
+# Script Helper per Sviluppo Equipe
 
 ## Quick Commands
 
@@ -62,7 +62,7 @@ EOF
 
 # Primo commit
 git add .
-git commit -m "Initial commit: Equippe MVP Fase 1"
+git commit -m "Initial commit: Equipe MVP Fase 1"
 ```
 
 ### Deploy Production
@@ -215,7 +215,7 @@ NEXT_PUBLIC_FIREBASE_APP_ID=your-app-id
 
 # App Configuration
 NEXT_PUBLIC_APP_URL=http://localhost:3000
-NEXT_PUBLIC_APP_NAME=Equippe
+NEXT_PUBLIC_APP_NAME=Equipe
 
 # Optional: Firebase Emulator (for local development)
 # NEXT_PUBLIC_USE_FIREBASE_EMULATOR=true

@@ -4,8 +4,14 @@ import { Resend } from 'resend';
 
 admin.initializeApp();
 
-// Inizializza Resend con API key da environment variables
-const resend = new Resend(process.env.RESEND_API_KEY);
+// Lazy initialization di Resend per evitare errori durante il deploy
+let resendInstance: Resend | null = null;
+function getResend(): Resend {
+  if (!resendInstance) {
+    resendInstance = new Resend(process.env.RESEND_API_KEY);
+  }
+  return resendInstance;
+}
 
 /**
  * Cloud Function che invia notifiche push quando viene creata una notifica in Firestore
@@ -188,12 +194,10 @@ export const sendProfessionVerificationEmail = functions
 
     try {
       // Invia email all'admin
-      const adminEmail = 'admin@equippe.it'; // Cambia con l'email admin
-      
       for (const professione of newProfessioni) {
-        await resend.emails.send({
-          from: 'Equippe <noreply@equippe.it>',
-          to: adminEmail,
+        await getResend().emails.send({
+          from: EMAIL_FROM.noreply,
+          to: ADMIN_EMAIL,
           subject: `Nuova richiesta verifica professione: ${professione.professione}`,
           html: `
             <h2>Nuova Richiesta di Verifica Professione</h2>
@@ -235,10 +239,10 @@ export const sendProfessionApprovedEmail = functions
     const { professione, userEmail, userName } = data;
 
     try {
-      await resend.emails.send({
-        from: 'Equippe <noreply@equippe.it>',
+      await getResend().emails.send({
+        from: EMAIL_FROM.info,
         to: userEmail,
-        subject: 'Professione Approvata - Equippe',
+        subject: 'Professione Approvata - Equipe',
         html: `
           <h2>Congratulazioni!</h2>
           <p>Ciao ${userName},</p>
@@ -246,7 +250,7 @@ export const sendProfessionApprovedEmail = functions
           <p>Ora puoi utilizzare tutte le funzionalità della piattaforma per questa professione.</p>
           <p><a href="https://equippe-271f5.web.app/profile/edit">Vai al tuo profilo</a></p>
           <br>
-          <p>Il team di Equippe</p>
+          <p>Il team di Equipe</p>
         `,
       });
 
@@ -273,18 +277,18 @@ export const sendProfessionRejectedEmail = functions
     const { professione, userEmail, userName, motivo } = data;
 
     try {
-      await resend.emails.send({
-        from: 'Equippe <noreply@equippe.it>',
+      await getResend().emails.send({
+        from: EMAIL_FROM.support,
         to: userEmail,
-        subject: 'Richiesta Professione Non Approvata - Equippe',
+        subject: 'Richiesta Professione Non Approvata - Equipe',
         html: `
           <h2>Richiesta Non Approvata</h2>
           <p>Ciao ${userName},</p>
           <p>La tua richiesta per la professione <strong>${professione}</strong> non è stata approvata.</p>
           ${motivo ? `<p><strong>Motivo:</strong> ${motivo}</p>` : ''}
-          <p>Se ritieni ci sia stato un errore o desideri fornire ulteriore documentazione, puoi contattarci a admin@equippe.it</p>
+          <p>Se ritieni ci sia stato un errore o desideri fornire ulteriore documentazione, puoi contattarci a support@tuaequipe.it</p>
           <br>
-          <p>Il team di Equippe</p>
+          <p>Il team di Equipe</p>
         `,
       });
 
@@ -297,12 +301,29 @@ export const sendProfessionRejectedEmail = functions
   });
 
 /**
- * Funzione helper per inviare email
+ * Indirizzi email mittente (caselle Aruba)
  */
-async function sendEmail(to: string, subject: string, html: string) {
+const EMAIL_FROM = {
+  noreply: 'Equipe <noreply@tuaequipe.it>',
+  info: 'Equipe <info@tuaequipe.it>',
+  support: 'Equipe <support@tuaequipe.it>',
+  admin: 'Equipe <admin@tuaequipe.it>',
+};
+
+/** Indirizzo admin per notifiche interne */
+const ADMIN_EMAIL = 'admin@tuaequipe.it';
+
+/**
+ * Funzione helper per inviare email
+ * @param to - destinatario
+ * @param subject - oggetto
+ * @param html - corpo HTML
+ * @param from - mittente (default: noreply@tuaequipe.it)
+ */
+async function sendEmail(to: string, subject: string, html: string, from?: string) {
   try {
-    await resend.emails.send({
-      from: 'Equippe <noreply@send.tuaequipe.it>',
+    await getResend().emails.send({
+      from: from || EMAIL_FROM.noreply,
       to,
       subject,
       html,
@@ -334,10 +355,10 @@ export const sendWelcomeEmail = functions
 
       await sendEmail(
         email,
-        'Benvenuto su Equippe! 🎉',
+        'Benvenuto su Equipe! 🎉',
         `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-            <h2 style="color: #0066cc;">Benvenuto su Equippe, ${nome}! 🎉</h2>
+            <h2 style="color: #0066cc;">Benvenuto su Equipe, ${nome}! 🎉</h2>
             <p>Siamo felici di averti nella nostra community di professionisti!</p>
             <p>Il tuo account è stato verificato e ora puoi iniziare a:</p>
             <ul>
@@ -355,9 +376,10 @@ export const sendWelcomeEmail = functions
             </p>
             <p>Se hai domande o hai bisogno di supporto, non esitare a contattarci.</p>
             <br>
-            <p>A presto,<br>Il team di Equippe</p>
+            <p>A presto,<br>Il team di Equipe</p>
           </div>
-        `
+        `,
+        EMAIL_FROM.info
       );
     }
 
@@ -412,11 +434,12 @@ export const sendProfessionStatusEmail = functions
                   Visualizza Profilo
                 </a>
               </p>
-              <p>Continua a costruire la tua presenza professionale su Equippe!</p>
+              <p>Continua a costruire la tua presenza professionale su Equipe!</p>
               <br>
-              <p>Il team di Equippe</p>
+              <p>Il team di Equipe</p>
             </div>
-          `
+          `,
+          EMAIL_FROM.info
         );
       }
     }
@@ -450,11 +473,12 @@ export const sendProfessionStatusEmail = functions
                 Aggiungi Nuovamente
               </a>
             </p>
-            <p>Se hai bisogno di assistenza, non esitare a contattarci.</p>
+            <p>Se hai bisogno di assistenza, non esitare a contattarci a support@tuaequipe.it.</p>
             <br>
-            <p>Il team di Equippe</p>
+            <p>Il team di Equipe</p>
           </div>
-        `
+        `,
+        EMAIL_FROM.support
       );
     }
 
@@ -672,9 +696,10 @@ export const sendTeamInviteEmail = functions
           </p>
           <p>Potrai accettare o rifiutare l'invito dalla tua area inviti.</p>
           <br>
-          <p>Il team di Equippe</p>
+          <p>Il team di Equipe</p>
         </div>
-      `
+      `,
+      EMAIL_FROM.info
     );
 
     return null;
@@ -728,7 +753,7 @@ export const sendTeamRequestStatusEmail = functions
               </p>
               <p>Benvenuto nel team!</p>
               <br>
-              <p>Il team di Equippe</p>
+              <p>Il team di Equipe</p>
             </div>
           `
         );
@@ -812,7 +837,7 @@ export const sendReferralReceivedEmail = functions
                   </p>
                   <p>Puoi accettare o rifiutare il referral dalla tua area referral.</p>
                   <br>
-                  <p>Il team di Equippe</p>
+                  <p>Il team di Equipe</p>
                 </div>
               `
             );
@@ -851,7 +876,7 @@ export const sendReferralReceivedEmail = functions
             </p>
             <p>Puoi accettare o rifiutare il referral dalla tua area referral.</p>
             <br>
-            <p>Il team di Equippe</p>
+            <p>Il team di Equipe</p>
           </div>
         `
       );
@@ -936,7 +961,7 @@ export const sendReferralStatusEmail = functions
             </a>
           </p>
           <br>
-          <p>Il team di Equippe</p>
+          <p>Il team di Equipe</p>
         </div>
       `
     );

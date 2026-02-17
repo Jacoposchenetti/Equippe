@@ -44,7 +44,7 @@ Resend fornisce un dominio di test `onboarding@resend.dev` che puoi usare subito
 ### Opzione 2: Configura il tuo dominio (per produzione)
 
 1. In Resend, vai su "Domains"
-2. Aggiungi il tuo dominio (es. `equippe.it`)
+2. Aggiungi il tuo dominio (es. `equipe.it`)
 3. Aggiungi i record DNS richiesti:
    - TXT record per verifica dominio
    - MX, TXT (SPF), TXT (DKIM) per invio email
@@ -75,7 +75,7 @@ Value: [fornito da Resend]
 Una volta configurato il dominio, aggiorna le email in `functions/src/index.ts`:
 
 ```typescript
-from: 'Equippe <noreply@tuodominio.it>'
+from: 'Equipe <noreply@tuodominio.it>'
 ```
 
 ## 6. Deploy

@@ -1,8 +1,8 @@
-# Sistema Notifiche Push - Equippe
+# Sistema Notifiche Push - Equipe
 
 ## ✅ Implementazione Completata
 
-Il sistema di notifiche push è ora completamente funzionale e integrato nella piattaforma Equippe.
+Il sistema di notifiche push è ora completamente funzionale e integrato nella piattaforma Equipe.
 
 ### Componenti Implementati
 

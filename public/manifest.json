@@ -1,6 +1,6 @@
 {
-  "name": "Equippe",
-  "short_name": "Equippe",
+  "name": "Equipe",
+  "short_name": "Equipe",
   "description": "Piattaforma per la collaborazione tra professionisti sanitari",
   "start_url": "/",
   "display": "standalone",

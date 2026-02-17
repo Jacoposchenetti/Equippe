@@ -1,4 +1,4 @@
-# ✅ Setup Equippe MVP Completato!
+# ✅ Setup Equipe MVP Completato!
 
 ## 🎉 Stato del Progetto
 
@@ -212,7 +212,7 @@ Se riscontri problemi:
 
 ## ✨ Complimenti!
 
-Hai completato con successo la Fase 1 dell'MVP Equippe!
+Hai completato con successo la Fase 1 dell'MVP Equipe!
 
 Il progetto è pronto per:
 - ✅ Registrazione utenti

@@ -1,4 +1,4 @@
-# Roadmap Sviluppo Equippe
+# Roadmap Sviluppo Equipe
 
 ## ✅ FASE 1 - COMPLETATA
 **Durata**: Settimana 1-2  

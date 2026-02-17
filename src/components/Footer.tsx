@@ -36,10 +36,10 @@ export default function Footer() {
           <div>
             <h4 className="font-semibold mb-4">Supporto</h4>
             <ul className="space-y-3 text-sm">
-              <li><a href="mailto:support@equippe.it" className="text-gray-400 hover:text-white transition">Assistenza Tecnica</a></li>
-              <li><a href="mailto:info@equippe.it" className="text-gray-400 hover:text-white transition">Informazioni Generali</a></li>
-              <li><a href="mailto:partnership@equippe.it" className="text-gray-400 hover:text-white transition">Partnership</a></li>
-              <li><a href="mailto:feedback@equippe.it" className="text-gray-400 hover:text-white transition">Feedback & Suggerimenti</a></li>
+              <li><a href="mailto:support@equipe.it" className="text-gray-400 hover:text-white transition">Assistenza Tecnica</a></li>
+              <li><a href="mailto:info@equipe.it" className="text-gray-400 hover:text-white transition">Informazioni Generali</a></li>
+              <li><a href="mailto:partnership@equipe.it" className="text-gray-400 hover:text-white transition">Partnership</a></li>
+              <li><a href="mailto:feedback@equipe.it" className="text-gray-400 hover:text-white transition">Feedback & Suggerimenti</a></li>
             </ul>
           </div>
 
@@ -50,8 +50,8 @@ export default function Footer() {
               <li><Link to="/legal/termini" className="text-gray-400 hover:text-white transition">Termini e Condizioni</Link></li>
               <li><Link to="/legal/privacy" className="text-gray-400 hover:text-white transition">Privacy Policy</Link></li>
               <li><Link to="/legal/cookie" className="text-gray-400 hover:text-white transition">Cookie Policy</Link></li>
-              <li><a href="mailto:dpo@equippe.it" className="text-gray-400 hover:text-white transition">Data Protection Officer</a></li>
-              <li><a href="mailto:legal@equippe.it" className="text-gray-400 hover:text-white transition">Ufficio Legale</a></li>
+              <li><a href="mailto:dpo@equipe.it" className="text-gray-400 hover:text-white transition">Data Protection Officer</a></li>
+              <li><a href="mailto:legal@equipe.it" className="text-gray-400 hover:text-white transition">Ufficio Legale</a></li>
             </ul>
           </div>
         </div>

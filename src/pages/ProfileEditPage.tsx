@@ -88,7 +88,8 @@ export default function EditProfilePage() {
       return;
     }
 
-    if (userProfile) {
+    if (userProfile && !isInitializedRef.current) {
+      isInitializedRef.current = true;
       setNome(userProfile.profile.nome || '');
       
       // Normalizza specializzazioni esistenti
@@ -205,13 +206,6 @@ export default function EditProfilePage() {
     }
   }, [user, userProfile]);
 
-  // Segna il form come inizializzato dopo il caricamento (per non scatenare auto-save al primo render)
-  useEffect(() => {
-    if (!user?.uid) return;
-    isInitializedRef.current = false;
-    const t = setTimeout(() => { isInitializedRef.current = true; }, 300);
-    return () => clearTimeout(t);
-  }, [user?.uid]);
 
   const handleSpecChange = (spec: string) => {
     if (specializzazioni.includes(spec)) {

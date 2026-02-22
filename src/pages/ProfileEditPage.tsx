@@ -299,16 +299,34 @@ export default function EditProfilePage() {
     setShowDocumentiForm(true);
   };
 
-  const handleDocumentiComplete = (professioneData: ProfessioneConDocumenti) => {
-    setProfessioniPending([...professioniPending, professioneData]);
+  const handleDocumentiComplete = async (professioneData: ProfessioneConDocumenti) => {
+    const newProfessioniPending = [...professioniPending, professioneData];
+    setProfessioniPending(newProfessioniPending);
     if (professioneData.tematiche && professioneData.tematiche.length > 0) {
       const nuoveTematiche = [...new Set([...tematiche, ...professioneData.tematiche])];
       setTematiche(nuoveTematiche);
     }
     setShowDocumentiForm(false);
     setSelectedProfessione('');
+
+    // Salva direttamente con i dati calcolati per evitare stale closure
+    if (user) {
+      try {
+        setAutoSaveStatus('saving');
+        const userRef = doc(db, 'users', user.uid);
+        await updateDoc(userRef, {
+          'profile.professioniPending': newProfessioniPending,
+          updatedAt: new Date()
+        });
+        await refreshProfile();
+        setAutoSaveStatus('saved');
+        setTimeout(() => setAutoSaveStatus(s => s === 'saved' ? 'idle' : s), 3000);
+      } catch {
+        setAutoSaveStatus('error');
+      }
+    }
+
     alert('✅ Professione aggiunta! Sarà visibile dopo l\'approvazione dell\'amministratore.');
-    setTimeout(() => triggerSave(), 0);
   };
 
   const handleCancelDocumenti = () => {
@@ -316,10 +334,26 @@ export default function EditProfilePage() {
     setSelectedProfessione('');
   };
 
-  const handleRemoveProfessionePending = (index: number) => {
+  const handleRemoveProfessionePending = async (index: number) => {
     if (confirm('Vuoi rimuovere questa professione in attesa di approvazione?')) {
-      setProfessioniPending(professioniPending.filter((_, i) => i !== index));
-      setTimeout(() => triggerSave(), 0);
+      const newProfessioniPending = professioniPending.filter((_, i) => i !== index);
+      setProfessioniPending(newProfessioniPending);
+
+      if (user) {
+        try {
+          setAutoSaveStatus('saving');
+          const userRef = doc(db, 'users', user.uid);
+          await updateDoc(userRef, {
+            'profile.professioniPending': newProfessioniPending.length > 0 ? newProfessioniPending : deleteField(),
+            updatedAt: new Date()
+          });
+          await refreshProfile();
+          setAutoSaveStatus('saved');
+          setTimeout(() => setAutoSaveStatus(s => s === 'saved' ? 'idle' : s), 3000);
+        } catch {
+          setAutoSaveStatus('error');
+        }
+      }
     }
   };
   const performSave = async () => {

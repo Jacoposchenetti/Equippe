@@ -2,7 +2,7 @@
 
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { doc, updateDoc, deleteField } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '@/lib/firebase';
@@ -54,7 +54,6 @@ export default function EditProfilePage() {
   const { user, userProfile, refreshProfile } = useAuth();
   const navigate = useNavigate();
 
-  const [loading, setLoading] = useState(false);
   const [nome, setNome] = useState('');
   const [dataNascita, setDataNascita] = useState('');
   const [specializzazioni, setSpecializzazioni] = useState<string[]>([]);
@@ -76,6 +75,13 @@ export default function EditProfilePage() {
   const [professioniPending, setProfessioniPending] = useState<ProfessioneConDocumenti[]>([]);
   const [selectedProfessione, setSelectedProfessione] = useState<string>('');
   const [showDocumentiForm, setShowDocumentiForm] = useState(false);
+
+  // Auto-save
+  const [autoSaveStatus, setAutoSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isInitializedRef = useRef(false);
+  const lastUploadedFileRef = useRef<File | null>(null);
+  const isSavingRef = useRef(false);
 
   useEffect(() => {
     if (!user) {
@@ -200,6 +206,14 @@ export default function EditProfilePage() {
     }
   }, [user, userProfile]);
 
+  // Segna il form come inizializzato dopo il caricamento (per non scatenare auto-save al primo render)
+  useEffect(() => {
+    if (!user?.uid) return;
+    isInitializedRef.current = false;
+    const t = setTimeout(() => { isInitializedRef.current = true; }, 300);
+    return () => clearTimeout(t);
+  }, [user?.uid]);
+
   const handleSpecChange = (spec: string) => {
     if (specializzazioni.includes(spec)) {
       setSpecializzazioni(specializzazioni.filter(s => s !== spec));
@@ -312,76 +326,38 @@ export default function EditProfilePage() {
       setProfessioniPending(professioniPending.filter((_, i) => i !== index));
     }
   };
-  const handleSave = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const performSave = async () => {
+    if (!user || !userProfile || isSavingRef.current) return;
+    if (!nome.trim() || !dataNascita) return;
 
-    if (!user || !userProfile) return;
-
-    if (!nome.trim()) {
-      alert('Il nome è obbligatorio');
-      return;
-    }
-
-    if (!dataNascita) {
-      alert('La data di nascita è obbligatoria');
-      return;
-    }
-
-    if (!indirizzo.trim() && studi.length === 0) {
-      alert('Inserisci almeno un indirizzo di studio nella sezione "Localizzazione"');
-      return;
-    }
-
-    if (studi.length > 0) {
-      const hasEmptyStudi = studi.some(studio => !studio.indirizzo.trim());
-      if (hasEmptyStudi) {
-        alert('Tutti gli studi devono avere un indirizzo valido');
-        return;
-      }
-    }
-
-    // Verifica che abbia almeno una professione (approvata o pending)
-    if (professioniApprovate.length === 0 && professioniPending.length === 0) {
-      alert('Devi avere almeno una professione. Usa la sezione "Professioni" per aggiungerne una.');
-      return;
-    }
-
-    setLoading(true);
-
+    isSavingRef.current = true;
     try {
       const userRef = doc(db, 'users', user.uid);
-      
-      // Upload foto profilo se presente
+
+      // Upload foto profilo se nuova e non già caricata in questa sessione
       let photoURL = userProfile.profile.photoURL || '';
-      if (photoFile) {
+      if (photoFile && photoFile !== lastUploadedFileRef.current) {
         try {
-          console.log('Inizio upload foto profilo...');
           const photoRef = ref(storage, `profile-photos/${user.uid}`);
           await uploadBytes(photoRef, photoFile);
           photoURL = await getDownloadURL(photoRef);
-          console.log('Foto caricata con successo:', photoURL);
+          lastUploadedFileRef.current = photoFile;
         } catch (uploadError) {
           console.error('Errore upload foto:', uploadError);
-          alert('Errore durante il caricamento della foto. Il profilo verrà salvato senza foto.');
-          // Continua comunque con il salvataggio del resto
         }
       }
-      
+
       // Prepara i dati degli studi con coordinate e città/provincia
       const studiData = studi.length > 0 ? studi.map(studio => {
         const parts = studio.indirizzo.split(',');
         let città = '';
         let provincia = '';
-        
         if (parts.length >= 2) {
           città = parts[parts.length - 2].trim();
           const lastPart = parts[parts.length - 1].trim();
           const provinciaMatch = lastPart.match(/\b([A-Z]{2})\b/);
-          if (provinciaMatch) {
-            provincia = provinciaMatch[1];
-          }
+          if (provinciaMatch) { provincia = provinciaMatch[1]; }
         }
-        
         return {
           indirizzo: studio.indirizzo.trim(),
           città: città || '',
@@ -393,8 +369,7 @@ export default function EditProfilePage() {
           }
         };
       }) : [];
-      
-      // Mantieni compatibilità con location principale (usa primo studio se disponibile)
+
       const mainLocation = studiData.length > 0 ? {
         indirizzo: studiData[0].indirizzo || '',
         città: studiData[0].città || '',
@@ -408,38 +383,16 @@ export default function EditProfilePage() {
         lat: coordinate?.lat || 0,
         lng: coordinate?.lng || 0
       };
-      
-      // Sincronizza specializzazioni con professioni approvate (per retrocompatibilità)
-      const specializzazioniAggiornate = professioniApprovate.length > 0 
-        ? professioniApprovate.map(p => p.professione) 
+
+      const specializzazioniAggiornate = professioniApprovate.length > 0
+        ? professioniApprovate.map(p => p.professione)
         : [];
-      
-      // Sincronizza tematiche: raccogli tutte le tematiche dalle professioni + quelle generali
+
       const tutteTematicheProfessioni = new Set<string>();
-      
-      // Raccogli da professioni approvate
-      professioniApprovate.forEach(prof => {
-        if (prof.tematiche) {
-          prof.tematiche.forEach(t => tutteTematicheProfessioni.add(t));
-        }
-      });
-      
-      // Raccogli da professioni pending
-      professioniPending.forEach(prof => {
-        if (prof.tematiche) {
-          prof.tematiche.forEach(t => tutteTematicheProfessioni.add(t));
-        }
-      });
-      
-      // Unisci con le tematiche generali selezionate dall'utente
+      professioniApprovate.forEach(prof => { if (prof.tematiche) prof.tematiche.forEach(t => tutteTematicheProfessioni.add(t)); });
+      professioniPending.forEach(prof => { if (prof.tematiche) prof.tematiche.forEach(t => tutteTematicheProfessioni.add(t)); });
       const tematicheFinali = [...new Set([...tematiche, ...Array.from(tutteTematicheProfessioni)])];
-      
-      console.log('Debug - professioniApprovate:', professioniApprovate);
-      console.log('Debug - professioniPending:', professioniPending);
-      console.log('Debug - specializzazioniAggiornate:', specializzazioniAggiornate);
-      console.log('Debug - tematicheFinali:', tematicheFinali);
-      console.log('Debug - studiData:', JSON.stringify(studiData, null, 2));
-      
+
       const updateData: any = {
         'profile.nome': nome.trim() || '',
         'profile.dataNascita': dataNascita || '',
@@ -457,59 +410,76 @@ export default function EditProfilePage() {
         'profile.studi': studiData,
         updatedAt: new Date()
       };
-      
-      // Gestisci professioniConDocumenti
+
       if (professioniApprovate && professioniApprovate.length > 0) {
         updateData['profile.professioniConDocumenti'] = professioniApprovate;
       } else {
         updateData['profile.professioniConDocumenti'] = deleteField();
       }
-      
-      // Gestisci professioniPending
+
       if (professioniPending && professioniPending.length > 0) {
         updateData['profile.professioniPending'] = professioniPending;
       } else {
         updateData['profile.professioniPending'] = deleteField();
       }
-      
-      // Aggiungi photoURL solo se esiste
+
       if (photoURL) {
         updateData['profile.photoURL'] = photoURL;
       }
-      
-      // Funzione helper per rimuovere undefined ricorsivamente
+
       const removeUndefined = (obj: any): any => {
-        if (Array.isArray(obj)) {
-          return obj.map(item => removeUndefined(item));
-        }
+        if (Array.isArray(obj)) return obj.map(item => removeUndefined(item));
         if (obj !== null && typeof obj === 'object') {
           const cleaned: any = {};
           Object.keys(obj).forEach(key => {
             const value = obj[key];
-            if (value !== undefined) {
-              cleaned[key] = removeUndefined(value);
-            }
+            if (value !== undefined) cleaned[key] = removeUndefined(value);
           });
           return cleaned;
         }
         return obj;
       };
-      
-      // Pulisci updateData da eventuali undefined rimasti
-      const cleanedUpdateData = removeUndefined(updateData);
-      
-      console.log('Salvataggio profilo...', cleanedUpdateData);
-      await updateDoc(userRef, cleanedUpdateData);
 
+      await updateDoc(userRef, removeUndefined(updateData));
       await refreshProfile();
-      alert('Profilo aggiornato con successo!');
-      navigate('/dashboard');
-    } catch (error: any) {
-      console.error('Errore aggiornamento profilo:', error);
-      alert(`Errore durante l'aggiornamento del profilo: ${error.message || error}`);
     } finally {
-      setLoading(false);
+      isSavingRef.current = false;
     }
+  };
+
+  // Auto-save con debounce di 1.5 secondi
+  useEffect(() => {
+    if (!isInitializedRef.current) return;
+    if (!nome.trim() || !dataNascita) return;
+
+    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+
+    autoSaveTimerRef.current = setTimeout(async () => {
+      setAutoSaveStatus('saving');
+      try {
+        await performSave();
+        setAutoSaveStatus('saved');
+        setTimeout(() => setAutoSaveStatus(s => s === 'saved' ? 'idle' : s), 3000);
+      } catch {
+        setAutoSaveStatus('error');
+      }
+    }, 1500);
+
+    return () => { if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [nome, dataNascita, bio, linkedin, website, telefono, studi, tematiche, professioniApprovate, professioniPending, photoFile]);
+
+  const handleNavigateDashboard = async () => {
+    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+    if (nome.trim() && dataNascita && !isSavingRef.current) {
+      setAutoSaveStatus('saving');
+      try {
+        await performSave();
+      } catch {
+        // Naviga comunque
+      }
+    }
+    navigate('/dashboard');
   };
 
   if (!userProfile) {
@@ -530,7 +500,7 @@ export default function EditProfilePage() {
           <p className="text-gray-600 mt-2">Aggiorna le tue informazioni professionali</p>
         </div>
 
-        <form onSubmit={handleSave} className="space-y-6">
+        <form className="space-y-6">
           {/* Informazioni base */}
           <div className="bg-white rounded-xl shadow-sm p-6">
             <h2 className="text-2xl font-bold text-gray-900 mb-4">Informazioni Base</h2>
@@ -1082,22 +1052,46 @@ export default function EditProfilePage() {
             )}
           </div>
 
-          {/* Bottoni azione */}
-          <div className="flex gap-4">
-            <button
-              type="submit"
-              disabled={loading}
-              className="flex-1 bg-blue-600 text-white py-4 rounded-lg font-semibold hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition"
-            >
-              {loading ? 'Salvataggio...' : 'Salva Modifiche'}
-            </button>
-            
+          {/* Stato auto-save e navigazione */}
+          <div className="flex items-center justify-between py-2">
+            <div className="flex items-center gap-2 text-sm">
+              {autoSaveStatus === 'saving' && (
+                <span className="text-gray-500 flex items-center gap-1.5">
+                  <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                  </svg>
+                  Salvataggio in corso...
+                </span>
+              )}
+              {autoSaveStatus === 'saved' && (
+                <span className="text-green-600 flex items-center gap-1.5">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  Salvato
+                </span>
+              )}
+              {autoSaveStatus === 'error' && (
+                <span className="text-red-500 flex items-center gap-1.5">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  Errore durante il salvataggio
+                </span>
+              )}
+              {autoSaveStatus === 'idle' && (
+                <span className="text-gray-400 text-xs">Le modifiche vengono salvate automaticamente</span>
+              )}
+            </div>
+
             <button
               type="button"
-              onClick={() => navigate('/dashboard')}
-              className="px-8 py-4 border border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 transition"
+              onClick={handleNavigateDashboard}
+              disabled={autoSaveStatus === 'saving'}
+              className="px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed transition"
             >
-              Annulla
+              Torna alla Dashboard
             </button>
           </div>
         </form>

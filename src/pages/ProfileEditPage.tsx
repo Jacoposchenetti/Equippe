@@ -50,6 +50,19 @@ const TEMATICHE = [
   'Psicologia giuridica'
 ];
 
+function removeUndefined(obj: any): any {
+  if (Array.isArray(obj)) return obj.map(item => removeUndefined(item));
+  if (obj !== null && typeof obj === 'object') {
+    const cleaned: any = {};
+    Object.keys(obj).forEach(key => {
+      const value = obj[key];
+      if (value !== undefined) cleaned[key] = removeUndefined(value);
+    });
+    return cleaned;
+  }
+  return obj;
+}
+
 export default function EditProfilePage() {
   const { user, userProfile, refreshProfile } = useAuth();
   const navigate = useNavigate();
@@ -315,13 +328,14 @@ export default function EditProfilePage() {
         setAutoSaveStatus('saving');
         const userRef = doc(db, 'users', user.uid);
         await updateDoc(userRef, {
-          'profile.professioniPending': newProfessioniPending,
+          'profile.professioniPending': removeUndefined(newProfessioniPending),
           updatedAt: new Date()
         });
         await refreshProfile();
         setAutoSaveStatus('saved');
         setTimeout(() => setAutoSaveStatus(s => s === 'saved' ? 'idle' : s), 3000);
-      } catch {
+      } catch (err) {
+        console.error('Errore salvataggio professione pending:', err);
         setAutoSaveStatus('error');
       }
     }
@@ -456,19 +470,6 @@ export default function EditProfilePage() {
       if (photoURL) {
         updateData['profile.photoURL'] = photoURL;
       }
-
-      const removeUndefined = (obj: any): any => {
-        if (Array.isArray(obj)) return obj.map(item => removeUndefined(item));
-        if (obj !== null && typeof obj === 'object') {
-          const cleaned: any = {};
-          Object.keys(obj).forEach(key => {
-            const value = obj[key];
-            if (value !== undefined) cleaned[key] = removeUndefined(value);
-          });
-          return cleaned;
-        }
-        return obj;
-      };
 
       await updateDoc(userRef, removeUndefined(updateData));
       await refreshProfile();

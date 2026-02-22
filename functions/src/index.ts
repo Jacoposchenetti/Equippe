@@ -183,8 +183,8 @@ export const sendProfessionVerificationEmail = functions
     const userId = context.params.userId;
 
     // Verifica se sono state aggiunte professioni pending
-    const beforePending = before.professioniPending || [];
-    const afterPending = after.professioniPending || [];
+    const beforePending = before.profile?.professioniPending || [];
+    const afterPending = after.profile?.professioniPending || [];
 
     if (afterPending.length <= beforePending.length) {
       return null; // Nessuna nuova professione pending
@@ -402,14 +402,14 @@ export const sendProfessionStatusEmail = functions
     const nome = profile?.nome || 'Utente';
 
     // Controlla se una professione è stata approvata (spostata da pending ad approvata)
-    const beforePending = before.professioniPending || [];
-    const afterPending = after.professioniPending || [];
-    const afterApprovate = after.professioniConDocumenti || [];
+    const beforePending = before.profile?.professioniPending || [];
+    const afterPending = after.profile?.professioniPending || [];
+    const afterApprovate = after.profile?.professioniConDocumenti || [];
 
     // Professione approvata
     if (beforePending.length > afterPending.length) {
-      const approvataNuova = afterApprovate.find((prof: any) => 
-        !before.professioniConDocumenti?.some((p: any) => p.professione === prof.professione)
+      const approvataNuova = afterApprovate.find((prof: any) =>
+        !before.profile?.professioniConDocumenti?.some((p: any) => p.professione === prof.professione)
       );
 
       if (approvataNuova) {

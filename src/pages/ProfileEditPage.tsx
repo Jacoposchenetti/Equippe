@@ -78,7 +78,6 @@ export default function EditProfilePage() {
 
   // Auto-save
   const [autoSaveStatus, setAutoSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
-  const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isInitializedRef = useRef(false);
   const lastUploadedFileRef = useRef<File | null>(null);
   const isSavingRef = useRef(false);
@@ -220,6 +219,7 @@ export default function EditProfilePage() {
     } else {
       setSpecializzazioni([...specializzazioni, spec]);
     }
+    setTimeout(() => triggerSave(), 0);
   };
 
   const handleTemaChange = (tema: string) => {
@@ -228,15 +228,18 @@ export default function EditProfilePage() {
     } else {
       setTematiche([...tematiche, tema]);
     }
+    setTimeout(() => triggerSave(), 0);
   };
 
   const addStudio = () => {
     setStudi([...studi, { indirizzo: '', remoto: false }]);
+    setTimeout(() => triggerSave(), 0);
   };
 
   const removeStudio = (index: number) => {
     if (studi.length > 1) {
       setStudi(studi.filter((_, i) => i !== index));
+      setTimeout(() => triggerSave(), 0);
     }
   };
 
@@ -248,6 +251,7 @@ export default function EditProfilePage() {
       return studio;
     });
     setStudi(updatedStudi);
+    setTimeout(() => triggerSave(), 0);
   };
 
   const handleToggleNotifications = async () => {
@@ -302,18 +306,15 @@ export default function EditProfilePage() {
   };
 
   const handleDocumentiComplete = (professioneData: ProfessioneConDocumenti) => {
-    // Aggiungi la professione alle pending (in attesa di approvazione)
     setProfessioniPending([...professioniPending, professioneData]);
-    
-    // Aggiungi le tematiche della professione alle tematiche generali
     if (professioneData.tematiche && professioneData.tematiche.length > 0) {
       const nuoveTematiche = [...new Set([...tematiche, ...professioneData.tematiche])];
       setTematiche(nuoveTematiche);
     }
-    
     setShowDocumentiForm(false);
     setSelectedProfessione('');
     alert('✅ Professione aggiunta! Sarà visibile dopo l\'approvazione dell\'amministratore.');
+    setTimeout(() => triggerSave(), 0);
   };
 
   const handleCancelDocumenti = () => {
@@ -324,6 +325,7 @@ export default function EditProfilePage() {
   const handleRemoveProfessionePending = (index: number) => {
     if (confirm('Vuoi rimuovere questa professione in attesa di approvazione?')) {
       setProfessioniPending(professioniPending.filter((_, i) => i !== index));
+      setTimeout(() => triggerSave(), 0);
     }
   };
   const performSave = async () => {
@@ -447,30 +449,18 @@ export default function EditProfilePage() {
     }
   };
 
-  // Auto-save con debounce di 1.5 secondi
-  useEffect(() => {
-    if (!isInitializedRef.current) return;
-    if (!nome.trim() || !dataNascita) return;
-
-    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
-
-    autoSaveTimerRef.current = setTimeout(async () => {
-      setAutoSaveStatus('saving');
-      try {
-        await performSave();
-        setAutoSaveStatus('saved');
-        setTimeout(() => setAutoSaveStatus(s => s === 'saved' ? 'idle' : s), 3000);
-      } catch {
-        setAutoSaveStatus('error');
-      }
-    }, 1500);
-
-    return () => { if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current); };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [nome, dataNascita, bio, linkedin, website, telefono, studi, tematiche, professioniApprovate, professioniPending, photoFile]);
+  const triggerSave = async () => {
+    setAutoSaveStatus('saving');
+    try {
+      await performSave();
+      setAutoSaveStatus('saved');
+      setTimeout(() => setAutoSaveStatus(s => s === 'saved' ? 'idle' : s), 3000);
+    } catch {
+      setAutoSaveStatus('error');
+    }
+  };
 
   const handleNavigateDashboard = async () => {
-    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
     if (nome.trim() && dataNascita && !isSavingRef.current) {
       setAutoSaveStatus('saving');
       try {
@@ -529,10 +519,9 @@ export default function EditProfilePage() {
                         if (file) {
                           setPhotoFile(file);
                           const reader = new FileReader();
-                          reader.onloadend = () => {
-                            setPhotoPreview(reader.result as string);
-                          };
+                          reader.onloadend = () => { setPhotoPreview(reader.result as string); };
                           reader.readAsDataURL(file);
+                          setTimeout(() => triggerSave(), 0);
                         }
                       }}
                       className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
@@ -550,6 +539,7 @@ export default function EditProfilePage() {
                   type="text"
                   value={nome}
                   onChange={(e) => setNome(e.target.value)}
+                  onBlur={triggerSave}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   required
                 />
@@ -563,6 +553,7 @@ export default function EditProfilePage() {
                   type="date"
                   value={dataNascita}
                   onChange={(e) => setDataNascita(e.target.value)}
+                  onBlur={triggerSave}
                   max={new Date().toISOString().split('T')[0]}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   required
@@ -590,6 +581,7 @@ export default function EditProfilePage() {
                   type="tel"
                   value={telefono}
                   onChange={(e) => setTelefono(e.target.value)}
+                  onBlur={triggerSave}
                   placeholder="+39 123 456 7890"
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
@@ -947,6 +939,7 @@ export default function EditProfilePage() {
             <textarea
               value={bio}
               onChange={(e) => setBio(e.target.value)}
+              onBlur={triggerSave}
               rows={6}
               placeholder="Raccontaci di te, della tua esperienza e del tuo approccio professionale..."
               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
@@ -966,6 +959,7 @@ export default function EditProfilePage() {
                   type="url"
                   value={linkedin}
                   onChange={(e) => setLinkedin(e.target.value)}
+                  onBlur={triggerSave}
                   placeholder="https://linkedin.com/in/tuoprofilo"
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
@@ -979,6 +973,7 @@ export default function EditProfilePage() {
                   type="url"
                   value={website}
                   onChange={(e) => setWebsite(e.target.value)}
+                  onBlur={triggerSave}
                   placeholder="https://tuosito.com"
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />

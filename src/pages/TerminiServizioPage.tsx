@@ -113,7 +113,7 @@ export default function TerminiServizio() {
               <h2 className="text-2xl font-semibold text-gray-900 mb-4">10. Contatti</h2>
               <p>
                 Per informazioni sui Termini di Servizio: <br />
-                Email: <a href="mailto:legal@equipe.it" className="text-blue-600 hover:underline">legal@equipe.it</a>
+                Email: <a href="mailto:legal@tuaequipe.it" className="text-blue-600 hover:underline">legal@tuaequipe.it</a>
               </p>
             </section>
           </div>

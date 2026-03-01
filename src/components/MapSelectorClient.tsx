@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import 'leaflet/dist/leaflet.css';
 
 // Import dinamici per evitare SSR
@@ -77,6 +77,7 @@ export default function MapSelector({
   const [suggestions, setSuggestions] = useState<AddressSuggestion[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [selectedSuggestionIndex, setSelectedSuggestionIndex] = useState(-1);
+  const isInputFocused = useRef(false);
   
   // Default coordinates (Rome center) if no coordinates provided
   const currentCoordinate = effectiveCoordinate;
@@ -116,7 +117,7 @@ export default function MapSelector({
   // Debounced autocomplete con Mapbox
   useEffect(() => {
     const timer = setTimeout(() => {
-      if (searchAddress.trim().length > 2) {
+      if (searchAddress.trim().length > 2 && isInputFocused.current) {
         fetchMapboxSuggestions(searchAddress);
       } else {
         setSuggestions([]);
@@ -198,6 +199,24 @@ export default function MapSelector({
     }
   };
 
+  const reverseGeocode = async (lat: number, lng: number) => {
+    const token = import.meta.env.VITE_MAPBOX_TOKEN;
+    if (!token) return;
+    try {
+      const response = await fetch(
+        `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?language=it&limit=1&access_token=${token}`
+      );
+      const data = await response.json();
+      if (data.features && data.features.length > 0) {
+        const address = data.features[0].place_name;
+        setSearchAddress(address);
+        handleIndirizzoChange(address);
+      }
+    } catch (error) {
+      console.error('Errore reverse geocoding:', error);
+    }
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
       e.preventDefault();
@@ -265,6 +284,46 @@ export default function MapSelector({
 
   return (
     <div className="space-y-4">
+      {/* Search bar */}
+      <div className="relative">
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={searchAddress}
+            onChange={(e) => setSearchAddress(e.target.value)}
+            onKeyDown={handleKeyDown}
+            onFocus={() => { isInputFocused.current = true; if (suggestions.length > 0) setShowSuggestions(true); }}
+            onBlur={() => { isInputFocused.current = false; setTimeout(() => setShowSuggestions(false), 200); }}
+            placeholder="Cerca indirizzo, città o zona..."
+            className="flex-1 p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          />
+          <button
+            type="button"
+            onClick={geocodeAddress}
+            disabled={isGeocoding}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 font-medium whitespace-nowrap"
+          >
+            {isGeocoding ? '...' : 'Cerca'}
+          </button>
+        </div>
+        {showSuggestions && suggestions.length > 0 && (
+          <div className="absolute z-[1100] w-full mt-1 bg-white border rounded-lg shadow-lg max-h-60 overflow-y-auto">
+            {suggestions.map((suggestion, index) => (
+              <button
+                key={suggestion.place_id}
+                type="button"
+                className={`w-full text-left px-4 py-2 text-sm hover:bg-blue-50 border-b last:border-b-0 ${
+                  index === selectedSuggestionIndex ? 'bg-blue-50' : ''
+                }`}
+                onClick={() => selectSuggestion(suggestion)}
+              >
+                {suggestion.display_name}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
       {/* Map */}
       <div className="w-full h-64 border rounded-lg overflow-hidden relative">
         <MapContainer
@@ -281,6 +340,7 @@ export default function MapSelector({
             onLocationSelect={(lat, lng) => {
               console.log('🖱️ Click sulla mappa:', { lat, lng });
               handleCoordinateChange({ lat, lng });
+              reverseGeocode(lat, lng);
             }}
           />
           {console.log('✅ Rendering marker at:', currentCoordinate)}
@@ -292,8 +352,8 @@ export default function MapSelector({
           />
         </MapContainer>
         
-        <div className="absolute top-2 left-2 bg-white px-3 py-2 rounded shadow-lg text-sm z-[1000]">
-          <p className="font-medium text-gray-700">Clicca sulla mappa per selezionare la posizione</p>
+        <div className="absolute top-2 left-2 bg-white px-3 py-2 rounded shadow-lg text-sm z-[1000] pointer-events-none opacity-80">
+          <p className="font-medium text-gray-700">Clicca sulla mappa o cerca un indirizzo</p>
         </div>
       </div>
 

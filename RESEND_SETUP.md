@@ -38,13 +38,13 @@ firebase functions:secrets:set RESEND_API_KEY
 
 ## 4. Configura il Dominio Email
 
-### Opzione 1: Usa il dominio di test (per sviluppo)
-Resend fornisce un dominio di test `onboarding@resend.dev` che puoi usare subito.
+### Opzione 1: Usa una casella esistente del dominio (per sviluppo)
+Per i test iniziali puoi usare una casella reale del dominio, ad esempio `noreply@tuaequipe.it`.
 
 ### Opzione 2: Configura il tuo dominio (per produzione)
 
 1. In Resend, vai su "Domains"
-2. Aggiungi il tuo dominio (es. `equipe.it`)
+2. Aggiungi il tuo dominio (es. `tuaequipe.it`)
 3. Aggiungi i record DNS richiesti:
    - TXT record per verifica dominio
    - MX, TXT (SPF), TXT (DKIM) per invio email
@@ -75,7 +75,7 @@ Value: [fornito da Resend]
 Una volta configurato il dominio, aggiorna le email in `functions/src/index.ts`:
 
 ```typescript
-from: 'Equipe <noreply@tuodominio.it>'
+from: 'Equipe <noreply@tuaequipe.it>'
 ```
 
 ## 6. Deploy
@@ -98,7 +98,7 @@ Viene inviata automaticamente alla registrazione di un nuovo utente.
 ```javascript
 const functions = getFunctions();
 const sendPasswordReset = httpsCallable(functions, 'sendPasswordResetEmail');
-await sendPasswordReset({ email: 'test@example.com' });
+await sendPasswordReset({ email: 'admin@tuaequipe.it' });
 ```
 
 ### Test Email Approvazione Professione
@@ -107,7 +107,7 @@ const sendApproval = httpsCallable(functions, 'sendProfessionApprovedEmail');
 await sendApproval({
   userId: 'user123',
   professione: 'Psicologo',
-  userEmail: 'user@example.com',
+  userEmail: 'admin@tuaequipe.it',
   userName: 'Mario Rossi'
 });
 ```

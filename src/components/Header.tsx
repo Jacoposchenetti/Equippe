@@ -49,7 +49,8 @@ export default function Header() {
   ];
 
   // Link admin visibile solo per admin
-  const isAdmin = user?.email === 'jschenetti@gmail.com';
+  const ADMIN_EMAILS = ['admin@tuaequipe.it', 'jschenetti@gmail.com'];
+  const isAdmin = !!user?.email && ADMIN_EMAILS.includes(user.email);
 
   return (
     <header className="bg-gray-800 text-white shadow-lg">

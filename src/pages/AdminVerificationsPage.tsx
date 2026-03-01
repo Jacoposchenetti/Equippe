@@ -6,7 +6,7 @@ import { db } from '@/lib/firebase';
 import { User, VerificationStatus, VerificationInfo } from '@/types/equippe';
 import Header from '@/components/Header';
 
-const ADMIN_EMAIL = 'jschenetti@gmail.com';
+const ADMIN_EMAILS = ['admin@tuaequipe.it', 'jschenetti@gmail.com'];
 
 interface PendingUser extends User {
   id: string;
@@ -29,7 +29,7 @@ export default function AdminVerificationsPage() {
     }
     
     // Verifica che l'utente sia admin
-    if (user.email !== ADMIN_EMAIL) {
+    if (!user.email || !ADMIN_EMAILS.includes(user.email)) {
       alert('Accesso negato: solo gli amministratori possono accedere a questa pagina');
       navigate('/dashboard');
       return;
@@ -298,7 +298,7 @@ export default function AdminVerificationsPage() {
     );
   };
 
-  if (!user || user.email !== ADMIN_EMAIL) {
+  if (!user || !user.email || !ADMIN_EMAILS.includes(user.email)) {
     return null;
   }
 

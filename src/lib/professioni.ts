@@ -22,21 +22,14 @@ export const CONFIGURAZIONI_PROFESSIONI: Record<string, ConfigurazioneProfession
     nome: 'Psicologo',
     hasAlbo: true,
     tematiche: [
-      'Disturbi d\'ansia',
-      'Depressione',
-      'Disturbi alimentari',
-      'Trauma e PTSD',
-      'Dipendenze',
-      'Disturbi di personalità',
-      'Autismo',
-      'ADHD',
-      'Disturbi dell\'umore',
-      'Terapia di coppia',
-      'Terapia familiare',
-      'Neuropsicologia',
-      'Psicologia dello sport',
+      'Sostegno psicologico',
+      'Valutazione psicologica e psicodiagnostica',
+      'Psicologia scolastica',
+      'Psicologia del lavoro e delle organizzazioni',
+      'Psicologia di comunità e prevenzione',
       'Psicologia giuridica',
-      'Orientamento scolastico/professionale'
+      'Psicoeducazione',
+      'Mindfulness'
     ],
     documentiRichiesti: [
       {
@@ -75,7 +68,8 @@ export const CONFIGURAZIONI_PROFESSIONI: Record<string, ConfigurazioneProfession
       'Terapia sistemico-relazionale',
       'EMDR',
       'Schema Therapy',
-      'ACT (Acceptance and Commitment Therapy)'
+      'ACT (Acceptance and Commitment Therapy)',
+      'Problemi della sfera sessuale'
     ],
     documentiRichiesti: [
       {
@@ -570,9 +564,28 @@ export const CONFIGURAZIONI_PROFESSIONI: Record<string, ConfigurazioneProfession
 };
 
 // Lista delle professioni disponibili (per dropdown)
-export const PROFESSIONI_DISPONIBILI = Object.keys(CONFIGURAZIONI_PROFESSIONI).sort();
+const PROFESSIONI_BLOCCATE_MVP = new Set([
+  'Dietista',
+  'Assistente Sociale',
+  'Educatore Professionale',
+  'Fisioterapista',
+  'Terapista Occupazionale',
+  'Infermiere',
+  'Medico di Base',
+  'Medico Specialista',
+  'Ginecologo',
+  'Andrologo',
+  'Sessuologo'
+]);
+
+export const PROFESSIONI_DISPONIBILI = Object.keys(CONFIGURAZIONI_PROFESSIONI)
+  .filter((professione) => !PROFESSIONI_BLOCCATE_MVP.has(professione))
+  .sort();
 
 // Helper per ottenere la configurazione di una professione
 export function getConfigurazioneProfessione(professione: string): ConfigurazioneProfessione | undefined {
+  if (PROFESSIONI_BLOCCATE_MVP.has(professione)) {
+    return undefined;
+  }
   return CONFIGURAZIONI_PROFESSIONI[professione];
 }

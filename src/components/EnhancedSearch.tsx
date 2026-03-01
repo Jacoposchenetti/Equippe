@@ -67,19 +67,8 @@ export default function EnhancedSearch({ onSearch, availableSpecializations = []
     'Psicoterapeuta',
     'Psichiatra',
     'Nutrizionista',
-    'Dietista',
     'Dietologo',
-    'Assistente Sociale',
-    'Educatore Professionale',
-    'Logopedista',
-    'Fisioterapista',
-    'Terapista Occupazionale',
-    'Infermiere',
-    'Medico di Base',
-    'Medico Specialista',
-    'Ginecologo',
-    'Andrologo',
-    'Sessuologo'
+    'Logopedista'
   ];
 
   // Tipologie di equipé (basate sulle specializzazioni dei membri)
@@ -229,7 +218,7 @@ export default function EnhancedSearch({ onSearch, availableSpecializations = []
               type="checkbox"
               checked={showMap}
               onChange={(e) => setShowMap(e.target.checked)}
-              className="mr-3 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+              className="mr-3 h-5 w-5 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
             />
             <span className="text-sm font-medium text-gray-700">
               Vedi sulla mappa

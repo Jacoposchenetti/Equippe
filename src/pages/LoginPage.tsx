@@ -2,15 +2,44 @@ import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { auth } from '@/lib/firebase';
-import { sendEmailVerification } from 'firebase/auth';
+import { sendEmailVerification, sendPasswordResetEmail } from 'firebase/auth';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [resetMode, setResetMode] = useState(false);
+  const [resetEmail, setResetEmail] = useState('');
+  const [resetLoading, setResetLoading] = useState(false);
+  const [resetMessage, setResetMessage] = useState('');
+  const [resetError, setResetError] = useState('');
   const { signIn } = useAuth();
   const navigate = useNavigate();
+
+  const handlePasswordReset = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setResetError('');
+    setResetMessage('');
+    setResetLoading(true);
+
+    try {
+      await sendPasswordResetEmail(auth, resetEmail);
+      setResetMessage('Email di recupero inviata! Controlla la tua casella di posta (anche lo spam).');
+    } catch (err: any) {
+      if (err.code === 'auth/user-not-found') {
+        setResetError('Nessun account trovato con questa email.');
+      } else if (err.code === 'auth/invalid-email') {
+        setResetError('Indirizzo email non valido.');
+      } else if (err.code === 'auth/too-many-requests') {
+        setResetError('Troppi tentativi. Riprova più tardi.');
+      } else {
+        setResetError('Errore durante l\'invio. Riprova.');
+      }
+    } finally {
+      setResetLoading(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,7 +65,15 @@ export default function LoginPage() {
 
       navigate('/dashboard');
     } catch (err: any) {
-      setError(err.message || 'Errore durante il login');
+      if (err.code === 'auth/invalid-credential' || err.code === 'auth/wrong-password' || err.code === 'auth/user-not-found') {
+        setError('Email o password errati. Riprova.');
+      } else if (err.code === 'auth/too-many-requests') {
+        setError('Troppi tentativi falliti. Riprova più tardi.');
+      } else if (err.code === 'auth/invalid-email') {
+        setError('Indirizzo email non valido.');
+      } else {
+        setError('Errore durante il login. Riprova.');
+      }
     } finally {
       setLoading(false);
     }
@@ -52,7 +89,7 @@ export default function LoginPage() {
           <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
             Accedi al tuo account
           </h2>
-          <p className="mt-2 text-sm text-gray-600">
+          <p className="mt-2 text-center text-sm text-gray-600">
             Non hai un account?{' '}
             <Link to="/register" className="font-medium text-blue-600 hover:text-blue-500">
               Registrati
@@ -110,6 +147,21 @@ export default function LoginPage() {
             </div>
           </div>
 
+          <div className="flex items-center justify-center">
+            <button
+              type="button"
+              onClick={() => {
+                setResetMode(true);
+                setResetEmail(email);
+                setResetError('');
+                setResetMessage('');
+              }}
+              className="text-sm font-medium text-blue-600 hover:text-blue-500"
+            >
+              Password dimenticata?
+            </button>
+          </div>
+
           <div>
             <button
               type="submit"
@@ -120,6 +172,70 @@ export default function LoginPage() {
             </button>
           </div>
         </form>
+
+        {/* Modale recupero password */}
+        {resetMode && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 px-4">
+            <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                Recupera password
+              </h3>
+              <p className="text-sm text-gray-600 mb-4">
+                Inserisci il tuo indirizzo email e ti invieremo un link per reimpostare la password.
+              </p>
+
+              <form onSubmit={handlePasswordReset} className="space-y-4">
+                {resetError && (
+                  <div className="bg-red-50 border border-red-200 rounded-md p-3">
+                    <p className="text-sm text-red-600">{resetError}</p>
+                  </div>
+                )}
+
+                {resetMessage && (
+                  <div className="bg-green-50 border border-green-200 rounded-md p-3">
+                    <p className="text-sm text-green-700">{resetMessage}</p>
+                  </div>
+                )}
+
+                <div>
+                  <label htmlFor="reset-email" className="block text-sm font-medium text-gray-700">
+                    Email
+                  </label>
+                  <input
+                    id="reset-email"
+                    type="email"
+                    required
+                    value={resetEmail}
+                    onChange={(e) => setResetEmail(e.target.value)}
+                    className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="La tua email"
+                  />
+                </div>
+
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setResetMode(false);
+                      setResetError('');
+                      setResetMessage('');
+                    }}
+                    className="flex-1 py-2 px-4 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+                  >
+                    Annulla
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={resetLoading}
+                    className="flex-1 py-2 px-4 border border-transparent rounded-md text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {resetLoading ? 'Invio...' : 'Invia email'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

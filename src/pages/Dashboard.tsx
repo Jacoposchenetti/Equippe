@@ -82,8 +82,6 @@ function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: numbe
 function normalizeSpecialization(spec: string): string {
   const normalizationMap: { [key: string]: string } = {
     'medico': 'Medico',
-    'infermiere': 'Infermiere',
-    'fisioterapista': 'Fisioterapista',
     'psicologo': 'Psicologo',
     'nutrizionista': 'Nutrizionista',
     'farmacista': 'Farmacista',
@@ -94,7 +92,6 @@ function normalizeSpecialization(spec: string): string {
     'tecnico di laboratorio': 'Tecnico di Laboratorio',
     'operatore socio sanitario': 'Operatore Socio Sanitario',
     'biologo': 'Biologo',
-    'dietista': 'Dietista',
     'terapista della riabilitazione': 'Terapista della Riabilitazione',
     'radiologo': 'Radiologo',
     'anestesista': 'Anestesista',
@@ -102,7 +99,6 @@ function normalizeSpecialization(spec: string): string {
     'cardiologo': 'Cardiologo',
     'neurologo': 'Neurologo',
     'pediatra': 'Pediatra',
-    'ginecologo': 'Ginecologo',
     'dermatologo': 'Dermatologo',
     'urologo': 'Urologo',
     'oculista': 'Oculista',

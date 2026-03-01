@@ -20,13 +20,14 @@ admin.initializeApp({
 });
 
 const auth = admin.auth();
+const targetEmail = process.env.TARGET_EMAIL || 'admin@tuaequipe.it';
 
 async function deleteScotchGambit() {
-  console.log('🗑️  Eliminazione account incompleto scotchgambit230700@gmail.com\n');
+  console.log(`🗑️  Eliminazione account incompleto ${targetEmail}\n`);
 
   try {
     // Trova l'utente
-    const user = await auth.getUserByEmail('scotchgambit230700@gmail.com');
+    const user = await auth.getUserByEmail(targetEmail);
     
     console.log('📧 Utente trovato:');
     console.log(`   Email: ${user.email}`);
@@ -37,7 +38,7 @@ async function deleteScotchGambit() {
     // Elimina l'account
     await auth.deleteUser(user.uid);
     console.log('\n✅ Account eliminato con successo da Firebase Auth');
-    console.log('\n💡 L\'utente può ora registrarsi di nuovo con la stessa email');
+    console.log(`\n💡 L'utente può ora registrarsi di nuovo con la stessa email (${targetEmail})`);
 
   } catch (error) {
     if (error.code === 'auth/user-not-found') {

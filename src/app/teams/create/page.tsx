@@ -14,19 +14,8 @@ const SPECIALIZZAZIONI = [
   'Psicoterapeuta',
   'Psichiatra',
   'Nutrizionista',
-  'Dietista',
   'Dietologo',
-  'Assistente Sociale',
-  'Educatore Professionale',
-  'Logopedista',
-  'Fisioterapista',
-  'Terapista Occupazionale',
-  'Infermiere',
-  'Medico di Base',
-  'Medico Specialista',
-  'Ginecologo',
-  'Andrologo',
-  'Sessuologo'
+  'Logopedista'
 ];
 
 export default function CreateTeamPage() {

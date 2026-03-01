@@ -111,12 +111,22 @@ export default function NotificationBell() {
       case 'team_admin':
         if (notification.teamId) navigate(`/teams/${notification.teamId}`);
         break;
+      case 'team_invite_received':
+        navigate('/invites');
+        break;
       case 'team_invite_response':
         navigate('/teams');
         break;
       case 'referral_received':
       case 'referral_accepted':
         if (notification.referralId) navigate(`/referrals/${notification.referralId}`);
+        break;
+      case 'profession_verification_request':
+        navigate('/admin/verifications?filter=with-pending-professions');
+        break;
+      case 'profession_approved':
+      case 'profession_rejected':
+        navigate('/profile/edit');
         break;
     }
   };
@@ -135,10 +145,18 @@ export default function NotificationBell() {
         return 'Info';
       case 'team_invite_response':
         return 'Inv';
+      case 'team_invite_received':
+        return 'Inv';
       case 'referral_received':
         return 'Ref';
       case 'referral_accepted':
         return 'OK';
+      case 'profession_verification_request':
+        return 'Doc';
+      case 'profession_approved':
+        return 'OK';
+      case 'profession_rejected':
+        return 'NO';
       default:
         return '🔔';
     }
@@ -165,7 +183,13 @@ export default function NotificationBell() {
     <div className="relative">
       {/* Bell Icon */}
       <button
-        onClick={() => setShowDropdown(!showDropdown)}
+        onClick={() => {
+          const opening = !showDropdown;
+          setShowDropdown(opening);
+          if (opening && unreadCount > 0) {
+            markAllAsRead();
+          }
+        }}
         className="relative p-2 text-white hover:text-blue-400 transition-colors"
         aria-label="Notifiche"
       >
@@ -257,7 +281,7 @@ export default function NotificationBell() {
                           ) : null;
                         })()}
                         <div 
-                          className={`bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white font-bold text-base flex-shrink-0 ${
+                          className={`bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white font-bold text-base flex-shrink-0 overflow-hidden ${
                             (() => {
                               const photoURL = notification.senderPhotoURL || (notification.senderId ? userPhotos[notification.senderId] : null);
                               return photoURL && photoURL.trim() !== '' ? 'hidden' : '';
@@ -270,7 +294,10 @@ export default function NotificationBell() {
                             minHeight: '40px'
                           }}
                         >
-                          {notification.senderName ? notification.senderName.charAt(0).toUpperCase() : '?'}
+                          {notification.senderName 
+                            ? notification.senderName.charAt(0).toUpperCase() 
+                            : <img src="/logo-equipe.png" alt="Equipe" className="w-full h-full object-cover" />
+                          }
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className={`text-xs sm:text-sm ${!notification.read ? 'font-semibold' : 'font-medium'} text-gray-900`}>

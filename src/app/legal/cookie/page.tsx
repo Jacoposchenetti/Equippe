@@ -168,7 +168,7 @@ export default function CookiePolicy() {
               <h2 className="text-2xl font-semibold text-gray-900 mb-4">7. Contatti</h2>
               <p>
                 Per domande sui cookie o sulla privacy: <br />
-                Email: <a href="mailto:privacy@equipe.it" className="text-blue-600 hover:underline">privacy@equipe.it</a>
+                Email: <a href="mailto:legal@tuaequipe.it" className="text-blue-600 hover:underline">legal@tuaequipe.it</a>
               </p>
             </section>
           </div>

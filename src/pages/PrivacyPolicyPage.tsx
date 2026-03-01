@@ -15,10 +15,9 @@ export default function PrivacyPolicy() {
             <section className="mb-8">
               <h2 className="text-2xl font-semibold text-gray-900 mb-4">1. Titolare del Trattamento</h2>
               <p className="mb-4">
-                <strong>Equipé S.r.l.</strong><br />
-                Sede: [DA INSERIRE]<br />
-                P.IVA: [DA INSERIRE]<br />
-                Email: <a href="mailto:privacy@equipe.it" className="text-blue-600 hover:underline">privacy@equipe.it</a>
+                <strong>Equipé</strong><br />
+                Titolare del trattamento: persona fisica (dati completi su richiesta)<br />
+                Email: <a href="mailto:legal@tuaequipe.it" className="text-blue-600 hover:underline">legal@tuaequipe.it</a>
               </p>
             </section>
 
@@ -124,7 +123,7 @@ export default function PrivacyPolicy() {
               </ul>
               
               <p className="mt-4">
-                Per esercitare i tuoi diritti: <a href="mailto:privacy@equipe.it" className="text-blue-600 hover:underline">privacy@equipe.it</a>
+                Per esercitare i tuoi diritti: <a href="mailto:legal@tuaequipe.it" className="text-blue-600 hover:underline">legal@tuaequipe.it</a>
               </p>
             </section>
 
@@ -146,7 +145,7 @@ export default function PrivacyPolicy() {
               <h2 className="text-2xl font-semibold text-gray-900 mb-4">9. Data Protection Officer</h2>
               <p>
                 Per questioni relative alla privacy puoi contattare il nostro DPO:<br />
-                Email: <a href="mailto:dpo@equipe.it" className="text-blue-600 hover:underline">dpo@equipe.it</a>
+                Email: <a href="mailto:admin@tuaequipe.it" className="text-blue-600 hover:underline">admin@tuaequipe.it</a>
               </p>
             </section>
 

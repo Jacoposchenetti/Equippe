@@ -8,22 +8,15 @@ import { db } from '@/lib/firebase';
 import { User, RoleCercato } from '@/types/equippe';
 import MapSelectorClient from '@/components/MapSelectorClient';
 import { uploadTeamPhoto } from '@/lib/teamPhotoUpload';
+import { notifyTeamInviteReceived } from '@/lib/notifications';
 
 const SPECIALIZZAZIONI = [
   'Psicologo',
   'Psicoterapeuta',
   'Psichiatra',
   'Nutrizionista',
-  'Dietista',
   'Dietologo',
-  'Assistente Sociale',
-  'Educatore Professionale',
-  'Logopedista',
-  'Fisioterapista',
-  'Terapista Occupazionale',
-  'Infermiere',
-  'Medico di Base',
-  'Medico Specialista'
+  'Logopedista'
 ];
 
 export default function TeamCreatePage() {
@@ -33,6 +26,7 @@ export default function TeamCreatePage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [allUsers, setAllUsers] = useState<User[]>([]);
+  const [memberSearch, setMemberSearch] = useState('');
   const [selectedPhoto, setSelectedPhoto] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
@@ -194,7 +188,7 @@ export default function TeamCreatePage() {
     try {
       if (!user) return;
 
-      // Crea membri con struttura completa
+      // Crea membri con struttura completa (solo il creatore)
       const creatorMember = {
         uid: user.uid,
         userId: user.uid,
@@ -203,15 +197,7 @@ export default function TeamCreatePage() {
         joinedAt: Timestamp.now(),
       };
 
-      const invitedMembers = formData.selectedMembers.map(userId => ({
-        uid: userId,
-        userId: userId,
-        ruolo: 'member' as const,
-        role: 'member' as const,
-        joinedAt: Timestamp.now(),
-      }));
-
-      const allMembers = [creatorMember, ...invitedMembers];
+      const allMembers = [creatorMember];
 
       // Calcola statistiche
       const totaleRichiesti = formData.ruoliCercati.reduce((sum, r) => sum + r.numero, 0);
@@ -241,7 +227,7 @@ export default function TeamCreatePage() {
         description: formData.description || '',
         specializations: specializations,
         members: allMembers,
-        memberIds: [user.uid, ...formData.selectedMembers],
+        memberIds: [user.uid],
         createdBy: user.uid,
         creatorUid: user.uid,
         adminUid: user.uid,
@@ -271,7 +257,26 @@ export default function TeamCreatePage() {
         teamData.photoURL = teamPhotoURL;
       }
 
-      await addDoc(collection(db, 'teams'), teamData);
+      const teamRef = await addDoc(collection(db, 'teams'), teamData);
+
+      // Crea inviti per i membri selezionati (come pending, non aggiunti direttamente)
+      if (formData.selectedMembers.length > 0) {
+        const senderName = user.displayName || user.email || 'Un professionista';
+        const invitePromises = formData.selectedMembers.map(async (userId) => {
+          const inviteRef = await addDoc(collection(db, 'teamInvites'), {
+            teamId: teamRef.id,
+            type: 'invite',
+            fromUserId: user.uid,
+            toUserId: userId,
+            status: 'pending',
+            createdAt: Timestamp.now(),
+            updatedAt: Timestamp.now(),
+          });
+          await notifyTeamInviteReceived(userId, teamRef.id, formData.name, senderName, inviteRef.id, user.uid);
+        });
+        await Promise.all(invitePromises);
+      }
+
       navigate('/teams');
     } catch (err: any) {
       console.error('Errore creazione team:', err);
@@ -333,33 +338,8 @@ export default function TeamCreatePage() {
         )}
 
         <form onSubmit={handleSubmit} className="bg-white rounded-xl shadow-sm p-8 space-y-6">
-          {/* Nome */}
-          <div>
-            <label className="block text-sm font-semibold mb-2">Nome Équipe *</label>
-            <input
-              type="text"
-              value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              className="w-full border rounded-lg px-4 py-2"
-              placeholder="es. Équipe Salute Mentale Roma"
-              required
-            />
-          </div>
-
-          {/* Descrizione */}
-          <div>
-            <label className="block text-sm font-semibold mb-2">Descrizione</label>
-            <textarea
-              value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              className="w-full border rounded-lg px-4 py-2"
-              rows={4}
-              placeholder="Descrivi gli obiettivi e le modalità di collaborazione dell'équipe..."
-            />
-          </div>
-
           {/* Foto Équipe */}
-          <div className="border-t pt-6">
+          <div>
             <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
               <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
@@ -446,6 +426,31 @@ export default function TeamCreatePage() {
             </div>
           </div>
 
+          {/* Nome */}
+          <div className="border-t pt-6">
+            <label className="block text-sm font-semibold mb-2">Nome Équipe *</label>
+            <input
+              type="text"
+              value={formData.name}
+              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              className="w-full border rounded-lg px-4 py-2"
+              placeholder="es. Équipe Salute Mentale Roma"
+              required
+            />
+          </div>
+
+          {/* Descrizione */}
+          <div>
+            <label className="block text-sm font-semibold mb-2">Descrizione</label>
+            <textarea
+              value={formData.description}
+              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              className="w-full border rounded-lg px-4 py-2"
+              rows={4}
+              placeholder="Descrivi gli obiettivi e le modalità di collaborazione dell'équipe..."
+            />
+          </div>
+
           {/* Località e Zona */}
           <div className="border-t pt-6">
             <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
@@ -463,6 +468,7 @@ export default function TeamCreatePage() {
               <MapSelectorClient
                 initialCenter={formData.coordinate || { lat: 41.9028, lng: 12.4964 }}
                 initialZoom={12}
+                raggioKm={formData.raggioKm}
                 onLocationSelect={(location) => {
                   setFormData({
                     ...formData,
@@ -595,15 +601,53 @@ export default function TeamCreatePage() {
           <div className="border-t pt-6">
             <h3 className="text-lg font-semibold mb-2">Invita Membri (opzionale)</h3>
             <p className="text-sm text-gray-600 mb-3">
-              Seleziona i professionisti che vuoi invitare nella tua équipe
+              Cerca i professionisti che vuoi invitare nella tua équipe
             </p>
-            <div className="max-h-80 overflow-y-auto border rounded-lg p-4">
-              {allUsers.length === 0 ? (
-                <p className="text-gray-500 text-center py-4">Nessun professionista disponibile</p>
+
+            {/* Membri selezionati */}
+            {formData.selectedMembers.length > 0 && (
+              <div className="flex flex-wrap gap-2 mb-3">
+                {formData.selectedMembers.map(uid => {
+                  const usr = allUsers.find(u => u.uid === uid);
+                  return (
+                    <span key={uid} className="inline-flex items-center gap-1 bg-blue-100 text-blue-800 text-sm px-3 py-1 rounded-full">
+                      {usr?.profile?.nome || usr?.email || uid}
+                      <button
+                        type="button"
+                        onClick={() => handleMemberToggle(uid)}
+                        className="ml-1 text-blue-600 hover:text-blue-900 font-bold"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Search bar */}
+            <input
+              type="text"
+              value={memberSearch}
+              onChange={(e) => setMemberSearch(e.target.value)}
+              placeholder="Cerca per nome, email o specializzazione..."
+              className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 mb-2"
+            />
+
+            {/* Risultati ricerca */}
+            {memberSearch.trim().length >= 2 && (() => {
+              const query = memberSearch.trim().toLowerCase();
+              const filtered = allUsers.filter(u =>
+                (u.profile?.nome?.toLowerCase().includes(query)) ||
+                (u.email?.toLowerCase().includes(query)) ||
+                (u.profile?.specializzazioni?.some(s => s.toLowerCase().includes(query)))
+              );
+              return filtered.length === 0 ? (
+                <p className="text-gray-500 text-center py-4 border rounded-lg">Nessun professionista trovato</p>
               ) : (
-                <div className="space-y-3">
-                  {allUsers.map((usr) => (
-                    <label key={usr.uid} className="flex items-start p-3 hover:bg-gray-50 rounded cursor-pointer">
+                <div className="max-h-60 overflow-y-auto border rounded-lg">
+                  {filtered.map((usr) => (
+                    <label key={usr.uid} className="flex items-start p-3 hover:bg-gray-50 cursor-pointer border-b last:border-b-0">
                       <input
                         type="checkbox"
                         checked={formData.selectedMembers.includes(usr.uid)}
@@ -622,8 +666,8 @@ export default function TeamCreatePage() {
                     </label>
                   ))}
                 </div>
-              )}
-            </div>
+              );
+            })()}
           </div>
 
           {/* Pulsanti */}

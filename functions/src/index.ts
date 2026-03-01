@@ -1,4 +1,4 @@
-import * as functions from 'firebase-functions';
+import * as functions from 'firebase-functions/v1';
 import * as admin from 'firebase-admin';
 import { Resend } from 'resend';
 
@@ -191,13 +191,24 @@ export const sendProfessionVerificationEmail = functions
     }
 
     const newProfessioni = afterPending.slice(beforePending.length);
+    const userDisplayName = `${after.profile?.nome || ''} ${after.profile?.cognome || ''}`.trim() || after.profile?.email || 'Un utente';
+    const userPhoto = after.profile?.photoURL;
+
+    const [adminByEmailSnapshot, adminByProfileEmailSnapshot] = await Promise.all([
+      admin.firestore().collection('users').where('email', 'in', ADMIN_EMAILS).get(),
+      admin.firestore().collection('users').where('profile.email', 'in', ADMIN_EMAILS).get(),
+    ]);
+
+    const adminIds = new Set<string>();
+    adminByEmailSnapshot.forEach((doc) => adminIds.add(doc.id));
+    adminByProfileEmailSnapshot.forEach((doc) => adminIds.add(doc.id));
 
     try {
       // Invia email all'admin
       for (const professione of newProfessioni) {
         await getResend().emails.send({
           from: EMAIL_FROM.noreply,
-          to: ADMIN_EMAIL,
+          to: ADMIN_EMAILS,
           subject: `Nuova richiesta verifica professione: ${professione.professione}`,
           html: `
             <h2>Nuova Richiesta di Verifica Professione</h2>
@@ -214,6 +225,22 @@ export const sendProfessionVerificationEmail = functions
             <p><a href="https://tuaequipe.it/admin/verifications?filter=with-pending-professions">Vai al pannello di verifica</a></p>
           `,
         });
+
+        if (adminIds.size > 0) {
+          await Promise.all(
+            Array.from(adminIds).map((adminId) =>
+              createInternalNotification({
+                userId: adminId,
+                type: 'profession_verification_request',
+                title: 'Nuova richiesta verifica professione',
+                message: `${userDisplayName} ha inviato la professione "${professione.professione}" per verifica`,
+                senderId: userId,
+                senderName: userDisplayName,
+                senderPhotoURL: userPhoto,
+              })
+            )
+          );
+        }
       }
 
       console.log('✅ Email verifica professione inviata per utente:', userId);
@@ -310,8 +337,8 @@ const EMAIL_FROM = {
   admin: 'Equipe <admin@tuaequipe.it>',
 };
 
-/** Indirizzo admin per notifiche interne */
-const ADMIN_EMAIL = 'admin@tuaequipe.it';
+/** Indirizzi admin per notifiche interne */
+const ADMIN_EMAILS = ['admin@tuaequipe.it', 'jschenetti@gmail.com'];
 
 /**
  * Funzione helper per inviare email
@@ -333,6 +360,27 @@ async function sendEmail(to: string, subject: string, html: string, from?: strin
   } catch (error) {
     console.error(`❌ Errore invio email a ${to}:`, error);
     return false;
+  }
+}
+
+async function createInternalNotification(params: {
+  userId: string;
+  type: string;
+  title: string;
+  message: string;
+  senderId?: string;
+  senderName?: string;
+  senderPhotoURL?: string;
+  [key: string]: any;
+}) {
+  try {
+    await admin.firestore().collection('notifications').add({
+      ...params,
+      read: false,
+      createdAt: admin.firestore.Timestamp.now(),
+    });
+  } catch (error) {
+    console.error('❌ Errore creazione notifica interna:', error);
   }
 }
 
@@ -441,6 +489,13 @@ export const sendProfessionStatusEmail = functions
           `,
           EMAIL_FROM.info
         );
+
+        await createInternalNotification({
+          userId: context.params.userId,
+          type: 'profession_approved',
+          title: 'Professione approvata',
+          message: `La tua professione "${approvataNuova.professione}" è stata approvata`,
+        });
       }
     }
 
@@ -480,6 +535,13 @@ export const sendProfessionStatusEmail = functions
         `,
         EMAIL_FROM.support
       );
+
+      await createInternalNotification({
+        userId: context.params.userId,
+        type: 'profession_rejected',
+        title: 'Professione non approvata',
+        message: `La tua professione "${professioneRimossa.professione}" richiede nuova documentazione`,
+      });
     }
 
     return null;
@@ -652,20 +714,20 @@ export const sendTeamMessageEmail = functions
 
 /**
  * 5. Email invito a unirsi a un'equipé
- * Trigger: onCreate su invites
+ * Trigger: onCreate su teamInvites
  */
 export const sendTeamInviteEmail = functions
   .region('europe-west1')
   .firestore
-  .document('invites/{inviteId}')
+  .document('teamInvites/{inviteId}')
   .onCreate(async (snapshot, context) => {
     const invite = snapshot.data();
 
     // Ottieni dati invitato, team e inviter
     const [invitedUserDoc, teamDoc, inviterDoc] = await Promise.all([
-      admin.firestore().collection('users').doc(invite.invitedUserId).get(),
+      admin.firestore().collection('users').doc(invite.toUserId).get(),
       admin.firestore().collection('teams').doc(invite.teamId).get(),
-      admin.firestore().collection('users').doc(invite.invitedBy).get(),
+      admin.firestore().collection('users').doc(invite.fromUserId).get(),
     ]);
 
     if (!invitedUserDoc.exists || !teamDoc.exists || !inviterDoc.exists) return null;
@@ -674,7 +736,7 @@ export const sendTeamInviteEmail = functions
     const team = teamDoc.data();
     const inviter = inviterDoc.data();
 
-    const inviterName = `${inviter?.profile?.nome || ''} ${inviter?.profile?.cognome || ''}`.trim();
+    const inviterName = inviter?.profile?.nome || inviter?.displayName || 'Un professionista';
 
     await sendEmail(
       invitedUser?.email,
@@ -695,6 +757,76 @@ export const sendTeamInviteEmail = functions
             </a>
           </p>
           <p>Potrai accettare o rifiutare l'invito dalla tua area inviti.</p>
+          <br>
+          <p>Il team di Equipe</p>
+        </div>
+      `,
+      EMAIL_FROM.info
+    );
+
+    return null;
+  });
+
+/**
+ * 5b. Email risposta a invito équipe (accettato/rifiutato)
+ * Trigger: onUpdate su teamInvites quando status cambia da pending
+ */
+export const sendTeamInviteResponseEmail = functions
+  .region('europe-west1')
+  .firestore
+  .document('teamInvites/{inviteId}')
+  .onUpdate(async (change, context) => {
+    const before = change.before.data();
+    const after = change.after.data();
+
+    // Procedi solo se lo status è cambiato da pending
+    if (before.status === after.status || before.status !== 'pending') return null;
+    if (after.status !== 'accepted' && after.status !== 'rejected') return null;
+
+    const isAccepted = after.status === 'accepted';
+
+    // Ottieni dati del responder, team e chi ha inviato l'invito
+    const [responderDoc, teamDoc, inviterDoc] = await Promise.all([
+      admin.firestore().collection('users').doc(after.toUserId).get(),
+      admin.firestore().collection('teams').doc(after.teamId).get(),
+      admin.firestore().collection('users').doc(after.fromUserId).get(),
+    ]);
+
+    if (!responderDoc.exists || !teamDoc.exists || !inviterDoc.exists) return null;
+
+    const responder = responderDoc.data();
+    const team = teamDoc.data();
+    const inviter = inviterDoc.data();
+
+    const responderName = responder?.profile?.nome || responder?.displayName || 'Un professionista';
+    const teamName = team?.nome || team?.name || 'Équipe';
+
+    // Email a chi ha inviato l'invito
+    await sendEmail(
+      inviter?.email,
+      isAccepted
+        ? `✅ Invito Accettato: ${responderName} si è unito a "${teamName}"`
+        : `❌ Invito Rifiutato: ${responderName} ha rifiutato "${teamName}"`,
+      `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2 style="color: ${isAccepted ? '#28a745' : '#dc3545'};">
+            Invito ${isAccepted ? 'Accettato' : 'Rifiutato'} ${isAccepted ? '✅' : '❌'}
+          </h2>
+          <p><strong>${responderName}</strong> ha ${isAccepted ? 'accettato' : 'rifiutato'} il tuo invito per l'équipe:</p>
+          <div style="background-color: #f5f5f5; padding: 20px; border-radius: 8px; margin: 20px 0;">
+            <h3 style="margin: 0 0 10px 0; color: #333;">${teamName}</h3>
+          </div>
+          ${isAccepted
+            ? '<p>Il nuovo membro può ora collaborare con il team!</p>'
+            : '<p>Puoi invitare altri professionisti dalla pagina del team.</p>'
+          }
+          <p style="text-align: center; margin: 30px 0;">
+            <a href="https://tuaequipe.it/teams/${after.teamId}" 
+               style="background-color: #0066cc; color: white; padding: 12px 24px; 
+                      text-decoration: none; border-radius: 5px; display: inline-block;">
+              Vai all'Équipe
+            </a>
+          </p>
           <br>
           <p>Il team di Equipe</p>
         </div>

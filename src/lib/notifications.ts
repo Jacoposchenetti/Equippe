@@ -24,8 +24,15 @@ interface CreateNotificationParams {
 export async function createNotification(params: CreateNotificationParams) {
   try {
     const notificationsRef = collection(db, 'notifications');
+    // Filtra i valori undefined per evitare errori Firestore
+    const cleanParams: Record<string, any> = {};
+    for (const [key, value] of Object.entries(params)) {
+      if (value !== undefined) {
+        cleanParams[key] = value;
+      }
+    }
     await addDoc(notificationsRef, {
-      ...params,
+      ...cleanParams,
       read: false,
       createdAt: Timestamp.now()
     });
@@ -132,15 +139,16 @@ export async function notifyTeamAdminPromotion(userId: string, teamId: string, t
   }
 }
 
-export async function notifyTeamInviteResponse(senderId: string, recipientName: string, teamName: string, accepted: boolean, inviteId: string) {
+export async function notifyTeamInviteResponse(targetUserId: string, recipientName: string, teamName: string, accepted: boolean, inviteId: string, responderId?: string) {
   try {
     await createNotification({
-      userId: senderId,
+      userId: targetUserId,
       type: 'team_invite_response',
       title: accepted ? 'Invito accettato' : 'Invito rifiutato',
       message: `${recipientName} ha ${accepted ? 'accettato' : 'rifiutato'} l'invito per "${teamName}"`,
       teamName,
       senderName: recipientName,
+      senderId: responderId,
       inviteId,
       accepted
     });
@@ -184,7 +192,7 @@ export async function notifyReferralAccepted(senderId: string, recipientId: stri
   }
 }
 
-export async function notifyTeamMemberLeft(adminIds: string[], memberName: string, teamId: string, teamName: string) {
+export async function notifyTeamMemberLeft(adminIds: string[], memberName: string, teamId: string, teamName: string, memberId?: string) {
   try {
     // Notifica tutti gli admin dell'équipe
     await Promise.all(
@@ -192,11 +200,12 @@ export async function notifyTeamMemberLeft(adminIds: string[], memberName: strin
         createNotification({
           userId: adminId,
           type: 'team_removed',
-          title: 'Membro uscito dall\'\u00e9quipe',
+          title: 'Membro uscito dall\'équipe',
           message: `${memberName} ha lasciato "${teamName}"`,
           teamId,
           teamName,
-          senderName: memberName
+          senderName: memberName,
+          senderId: memberId
         })
       )
     );
@@ -205,16 +214,17 @@ export async function notifyTeamMemberLeft(adminIds: string[], memberName: strin
   }
 }
 
-export async function notifyTeamInviteReceived(recipientId: string, teamId: string, teamName: string, senderName: string, inviteId: string) {
+export async function notifyTeamInviteReceived(recipientId: string, teamId: string, teamName: string, senderName: string, inviteId: string, senderId?: string) {
   try {
     await createNotification({
       userId: recipientId,
-      type: 'team_invite_response',
+      type: 'team_invite_received',
       title: 'Invito a équipe',
       message: `${senderName} ti ha invitato a unirti a "${teamName}"`,
       teamId,
       teamName,
       senderName,
+      senderId,
       inviteId
     });
   } catch (error) {

@@ -151,7 +151,8 @@ export default function InvitesPage() {
           userName,
           invite.team.name,
           true,
-          invite.id
+          invite.id,
+          user.uid
         );
       }
 
@@ -186,7 +187,8 @@ export default function InvitesPage() {
           userName,
           invite.team.name,
           false,
-          invite.id
+          invite.id,
+          user.uid
         );
       }
 

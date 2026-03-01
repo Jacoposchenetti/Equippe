@@ -157,8 +157,8 @@ export default function VerificationBanner() {
             </h3>
             <p className="mt-1 text-sm text-gray-700">
               Il tuo account è stato sospeso. Per maggiori informazioni contatta il supporto all'indirizzo{' '}
-              <a href="mailto:jschenetti@gmail.com" className="font-medium underline">
-                jschenetti@gmail.com
+              <a href="mailto:support@tuaequipe.it" className="font-medium underline">
+                support@tuaequipe.it
               </a>
             </p>
           </div>

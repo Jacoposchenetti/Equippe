@@ -268,8 +268,12 @@ export type NotificationType =
   | 'team_removed'           // Rimosso da équipe
   | 'team_admin'             // Promosso ad admin
   | 'team_invite_response'   // Invito accettato/rifiutato
+  | 'team_invite_received'   // Invito ricevuto
   | 'referral_received'      // Referral ricevuta
-  | 'referral_accepted';     // Referral accettata
+  | 'referral_accepted'      // Referral accettata
+  | 'profession_verification_request' // Nuova richiesta verifica professione (admin)
+  | 'profession_approved'    // Professione approvata (utente)
+  | 'profession_rejected';   // Professione rifiutata (utente)
 
 export interface Notification {
   id: string;

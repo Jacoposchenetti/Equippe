@@ -14,6 +14,16 @@
 
 ## Script Disponibili
 
+### 0. Smoke Test Email (Firebase + Functions)
+```bash
+npm run smoke:email
+```
+
+- Legge il project ID da `.firebaserc`
+- Analizza i log recenti delle Cloud Functions email
+- Mostra report `OK/ERROR` per le funzioni principali
+- Restituisce exit code non-zero se trova errori email
+
 ### 1. Clean Duplicate Conversations
 ```bash
 node scripts/cleanDuplicateConversations.js

@@ -3,7 +3,7 @@
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
-import { doc, updateDoc } from 'firebase/firestore';
+import { doc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '@/lib/firebase';
 import { requestNotificationPermission, saveFCMToken } from '@/lib/notifications';
@@ -15,19 +15,8 @@ const SPECIALIZZAZIONI = [
   'Psicoterapeuta',
   'Psichiatra',
   'Nutrizionista',
-  'Dietista',
   'Dietologo',
-  'Assistente Sociale',
-  'Educatore Professionale',
-  'Logopedista',
-  'Fisioterapista',
-  'Terapista Occupazionale',
-  'Infermiere',
-  'Medico di Base',
-  'Medico Specialista',
-  'Ginecologo',
-  'Andrologo',
-  'Sessuologo'
+  'Logopedista'
 ];
 
 const TEMATICHE = [
@@ -48,7 +37,7 @@ const TEMATICHE = [
 ];
 
 export default function EditProfilePage() {
-  const { user, userProfile, refreshProfile } = useAuth();
+  const { user, userProfile, refreshProfile, deleteCurrentUser } = useAuth();
   const navigate = useNavigate();
 
   const [loading, setLoading] = useState(false);
@@ -67,6 +56,7 @@ export default function EditProfilePage() {
   const [photoPreview, setPhotoPreview] = useState<string>('');
   const [notificationEnabled, setNotificationEnabled] = useState(false);
   const [notificationLoading, setNotificationLoading] = useState(false);
+  const [deletingAccount, setDeletingAccount] = useState(false);
 
   useEffect(() => {
     if (!user) {
@@ -85,9 +75,7 @@ export default function EditProfilePage() {
             'Psicoterapia': 'Psicoterapeuta',
             'Psichiatria': 'Psichiatra',
             'Nutrizione': 'Nutrizionista',
-            'Ginecologia': 'Ginecologo',
-            'Andrologia': 'Andrologo',
-            'Sessuologia': 'Sessuologo'
+            
           };
           return map[spec] || spec;
         })
@@ -355,6 +343,36 @@ export default function EditProfilePage() {
       alert(`Errore durante l'aggiornamento del profilo: ${error.message || error}`);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    if (!user) return;
+
+    const firstConfirm = confirm('Sei sicuro di voler eliminare definitivamente il tuo account? Questa azione non può essere annullata.');
+    if (!firstConfirm) return;
+
+    const typedConfirmation = prompt('Per confermare, scrivi ELIMINA');
+    if (typedConfirmation !== 'ELIMINA') {
+      alert('Eliminazione account annullata.');
+      return;
+    }
+
+    setDeletingAccount(true);
+    try {
+      await deleteDoc(doc(db, 'users', user.uid));
+      await deleteCurrentUser();
+      alert('Il tuo account è stato eliminato con successo.');
+      navigate('/');
+    } catch (error: any) {
+      console.error('Errore eliminazione account:', error);
+      if (error?.code === 'auth/requires-recent-login') {
+        alert('Per motivi di sicurezza devi effettuare nuovamente l\'accesso prima di eliminare l\'account. Esci, rientra e riprova.');
+      } else {
+        alert(`Errore durante l'eliminazione dell'account: ${error?.message || error}`);
+      }
+    } finally {
+      setDeletingAccount(false);
     }
   };
 
@@ -749,6 +767,22 @@ export default function EditProfilePage() {
                 Aggiornamento in corso...
               </p>
             )}
+          </div>
+
+          {/* Eliminazione account */}
+          <div className="bg-red-50 border border-red-200 rounded-xl p-6">
+            <h2 className="text-2xl font-bold text-red-800 mb-2">Zona Pericolosa</h2>
+            <p className="text-red-700 mb-4">
+              Eliminando l'account perderai definitivamente accesso al profilo e ai dati associati.
+            </p>
+            <button
+              type="button"
+              onClick={handleDeleteAccount}
+              disabled={deletingAccount}
+              className="px-5 py-3 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700 disabled:opacity-60 disabled:cursor-not-allowed transition"
+            >
+              {deletingAccount ? 'Eliminazione in corso...' : 'Elimina il mio account'}
+            </button>
           </div>
 
           {/* Bottoni azione */}

@@ -87,19 +87,8 @@ export default function TeamsPage() {
         'Psicoterapeuta': 'Psicoterapia',
         'Psichiatra': 'Psichiatria',
         'Nutrizionista': 'Nutrizione',
-        'Dietista': 'Dietetica',
         'Dietologo': 'Dietetica',
-        'Assistente Sociale': 'Assistenza Sociale',
-        'Educatore Professionale': 'Educazione Professionale',
-        'Logopedista': 'Logopedia',
-        'Fisioterapista': 'Fisioterapia',
-        'Terapista Occupazionale': 'Terapia Occupazionale',
-        'Infermiere': 'Infermieristica',
-        'Medico di Base': 'Medicina Generale',
-        'Medico Specialista': 'Medicina Specialistica',
-        'Ginecologo': 'Ginecologia',
-        'Andrologo': 'Andrologia',
-        'Sessuologo': 'Sessuologia'
+        'Logopedista': 'Logopedia'
       };
       return professionistToDiscipine[spec] || spec;
     }).filter((disc, index, arr) => arr.indexOf(disc) === index); // Rimuovi duplicati anche dopo conversione

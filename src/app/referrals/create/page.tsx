@@ -212,17 +212,12 @@ export default function CreatePazientePage() {
                 <option value="psicologo">Psicologo</option>
                 <option value="psicoterapeuta">Psicoterapeuta</option>
                 <option value="nutrizionista">Nutrizionista</option>
-                <option value="dietista">Dietista</option>
-                <option value="fisioterapista">Fisioterapista</option>
+                <option value="dietologo">Dietologo</option>
                 <option value="logopedista">Logopedista</option>
                 <option value="neuropsicomotricista">Neuropsicomotricista</option>
-                <option value="terapista occupazionale">Terapista Occupazionale</option>
                 <option value="psichiatra">Psichiatra</option>
                 <option value="neurologo">Neurologo</option>
                 <option value="neuropsichiatra">Neuropsichiatra Infantile</option>
-                <option value="ginecologo">Ginecologo</option>
-                <option value="andrologo">Andrologo</option>
-                <option value="sessuologo">Sessuologo</option>
               </select>
             </div>
 
@@ -371,8 +366,8 @@ export default function CreatePazientePage() {
             </div>
 
             <div className="bg-blue-50 p-4 rounded text-sm text-blue-800">
-              <strong>Privacy e Sicurezza:</strong> Tutti i dati sensibili del paziente saranno crittografati 
-              end-to-end prima dell'invio, in conformità con il GDPR.
+              <strong>Privacy e Sicurezza:</strong> Tutti i dati sensibili del paziente saranno protetti 
+              prima dell'invio, in conformità con il GDPR.
             </div>
           </div>
 

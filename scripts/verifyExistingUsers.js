@@ -31,18 +31,19 @@ async function verifyExistingUsers() {
 
     console.log(`👥 Trovati ${users.length} utenti\n`);
 
-    // Utenti da verificare automaticamente (esistenti prima del sistema)
-    const usersToVerify = [
-      'martinamaccarana@icloud.com',
-      'jschenetti@gmail.com',
-      'jacopo.schenetti@unitn.it'
-    ];
+    // Utenti da verificare automaticamente (configurabili)
+    const usersToVerify = (
+      process.env.USERS_TO_VERIFY || 'admin@tuaequipe.it,info@tuaequipe.it,support@tuaequipe.it'
+    )
+      .split(',')
+      .map((email) => email.trim().toLowerCase())
+      .filter(Boolean);
 
     let verified = 0;
     let errors = 0;
 
     for (const user of users) {
-      if (usersToVerify.includes(user.email)) {
+      if (user.email && usersToVerify.includes(user.email.toLowerCase())) {
         console.log(`📧 ${user.email}`);
         console.log(`   Stato attuale: ${user.emailVerified ? '✅ Verificata' : '❌ Non verificata'}`);
         

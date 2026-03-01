@@ -30,17 +30,7 @@ export default function ProfilePage() {
       'Psicoterapia': 'Psicoterapeuta',
       'Psichiatria': 'Psichiatra',
       'Nutrizione': 'Nutrizionista',
-      'Dietetica': 'Dietista',
-      'Assistenza Sociale': 'Assistente Sociale',
-      'Educazione Professionale': 'Educatore Professionale',
-      'Logopedia': 'Logopedista',
-      'Fisioterapia': 'Fisioterapista',
-      'Terapia Occupazionale': 'Terapista Occupazionale',
-      'Infermieristica': 'Infermiere',
-      'Medicina': 'Medico Specialista',
-      'Ginecologia': 'Ginecologo',
-      'Andrologia': 'Andrologo',
-      'Sessuologia': 'Sessuologo'
+      'Logopedia': 'Logopedista'
     };
     return normalizationMap[spec] || spec;
   };

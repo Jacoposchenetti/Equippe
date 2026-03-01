@@ -3,7 +3,7 @@
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { useEffect, useRef, useState } from 'react';
-import { doc, updateDoc, deleteField } from 'firebase/firestore';
+import { doc, updateDoc, deleteDoc, deleteField } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '@/lib/firebase';
 import { requestNotificationPermission, saveFCMToken } from '@/lib/notifications';
@@ -18,19 +18,9 @@ const SPECIALIZZAZIONI = [
   'Psicoterapeuta',
   'Psichiatra',
   'Nutrizionista',
-  'Dietista',
   'Dietologo',
-  'Assistente Sociale',
-  'Educatore Professionale',
   'Logopedista',
-  'Fisioterapista',
-  'Terapista Occupazionale',
-  'Infermiere',
-  'Medico di Base',
-  'Medico Specialista',
-  'Ginecologo',
-  'Andrologo',
-  'Sessuologo'
+  
 ];
 
 const TEMATICHE = [
@@ -64,7 +54,7 @@ function removeUndefined(obj: any): any {
 }
 
 export default function EditProfilePage() {
-  const { user, userProfile, refreshProfile } = useAuth();
+  const { user, userProfile, refreshProfile, deleteCurrentUser } = useAuth();
   const navigate = useNavigate();
 
   const [nome, setNome] = useState('');
@@ -82,6 +72,7 @@ export default function EditProfilePage() {
   const [photoPreview, setPhotoPreview] = useState<string>('');
   const [notificationEnabled, setNotificationEnabled] = useState(false);
   const [notificationLoading, setNotificationLoading] = useState(false);
+  const [deletingAccount, setDeletingAccount] = useState(false);
   
   // Gestione nuove professioni
   const [professioniApprovate, setProfessioniApprovate] = useState<ProfessioneConDocumenti[]>([]);
@@ -113,9 +104,7 @@ export default function EditProfilePage() {
             'Psicoterapia': 'Psicoterapeuta',
             'Psichiatria': 'Psichiatra',
             'Nutrizione': 'Nutrizionista',
-            'Ginecologia': 'Ginecologo',
-            'Andrologia': 'Andrologo',
-            'Sessuologia': 'Sessuologo'
+            
           };
           return map[spec] || spec;
         })
@@ -348,8 +337,37 @@ export default function EditProfilePage() {
     setSelectedProfessione('');
   };
 
+  const handleRemoveProfessioneApprovata = async (index: number) => {
+    const professioneDaRimuovere = professioniApprovate[index];
+    if (!professioneDaRimuovere) return;
+
+    if (!confirm(`Vuoi rimuovere la professione approvata "${professioneDaRimuovere.professione}" dal tuo profilo?`)) {
+      return;
+    }
+
+    const newProfessioniApprovate = professioniApprovate.filter((_, i) => i !== index);
+    setProfessioniApprovate(newProfessioniApprovate);
+
+    if (user) {
+      try {
+        setAutoSaveStatus('saving');
+        const userRef = doc(db, 'users', user.uid);
+        await updateDoc(userRef, {
+          'profile.professioniConDocumenti': newProfessioniApprovate.length > 0 ? newProfessioniApprovate : deleteField(),
+          'profile.specializzazioni': newProfessioniApprovate.map(p => p.professione),
+          updatedAt: new Date()
+        });
+        await refreshProfile();
+        setAutoSaveStatus('saved');
+        setTimeout(() => setAutoSaveStatus(s => s === 'saved' ? 'idle' : s), 3000);
+      } catch {
+        setAutoSaveStatus('error');
+      }
+    }
+  };
+
   const handleRemoveProfessionePending = async (index: number) => {
-    if (confirm('Vuoi rimuovere questa professione in attesa di approvazione?')) {
+    if (confirm('Vuoi annullare la richiesta di convalida per questa professione?')) {
       const newProfessioniPending = professioniPending.filter((_, i) => i !== index);
       setProfessioniPending(newProfessioniPending);
 
@@ -499,6 +517,36 @@ export default function EditProfilePage() {
       }
     }
     navigate('/dashboard');
+  };
+
+  const handleDeleteAccount = async () => {
+    if (!user) return;
+
+    const firstConfirm = confirm('Sei sicuro di voler eliminare definitivamente il tuo account? Questa azione non può essere annullata.');
+    if (!firstConfirm) return;
+
+    const typedConfirmation = prompt('Per confermare, scrivi ELIMINA');
+    if (typedConfirmation !== 'ELIMINA') {
+      alert('Eliminazione account annullata.');
+      return;
+    }
+
+    setDeletingAccount(true);
+    try {
+      await deleteDoc(doc(db, 'users', user.uid));
+      await deleteCurrentUser();
+      alert('Il tuo account è stato eliminato con successo.');
+      navigate('/');
+    } catch (error: any) {
+      console.error('Errore eliminazione account:', error);
+      if (error?.code === 'auth/requires-recent-login') {
+        alert('Per motivi di sicurezza devi effettuare nuovamente l\'accesso prima di eliminare l\'account. Esci, rientra e riprova.');
+      } else {
+        alert(`Errore durante l'eliminazione dell'account: ${error?.message || error}`);
+      }
+    } finally {
+      setDeletingAccount(false);
+    }
   };
 
   if (!userProfile) {
@@ -754,9 +802,19 @@ export default function EditProfilePage() {
                           <p className="text-sm text-green-700">Esperienza: {prof.anniEsperienza} anni</p>
                         )}
                       </div>
-                      <span className="px-3 py-1 bg-green-200 text-green-800 rounded-full text-sm font-medium">
-                        Approvata
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className="px-3 py-1 bg-green-200 text-green-800 rounded-full text-sm font-medium">
+                          Approvata
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveProfessioneApprovata(index)}
+                          className="px-3 py-1 text-sm font-medium text-red-700 bg-red-100 rounded-full hover:bg-red-200 transition-colors"
+                          title="Rimuovi professione"
+                        >
+                          Rimuovi
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -786,12 +844,10 @@ export default function EditProfilePage() {
                         <button
                           type="button"
                           onClick={() => handleRemoveProfessionePending(index)}
-                          className="text-red-600 hover:text-red-800 p-1"
-                          title="Rimuovi"
+                          className="px-3 py-1 text-sm font-medium text-red-700 bg-red-100 rounded-full hover:bg-red-200 transition-colors"
+                          title="Annulla richiesta"
                         >
-                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                          </svg>
+                          Annulla richiesta
                         </button>
                       </div>
                     </div>
@@ -1074,6 +1130,22 @@ export default function EditProfilePage() {
                 Aggiornamento in corso...
               </p>
             )}
+          </div>
+
+          {/* Eliminazione account */}
+          <div className="bg-red-50 border border-red-200 rounded-xl p-6">
+            <h2 className="text-2xl font-bold text-red-800 mb-2">Zona Pericolosa</h2>
+            <p className="text-red-700 mb-4">
+              Eliminando l'account perderai definitivamente accesso al profilo e ai dati associati.
+            </p>
+            <button
+              type="button"
+              onClick={handleDeleteAccount}
+              disabled={deletingAccount}
+              className="px-5 py-3 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700 disabled:opacity-60 disabled:cursor-not-allowed transition"
+            >
+              {deletingAccount ? 'Eliminazione in corso...' : 'Elimina il mio account'}
+            </button>
           </div>
 
           {/* Stato auto-save e navigazione */}

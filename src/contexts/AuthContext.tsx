@@ -8,7 +8,8 @@ import {
   createUserWithEmailAndPassword,
   signOut as firebaseSignOut,
   sendEmailVerification,
-  updateProfile
+  updateProfile,
+  deleteUser as firebaseDeleteUser
 } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
@@ -21,6 +22,7 @@ interface AuthContextType {
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string, displayName: string) => Promise<FirebaseUser>;
   signOut: () => Promise<void>;
+  deleteCurrentUser: () => Promise<void>;
   refreshUserProfile: () => Promise<void>;
   refreshProfile: () => Promise<void>;
 }
@@ -89,6 +91,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await firebaseSignOut(auth);
   };
 
+  const deleteCurrentUser = async () => {
+    if (!auth.currentUser) {
+      throw new Error('Nessun utente autenticato');
+    }
+    await firebaseDeleteUser(auth.currentUser);
+  };
+
   const refreshUserProfile = async () => {
     if (user) {
       await fetchUserProfile(user.uid);
@@ -102,6 +111,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     signIn,
     signUp,
     signOut,
+    deleteCurrentUser,
     refreshUserProfile,
     refreshProfile: refreshUserProfile, // Alias per compatibilità
   };

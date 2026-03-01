@@ -10,6 +10,18 @@ import { notifyNewMessage } from '@/lib/notifications';
 import { uploadFile, validateFile, getFileIcon, formatFileSize } from '@/lib/fileUpload';
 import { useModal } from '@/contexts/ModalContext';
 
+function formatRelativeDate(date: Date): string {
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const target = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const diffDays = Math.floor((today.getTime() - target.getTime()) / (1000 * 60 * 60 * 24));
+  const time = date.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+  if (diffDays === 0) return `oggi, ${time}`;
+  if (diffDays === 1) return `ieri, ${time}`;
+  if (diffDays === 2) return `2 giorni fa, ${time}`;
+  return date.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' }) + ', ' + time;
+}
+
 export default function MessagesPage() {
   const { user, userProfile } = useAuth();
   const navigate = useNavigate();
@@ -639,7 +651,7 @@ export default function MessagesPage() {
                       </div>
                       {conv.lastMessageTime && (
                         <p className="text-xs text-gray-400 mt-1">
-                          {conv.lastMessageTime.toDate().toLocaleString('it-IT')}
+                          {formatRelativeDate(conv.lastMessageTime.toDate())}
                         </p>
                       )}
                     </div>

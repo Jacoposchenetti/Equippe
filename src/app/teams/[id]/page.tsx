@@ -1,4 +1,5 @@
 import { useAuth } from '@/contexts/AuthContext';
+import { useModal } from '@/contexts/ModalContext';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useEffect, useState, useRef } from 'react';
 import { doc, getDoc, updateDoc, arrayUnion, arrayRemove, Timestamp, collection, getDocs, addDoc, deleteDoc, query, where, onSnapshot, orderBy } from 'firebase/firestore';
@@ -12,6 +13,7 @@ import { occupyPositions, freePositions } from '@/lib/teamPositions';
 
 export default function TeamDetailPage() {
   const { user, userProfile } = useAuth();
+  const { showToast, showConfirm } = useModal();
   const navigate = useNavigate();
   const params = useParams();
   const teamId = params.id as string;
@@ -136,7 +138,13 @@ export default function TeamDetailPage() {
   }, [messages, showChat]);
 
   const handleRemoveMember = async (userId: string) => {
-    if (!confirm('Sei sicuro di voler rimuovere questo membro?')) return;
+    const confirmed = await showConfirm({
+      title: 'Rimuovi membro',
+      message: 'Sei sicuro di voler rimuovere questo membro?',
+      variant: 'danger',
+      confirmText: 'Rimuovi'
+    });
+    if (!confirmed) return;
 
     try {
       const teamRef = doc(db, 'teams', teamId);
@@ -159,14 +167,20 @@ export default function TeamDetailPage() {
       await loadTeamData();
     } catch (error) {
       console.error('Errore rimozione membro:', error);
-      alert('Errore durante la rimozione del membro');
+      showToast('Errore durante la rimozione del membro', 'error');
     }
   };
 
   const handleLeaveTeam = async () => {
     if (!isAdmin) {
       // Utente normale lascia il team
-      if (!confirm('Sei sicuro di voler lasciare questa Equipé?')) return;
+      const confirmed = await showConfirm({
+        title: 'Lascia Equipé',
+        message: 'Sei sicuro di voler lasciare questa Equipé?',
+        variant: 'warning',
+        confirmText: 'Lascia'
+      });
+      if (!confirmed) return;
 
       try {
         const teamRef = doc(db, 'teams', teamId);
@@ -199,11 +213,17 @@ export default function TeamDetailPage() {
         navigate('/teams');
       } catch (error) {
         console.error('Errore uscita dal team:', error);
-        alert('Errore durante l\'uscita dal team');
+        showToast('Errore durante l\'uscita dal team', 'error');
       }
     } else {
       // Admin lascia il team - passa admin al secondo membro
-      if (!confirm('Sei sicuro di voler lasciare questa Equipé? Il ruolo di admin passerà al prossimo membro.')) return;
+      const confirmed = await showConfirm({
+        title: 'Lascia Equipé',
+        message: 'Sei sicuro di voler lasciare questa Equipé? Il ruolo di admin passerà al prossimo membro.',
+        variant: 'warning',
+        confirmText: 'Lascia'
+      });
+      if (!confirmed) return;
 
       try {
         const teamRef = doc(db, 'teams', teamId);
@@ -235,7 +255,7 @@ export default function TeamDetailPage() {
               await freePositions(teamId, user.uid);
             }
 
-            alert(`${otherMembers[0].userId} è ora l'admin dell'Equipé`);
+            showToast(`${otherMembers[0].userId} è ora l'admin dell'Equipé`, 'info');
           }
         } else {
           // Se è l'unico membro, elimina il team
@@ -245,16 +265,28 @@ export default function TeamDetailPage() {
         navigate('/teams');
       } catch (error) {
         console.error('Errore uscita dal team:', error);
-        alert('Errore durante l\'uscita dal team');
+        showToast('Errore durante l\'uscita dal team', 'error');
       }
     }
   };
 
   const handleDeleteTeam = async () => {
-    if (!confirm('ATTENZIONE: Sei sicuro di voler eliminare definitivamente questa Equipé? Questa azione non può essere annullata.')) return;
+    const confirmed1 = await showConfirm({
+      title: 'Elimina Equipé',
+      message: 'ATTENZIONE: Sei sicuro di voler eliminare definitivamente questa Equipé? Questa azione non può essere annullata.',
+      variant: 'danger',
+      confirmText: 'Elimina'
+    });
+    if (!confirmed1) return;
     
     // Doppia conferma per sicurezza
-    if (!confirm('Confermi l\'eliminazione? Tutti i dati del team saranno persi.')) return;
+    const confirmed2 = await showConfirm({
+      title: 'Conferma eliminazione',
+      message: 'Confermi l\'eliminazione? Tutti i dati del team saranno persi.',
+      variant: 'danger',
+      confirmText: 'Conferma eliminazione'
+    });
+    if (!confirmed2) return;
 
     try {
       // Elimina il team
@@ -265,17 +297,17 @@ export default function TeamDetailPage() {
       // const invitesSnapshot = await getDocs(invitesQuery);
       // await Promise.all(invitesSnapshot.docs.map(doc => deleteDoc(doc.ref)));
 
-      alert('Equipé eliminata con successo');
+      showToast('Equipé eliminata con successo', 'success');
       navigate('/teams');
     } catch (error) {
       console.error('Errore eliminazione team:', error);
-      alert('Errore durante l\'eliminazione del team');
+      showToast('Errore durante l\'eliminazione del team', 'error');
     }
   };
 
   const handleInviteMembers = async () => {
     if (selectedUsers.length === 0) {
-      alert('Seleziona almeno un utente da invitare');
+      showToast('Seleziona almeno un utente da invitare', 'warning');
       return;
     }
 
@@ -303,10 +335,10 @@ export default function TeamDetailPage() {
 
       setShowInviteModal(false);
       setSelectedUsers([]);
-      alert(`Inviti inviati a ${selectedUsers.length} professionisti!`);
+      showToast(`Inviti inviati a ${selectedUsers.length} professionisti!`, 'success');
     } catch (error) {
       console.error('Errore invio inviti:', error);
-      alert('Errore durante l\'invio degli inviti');
+      showToast('Errore durante l\'invio degli inviti', 'error');
     }
   };
 
@@ -320,7 +352,7 @@ export default function TeamDetailPage() {
 
   const handleJoinRequest = async () => {
     if (!requestMessage.trim()) {
-      alert('Inserisci un messaggio per la tua richiesta');
+      showToast('Inserisci un messaggio per la tua richiesta', 'warning');
       return;
     }
 
@@ -351,10 +383,10 @@ export default function TeamDetailPage() {
 
       setShowRequestModal(false);
       setRequestMessage('');
-      alert('Richiesta inviata! L\'amministratore riceverà una notifica.');
+      showToast('Richiesta inviata! L\'amministratore riceverà una notifica.', 'success');
     } catch (error) {
       console.error('Errore invio richiesta:', error);
-      alert('Errore durante l\'invio della richiesta');
+      showToast('Errore durante l\'invio della richiesta', 'error');
     }
   };
 
@@ -391,15 +423,21 @@ export default function TeamDetailPage() {
 
       // Ricarica i dati
       await loadTeamData();
-      alert('Richiesta accettata! Il membro è stato aggiunto all\'équipe.');
+      showToast('Richiesta accettata! Il membro è stato aggiunto all\'équipe.', 'success');
     } catch (error) {
       console.error('Errore accettazione richiesta:', error);
-      alert('Errore durante l\'accettazione della richiesta');
+      showToast('Errore durante l\'accettazione della richiesta', 'error');
     }
   };
 
   const handleRejectRequest = async (requestId: string) => {
-    if (!confirm('Sei sicuro di voler rifiutare questa richiesta?')) return;
+    const confirmed = await showConfirm({
+      title: 'Rifiuta richiesta',
+      message: 'Sei sicuro di voler rifiutare questa richiesta?',
+      variant: 'warning',
+      confirmText: 'Rifiuta'
+    });
+    if (!confirmed) return;
 
     try {
       // Aggiorna lo stato della richiesta
@@ -410,10 +448,10 @@ export default function TeamDetailPage() {
 
       // Ricarica i dati
       await loadTeamData();
-      alert('Richiesta rifiutata.');
+      showToast('Richiesta rifiutata.', 'info');
     } catch (error) {
       console.error('Errore rifiuto richiesta:', error);
-      alert('Errore durante il rifiuto della richiesta');
+      showToast('Errore durante il rifiuto della richiesta', 'error');
     }
   };
 
@@ -577,7 +615,7 @@ export default function TeamDetailPage() {
       setMessageText('');
     } catch (error) {
       console.error('Errore invio messaggio:', error);
-      alert('Errore durante l\'invio del messaggio');
+      showToast('Errore durante l\'invio del messaggio', 'error');
     } finally {
       setSending(false);
     }
@@ -623,7 +661,7 @@ export default function TeamDetailPage() {
       cancelEditing();
     } catch (error) {
       console.error('Errore nel salvataggio:', error);
-      alert('Errore nel salvataggio');
+      showToast('Errore nel salvataggio', 'error');
     } finally {
       setSaving(false);
     }
@@ -636,13 +674,19 @@ export default function TeamDetailPage() {
     ));
   };
 
-  const removePosition = (index: number) => {
+  const removePosition = async (index: number) => {
     const position = editingPositions[index];
     if (position.occupati > 0) {
-      alert('Non puoi rimuovere una posizione che ha membri assegnati!');
+      showToast('Non puoi rimuovere una posizione che ha membri assegnati!', 'warning');
       return;
     }
-    if (confirm(`Sei sicuro di voler rimuovere la posizione per ${position.specializzazione}?`)) {
+    const confirmed = await showConfirm({
+      title: 'Rimuovi posizione',
+      message: `Sei sicuro di voler rimuovere la posizione per ${position.specializzazione}?`,
+      variant: 'warning',
+      confirmText: 'Rimuovi'
+    });
+    if (confirmed) {
       setEditingPositions(prev => prev.filter((_, i) => i !== index));
     }
   };
@@ -1043,7 +1087,7 @@ export default function TeamDetailPage() {
                             if (e.target.value) {
                               const existingIndex = editingPositions.findIndex(p => p.specializzazione === e.target.value);
                               if (existingIndex >= 0) {
-                                alert('Questa specializzazione è già presente. Modifica quella esistente.');
+                                showToast('Questa specializzazione è già presente. Modifica quella esistente.', 'warning');
                                 return;
                               }
                               setEditingPositions(prev => [...prev, { 

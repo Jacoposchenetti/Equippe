@@ -1,6 +1,7 @@
 'use client';
 
 import { useAuth } from '@/contexts/AuthContext';
+import { useModal } from '@/contexts/ModalContext';
 import { useNavigate } from 'react-router-dom';
 import { useEffect, useRef, useState } from 'react';
 import { doc, updateDoc, deleteDoc, deleteField } from 'firebase/firestore';
@@ -55,6 +56,7 @@ function removeUndefined(obj: any): any {
 
 export default function EditProfilePage() {
   const { user, userProfile, refreshProfile, deleteCurrentUser } = useAuth();
+  const { showToast, showConfirm } = useModal();
   const navigate = useNavigate();
 
   const [nome, setNome] = useState('');
@@ -264,28 +266,28 @@ export default function EditProfilePage() {
           fcmTokenUpdatedAt: null
         });
         setNotificationEnabled(false);
-        alert('🔕 Notifiche push disabilitate');
+        showToast('🔕 Notifiche push disabilitate', 'info');
       } else {
         // Abilita notifiche - richiedi permesso e salva token
         const token = await requestNotificationPermission();
         if (token) {
           await saveFCMToken(user.uid, token);
           setNotificationEnabled(true);
-          alert('🔔 Notifiche push abilitate con successo!');
+          showToast('🔔 Notifiche push abilitate con successo!', 'success');
         } else {
-          alert('Impossibile abilitare le notifiche. Controlla i permessi del browser.');
+          showToast('Impossibile abilitare le notifiche. Controlla i permessi del browser.', 'warning');
         }
       }
     } catch (error) {
       console.error('Errore toggle notifiche:', error);
-      alert('Errore durante la modifica delle notifiche');
+      showToast('Errore durante la modifica delle notifiche', 'error');
     } finally {
       setNotificationLoading(false);
     }
   };
   const handleAddProfessione = () => {
     if (!selectedProfessione) {
-      alert('Seleziona una professione da aggiungere');
+      showToast('Seleziona una professione da aggiungere', 'warning');
       return;
     }
     
@@ -294,7 +296,7 @@ export default function EditProfilePage() {
                         professioniPending.some(p => p.professione === selectedProfessione);
     
     if (giaPresente) {
-      alert('Questa professione è già presente nel tuo profilo');
+      showToast('Questa professione è già presente nel tuo profilo', 'warning');
       return;
     }
     
@@ -329,7 +331,7 @@ export default function EditProfilePage() {
       }
     }
 
-    alert('✅ Professione aggiunta! Sarà visibile dopo l\'approvazione dell\'amministratore.');
+    showToast('✅ Professione aggiunta! Sarà visibile dopo l\'approvazione dell\'amministratore.', 'success');
   };
 
   const handleCancelDocumenti = () => {
@@ -341,7 +343,13 @@ export default function EditProfilePage() {
     const professioneDaRimuovere = professioniApprovate[index];
     if (!professioneDaRimuovere) return;
 
-    if (!confirm(`Vuoi rimuovere la professione approvata "${professioneDaRimuovere.professione}" dal tuo profilo?`)) {
+    const confirmed = await showConfirm({
+      title: 'Rimuovi professione',
+      message: `Vuoi rimuovere la professione approvata "${professioneDaRimuovere.professione}" dal tuo profilo?`,
+      variant: 'warning',
+      confirmText: 'Rimuovi'
+    });
+    if (!confirmed) {
       return;
     }
 
@@ -367,7 +375,13 @@ export default function EditProfilePage() {
   };
 
   const handleRemoveProfessionePending = async (index: number) => {
-    if (confirm('Vuoi annullare la richiesta di convalida per questa professione?')) {
+    const confirmed = await showConfirm({
+      title: 'Annulla richiesta',
+      message: 'Vuoi annullare la richiesta di convalida per questa professione?',
+      variant: 'warning',
+      confirmText: 'Annulla richiesta'
+    });
+    if (confirmed) {
       const newProfessioniPending = professioniPending.filter((_, i) => i !== index);
       setProfessioniPending(newProfessioniPending);
 
@@ -522,12 +536,22 @@ export default function EditProfilePage() {
   const handleDeleteAccount = async () => {
     if (!user) return;
 
-    const firstConfirm = confirm('Sei sicuro di voler eliminare definitivamente il tuo account? Questa azione non può essere annullata.');
+    const firstConfirm = await showConfirm({
+      title: 'Elimina account',
+      message: 'Sei sicuro di voler eliminare definitivamente il tuo account? Questa azione non può essere annullata.',
+      variant: 'danger',
+      confirmText: 'Elimina account'
+    });
     if (!firstConfirm) return;
 
-    const typedConfirmation = prompt('Per confermare, scrivi ELIMINA');
-    if (typedConfirmation !== 'ELIMINA') {
-      alert('Eliminazione account annullata.');
+    const secondConfirm = await showConfirm({
+      title: 'Conferma eliminazione',
+      message: 'Questa è l\'ultima conferma. Il tuo account e tutti i dati verranno eliminati permanentemente.',
+      variant: 'danger',
+      confirmText: 'Conferma eliminazione'
+    });
+    if (!secondConfirm) {
+      showToast('Eliminazione account annullata.', 'info');
       return;
     }
 
@@ -535,14 +559,14 @@ export default function EditProfilePage() {
     try {
       await deleteDoc(doc(db, 'users', user.uid));
       await deleteCurrentUser();
-      alert('Il tuo account è stato eliminato con successo.');
+      showToast('Il tuo account è stato eliminato con successo.', 'success');
       navigate('/');
     } catch (error: any) {
       console.error('Errore eliminazione account:', error);
       if (error?.code === 'auth/requires-recent-login') {
-        alert('Per motivi di sicurezza devi effettuare nuovamente l\'accesso prima di eliminare l\'account. Esci, rientra e riprova.');
+        showToast('Per motivi di sicurezza devi effettuare nuovamente l\'accesso prima di eliminare l\'account. Esci, rientra e riprova.', 'error');
       } else {
-        alert(`Errore durante l'eliminazione dell'account: ${error?.message || error}`);
+        showToast(`Errore durante l'eliminazione dell'account: ${error?.message || error}`, 'error');
       }
     } finally {
       setDeletingAccount(false);

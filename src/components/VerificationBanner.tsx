@@ -1,5 +1,6 @@
 import { useAuth } from '@/contexts/AuthContext';
 import { useCanInteract } from '@/hooks/useCanInteract';
+import { useModal } from '@/contexts/ModalContext';
 import { sendEmailVerification } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import { useState } from 'react';
@@ -10,6 +11,7 @@ import { useState } from 'react';
 export default function VerificationBanner() {
   const { user, userProfile } = useAuth();
   const { canInteract, reason, message } = useCanInteract();
+  const { showToast } = useModal();
   const [resendLoading, setResendLoading] = useState(false);
   const [resendSuccess, setResendSuccess] = useState(false);
 
@@ -31,7 +33,7 @@ export default function VerificationBanner() {
       setTimeout(() => setResendSuccess(false), 5000);
     } catch (error) {
       console.error('Errore invio email:', error);
-      alert('Errore nell\'invio dell\'email. Riprova più tardi.');
+      showToast('Errore nell\'invio dell\'email. Riprova più tardi.', 'error');
     } finally {
       setResendLoading(false);
     }

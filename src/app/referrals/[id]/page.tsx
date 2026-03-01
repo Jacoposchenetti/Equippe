@@ -7,6 +7,7 @@ import { User } from '@/types/equippe';
 import { importKey, decryptData } from '@/lib/encryption';
 import { Link } from 'react-router-dom';
 import { notifyReferralAccepted } from '@/lib/notifications';
+import { useModal } from '@/contexts/ModalContext';
 
 interface Referral {
   id: string;
@@ -36,6 +37,7 @@ export default function PazienteDetailPage() {
   const navigate = useNavigate();
   const params = useParams();
   const referralId = params.id as string;
+  const { showToast, showConfirm } = useModal();
   
   const [referral, setReferral] = useState<Referral | null>(null);
   const [sender, setSender] = useState<User | null>(null);
@@ -89,7 +91,7 @@ export default function PazienteDetailPage() {
       setDecryptedData({ patient, diagnosis, notes });
     } catch (error) {
       console.error('Errore caricamento referral:', error);
-      alert('Errore nel caricamento o decifrazione dei dati');
+      showToast('Errore nel caricamento o decifrazione dei dati', 'error');
     } finally {
       setLoading(false);
     }
@@ -104,7 +106,8 @@ export default function PazienteDetailPage() {
       completed: 'Sei sicuro di voler segnare questo referral come completato?',
     };
 
-    if (!confirm(confirmMessages[newStatus])) return;
+    const confirmed = await showConfirm({ title: 'Conferma azione', message: confirmMessages[newStatus], variant: 'warning', confirmText: 'Conferma' });
+    if (!confirmed) return;
 
     setUpdating(true);
     try {
@@ -128,10 +131,10 @@ export default function PazienteDetailPage() {
       }
 
       await loadReferralData();
-      alert('Stato aggiornato con successo');
+      showToast('Stato aggiornato con successo', 'success');
     } catch (error) {
       console.error('Errore aggiornamento stato:', error);
-      alert('Errore durante l\'aggiornamento dello stato');
+      showToast('Errore durante l\'aggiornamento dello stato', 'error');
     } finally {
       setUpdating(false);
     }

@@ -3,18 +3,20 @@
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useEffect, useState, useRef } from 'react';
-import { collection, query, where, orderBy, onSnapshot, addDoc, updateDoc, doc, getDoc, getDocs, Timestamp } from 'firebase/firestore';
+import { collection, query, where, orderBy, onSnapshot, addDoc, updateDoc, doc, getDoc, getDocs, deleteDoc, Timestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Conversation, Message, Team, ConversationType, FileAttachment } from '@/types/equippe';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { notifyNewMessage } from '@/lib/notifications';
 import { uploadFile, validateFile, getFileIcon, formatFileSize } from '@/lib/fileUpload';
+import { useModal } from '@/contexts/ModalContext';
 
 export default function MessagesPage() {
   const { user, userProfile } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const { showToast, showConfirm } = useModal();
   
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [teams, setTeams] = useState<Team[]>([]);
@@ -236,8 +238,57 @@ export default function MessagesPage() {
             }
           }
 
+          // Filtra chat orfane: team eliminati o utenti che non esistono più
+          const validConvs = [];
+          for (const conv of convs) {
+            let isOrphan = false;
+
+            if (conv.type === 'team' && conv.teamId) {
+              // Controlla se il team esiste ancora
+              try {
+                const teamDoc = await getDoc(doc(db, 'teams', conv.teamId));
+                if (!teamDoc.exists()) {
+                  isOrphan = true;
+                }
+              } catch (error) {
+                console.error('Error checking team existence:', error);
+              }
+            } else if (conv.type === 'private' || !conv.type) {
+              // Chat diretta: controlla se l'altro utente esiste ancora
+              const otherParticipantId = conv.participants.find((p: string) => p !== user.uid);
+              if (otherParticipantId) {
+                try {
+                  const otherUserDoc = await getDoc(doc(db, 'users', otherParticipantId));
+                  if (!otherUserDoc.exists()) {
+                    isOrphan = true;
+                  }
+                } catch (error) {
+                  console.error('Error checking user existence:', error);
+                }
+              }
+            }
+
+            if (isOrphan) {
+              // Rimuovi conversazione e messaggi da Firestore
+              try {
+                const messagesQuery = query(
+                  collection(db, 'messages'),
+                  where('conversationId', '==', conv.id)
+                );
+                const messagesSnapshot = await getDocs(messagesQuery);
+                await Promise.all(messagesSnapshot.docs.map(msgDoc => deleteDoc(doc(db, 'messages', msgDoc.id))));
+                await deleteDoc(doc(db, 'conversations', conv.id));
+              } catch (cleanupError) {
+                console.error('Error cleaning up orphan conversation:', cleanupError);
+              }
+              continue; // Non aggiungere alle conversazioni valide
+            }
+
+            validConvs.push(conv);
+          }
+
           // Ordina per tipo (team prima) e poi per ultimo messaggio
-          convs.sort((a, b) => {
+          validConvs.sort((a, b) => {
             // Prima le chat di team
             if (a.type === 'team' && b.type !== 'team') return -1;
             if (b.type === 'team' && a.type !== 'team') return 1;
@@ -248,7 +299,7 @@ export default function MessagesPage() {
             return timeB - timeA;
           });
 
-          setConversations(convs);
+          setConversations(validConvs);
           setLoading(false);
         },
         (error) => {
@@ -378,7 +429,7 @@ export default function MessagesPage() {
       setSelectedConversation(convRef.id);
     } catch (err) {
       console.error('Errore nella creazione della conversazione:', err);
-      alert('Errore nella creazione della conversazione. Riprova.');
+      showToast('Errore nella creazione della conversazione. Riprova.', 'error');
     }
 
     setCreatingConversation(false);
@@ -400,7 +451,7 @@ export default function MessagesPage() {
     });
     
     if (errors.length > 0) {
-      alert('Errori nei file:\n' + errors.join('\n'));
+      showToast('Errori nei file:\n' + errors.join('\n'), 'warning');
     }
     
     if (validFiles.length > 0) {
@@ -442,7 +493,7 @@ export default function MessagesPage() {
       
     } catch (error) {
       console.error('Error uploading files:', error);
-      alert('Errore durante l\'upload dei file');
+      showToast('Errore durante l\'upload dei file', 'error');
     } finally {
       // Pulisci stati upload
       setUploadingFiles(prev => prev.filter(f => !files.includes(f)));
@@ -549,7 +600,7 @@ export default function MessagesPage() {
       setPendingAttachments([]);
     } catch (error) {
       console.error('Error sending message:', error);
-      alert('Errore nell\'invio del messaggio');
+      showToast('Errore nell\'invio del messaggio', 'error');
     }
 
     setSending(false);
@@ -666,7 +717,7 @@ export default function MessagesPage() {
                       </div>
                       {conv.lastMessageTime && (
                         <p className="text-xs text-gray-400 mt-1">
-                          {conv.lastMessageTime.toDate().toLocaleString('it-IT')}
+                          {conv.lastMessageTime.toDate().toLocaleString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                         </p>
                       )}
                     </div>

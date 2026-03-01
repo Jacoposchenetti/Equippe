@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react';
 import 'leaflet/dist/leaflet.css';
+import { useModal } from '@/contexts/ModalContext';
 
 // Import dinamici per evitare SSR
 let MapContainer: any;
@@ -46,6 +47,7 @@ export default function MapSelector({
   onLocationSelect,
   selectedLocation,
 }: MapSelectorProps) {
+  const { showToast } = useModal();
   const [isClient, setIsClient] = useState(false);
   const [isMapReady, setIsMapReady] = useState(false);
   
@@ -170,7 +172,7 @@ export default function MapSelector({
     
     const token = import.meta.env.VITE_MAPBOX_TOKEN;
     if (!token) {
-      alert('Token Mapbox non configurato');
+      showToast('Token Mapbox non configurato', 'error');
       return;
     }
     
@@ -189,11 +191,11 @@ export default function MapSelector({
         handleIndirizzoChange(feature.place_name);
         setSearchAddress(feature.place_name);
       } else {
-        alert('Indirizzo non trovato. Prova a essere più specifico.');
+        showToast('Indirizzo non trovato. Prova a essere più specifico.', 'warning');
       }
     } catch (error) {
       console.error('Errore geocoding:', error);
-      alert('Errore durante la ricerca dell\'indirizzo');
+      showToast('Errore durante la ricerca dell\'indirizzo', 'error');
     } finally {
       setIsGeocoding(false);
     }

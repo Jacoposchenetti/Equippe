@@ -1,4 +1,5 @@
 import { useAuth } from '@/contexts/AuthContext';
+import { useModal } from '@/contexts/ModalContext';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { doc, getDoc, updateDoc, Timestamp } from 'firebase/firestore';
@@ -20,6 +21,7 @@ const SPECIALIZZAZIONI = [
 
 export default function EditTeamPage() {
   const { user } = useAuth();
+  const { showToast } = useModal();
   const navigate = useNavigate();
   const params = useParams();
   const teamId = params.id as string;
@@ -70,7 +72,7 @@ export default function EditTeamPage() {
       
       // Verifica che l'utente sia admin
       if (teamData.createdBy !== user?.uid) {
-        alert('Solo l\'amministratore può modificare le impostazioni');
+        showToast('Solo l\'amministratore può modificare le impostazioni', 'error');
         navigate(`/teams/${teamId}`);
         return;
       }

@@ -5,6 +5,7 @@ import { collection, query, where, getDocs, doc, updateDoc, Timestamp, orderBy }
 import { db } from '@/lib/firebase';
 import { User, VerificationStatus, VerificationInfo } from '@/types/equippe';
 import Header from '@/components/Header';
+import { useModal } from '@/contexts/ModalContext';
 
 const ADMIN_EMAILS = ['admin@tuaequipe.it', 'jschenetti@gmail.com'];
 
@@ -15,6 +16,7 @@ interface PendingUser extends User {
 export default function AdminVerificationsPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { showToast, showConfirm } = useModal();
   const [loading, setLoading] = useState(true);
   const [pendingUsers, setPendingUsers] = useState<PendingUser[]>([]);
   const [selectedUser, setSelectedUser] = useState<PendingUser | null>(null);
@@ -30,7 +32,7 @@ export default function AdminVerificationsPage() {
     
     // Verifica che l'utente sia admin
     if (!user.email || !ADMIN_EMAILS.includes(user.email)) {
-      alert('Accesso negato: solo gli amministratori possono accedere a questa pagina');
+      showToast('Accesso negato: solo gli amministratori possono accedere a questa pagina', 'error');
       navigate('/dashboard');
       return;
     }
@@ -84,14 +86,20 @@ export default function AdminVerificationsPage() {
       setPendingUsers(users);
     } catch (error) {
       console.error('Errore caricamento utenti:', error);
-      alert('Errore nel caricamento degli utenti');
+      showToast('Errore nel caricamento degli utenti', 'error');
     } finally {
       setLoading(false);
     }
   };
 
   const handleApprove = async (userId: string) => {
-    if (!confirm('Confermi di voler APPROVARE questo utente? Avrà accesso completo alla piattaforma.')) {
+    const confirmed = await showConfirm({
+      title: 'Approvare utente',
+      message: 'Confermi di voler APPROVARE questo utente? Avrà accesso completo alla piattaforma.',
+      variant: 'warning',
+      confirmText: 'Approva'
+    });
+    if (!confirmed) {
       return;
     }
 
@@ -111,12 +119,12 @@ export default function AdminVerificationsPage() {
         updatedAt: Timestamp.now()
       });
 
-      alert('Utente approvato con successo!');
+      showToast('Utente approvato con successo!', 'success');
       loadPendingUsers();
       setSelectedUser(null);
     } catch (error) {
       console.error('Errore approvazione:', error);
-      alert('Errore durante l\'approvazione');
+      showToast('Errore durante l\'approvazione', 'error');
     } finally {
       setActionLoading(false);
     }
@@ -124,11 +132,17 @@ export default function AdminVerificationsPage() {
 
   const handleReject = async (userId: string) => {
     if (!rejectionReason.trim()) {
-      alert('Inserisci un motivo per il rifiuto');
+      showToast('Inserisci un motivo per il rifiuto', 'warning');
       return;
     }
 
-    if (!confirm('Confermi di voler RIFIUTARE questo utente? Dovrà reinviare la documentazione.')) {
+    const confirmed = await showConfirm({
+      title: 'Rifiutare utente',
+      message: 'Confermi di voler RIFIUTARE questo utente? Dovrà reinviare la documentazione.',
+      variant: 'danger',
+      confirmText: 'Rifiuta'
+    });
+    if (!confirmed) {
       return;
     }
 
@@ -149,13 +163,13 @@ export default function AdminVerificationsPage() {
         updatedAt: Timestamp.now()
       });
 
-      alert('Utente rifiutato. Riceverà notifica per reinviare documentazione.');
+      showToast('Utente rifiutato. Riceverà notifica per reinviare documentazione.', 'success');
       setRejectionReason('');
       loadPendingUsers();
       setSelectedUser(null);
     } catch (error) {
       console.error('Errore rifiuto:', error);
-      alert('Errore durante il rifiuto');
+      showToast('Errore durante il rifiuto', 'error');
     } finally {
       setActionLoading(false);
     }
@@ -163,11 +177,17 @@ export default function AdminVerificationsPage() {
 
   const handleSuspend = async (userId: string, reason: string) => {
     if (!reason.trim()) {
-      alert('Inserisci un motivo per la sospensione');
+      showToast('Inserisci un motivo per la sospensione', 'warning');
       return;
     }
 
-    if (!confirm('Confermi di voler SOSPENDERE questo utente?')) {
+    const confirmed = await showConfirm({
+      title: 'Sospendere utente',
+      message: 'Confermi di voler SOSPENDERE questo utente?',
+      variant: 'danger',
+      confirmText: 'Sospendi'
+    });
+    if (!confirmed) {
       return;
     }
 
@@ -188,12 +208,12 @@ export default function AdminVerificationsPage() {
         updatedAt: Timestamp.now()
       });
 
-      alert('Utente sospeso.');
+      showToast('Utente sospeso.', 'success');
       loadPendingUsers();
       setSelectedUser(null);
     } catch (error) {
       console.error('Errore sospensione:', error);
-      alert('Errore durante la sospensione');
+      showToast('Errore durante la sospensione', 'error');
     } finally {
       setActionLoading(false);
     }
@@ -204,7 +224,13 @@ export default function AdminVerificationsPage() {
     if (!userToUpdate || !userToUpdate.profile.professioniPending) return;
 
     const professioneToApprove = userToUpdate.profile.professioniPending[professioneIndex];
-    if (!confirm(`Confermi di voler APPROVARE la professione "${professioneToApprove.professione}"?`)) {
+    const confirmed = await showConfirm({
+      title: 'Approvare professione',
+      message: `Confermi di voler APPROVARE la professione "${professioneToApprove.professione}"?`,
+      variant: 'warning',
+      confirmText: 'Approva'
+    });
+    if (!confirmed) {
       return;
     }
 
@@ -235,11 +261,11 @@ export default function AdminVerificationsPage() {
         updatedAt: Timestamp.now()
       });
 
-      alert(`✅ Professione "${professioneToApprove.professione}" approvata con successo!`);
+      showToast(`Professione "${professioneToApprove.professione}" approvata con successo!`, 'success');
       loadPendingUsers();
     } catch (error) {
       console.error('Errore approvazione professione:', error);
-      alert('Errore durante l\'approvazione della professione');
+      showToast('Errore durante l\'approvazione della professione', 'error');
     } finally {
       setActionLoading(false);
     }
@@ -253,11 +279,17 @@ export default function AdminVerificationsPage() {
     const motivo = prompt(`Inserisci il motivo del rifiuto per "${professioneToReject.professione}":`);
     
     if (!motivo || !motivo.trim()) {
-      alert('Devi inserire un motivo per il rifiuto');
+      showToast('Devi inserire un motivo per il rifiuto', 'warning');
       return;
     }
 
-    if (!confirm(`Confermi di voler RIFIUTARE la professione "${professioneToReject.professione}"?`)) {
+    const confirmed = await showConfirm({
+      title: 'Rifiutare professione',
+      message: `Confermi di voler RIFIUTARE la professione "${professioneToReject.professione}"?`,
+      variant: 'danger',
+      confirmText: 'Rifiuta'
+    });
+    if (!confirmed) {
       return;
     }
 
@@ -271,11 +303,11 @@ export default function AdminVerificationsPage() {
         updatedAt: Timestamp.now()
       });
 
-      alert(`❌ Professione "${professioneToReject.professione}" rifiutata. Motivo: ${motivo}`);
+      showToast(`Professione "${professioneToReject.professione}" rifiutata. Motivo: ${motivo}`, 'success');
       loadPendingUsers();
     } catch (error) {
       console.error('Errore rifiuto professione:', error);
-      alert('Errore durante il rifiuto della professione');
+      showToast('Errore durante il rifiuto della professione', 'error');
     } finally {
       setActionLoading(false);
     }

@@ -1,6 +1,7 @@
 'use client';
 
 import { useAuth } from '@/contexts/AuthContext';
+import { useModal } from '@/contexts/ModalContext';
 import { useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { doc, updateDoc, deleteDoc } from 'firebase/firestore';
@@ -38,6 +39,7 @@ const TEMATICHE = [
 
 export default function EditProfilePage() {
   const { user, userProfile, refreshProfile, deleteCurrentUser } = useAuth();
+  const { showToast, showConfirm } = useModal();
   const navigate = useNavigate();
 
   const [loading, setLoading] = useState(false);
@@ -196,21 +198,21 @@ export default function EditProfilePage() {
           fcmTokenUpdatedAt: null
         });
         setNotificationEnabled(false);
-        alert('🔕 Notifiche push disabilitate');
+        showToast('Notifiche push disabilitate', 'info');
       } else {
         // Abilita notifiche - richiedi permesso e salva token
         const token = await requestNotificationPermission();
         if (token) {
           await saveFCMToken(user.uid, token);
           setNotificationEnabled(true);
-          alert('🔔 Notifiche push abilitate con successo!');
+          showToast('Notifiche push abilitate con successo!', 'success');
         } else {
-          alert('Impossibile abilitare le notifiche. Controlla i permessi del browser.');
+          showToast('Impossibile abilitare le notifiche. Controlla i permessi del browser.', 'error');
         }
       }
     } catch (error) {
       console.error('Errore toggle notifiche:', error);
-      alert('Errore durante la modifica delle notifiche');
+      showToast('Errore durante la modifica delle notifiche', 'error');
     } finally {
       setNotificationLoading(false);
     }
@@ -222,30 +224,30 @@ export default function EditProfilePage() {
     if (!user || !userProfile) return;
 
     if (!nome.trim()) {
-      alert('Il nome è obbligatorio');
+      showToast('Il nome è obbligatorio', 'warning');
       return;
     }
 
     if (!dataNascita) {
-      alert('La data di nascita è obbligatoria');
+      showToast('La data di nascita è obbligatoria', 'warning');
       return;
     }
 
     if (!indirizzo.trim() && studi.length === 0) {
-      alert('Inserisci almeno un indirizzo di studio nella sezione "Localizzazione"');
+      showToast('Inserisci almeno un indirizzo di studio nella sezione "Localizzazione"', 'warning');
       return;
     }
 
     if (studi.length > 0) {
       const hasEmptyStudi = studi.some(studio => !studio.indirizzo.trim());
       if (hasEmptyStudi) {
-        alert('Tutti gli studi devono avere un indirizzo valido');
+        showToast('Tutti gli studi devono avere un indirizzo valido', 'warning');
         return;
       }
     }
 
     if (specializzazioni.length === 0) {
-      alert('Seleziona almeno una specializzazione');
+      showToast('Seleziona almeno una specializzazione', 'warning');
       return;
     }
 
@@ -265,7 +267,7 @@ export default function EditProfilePage() {
           console.log('Foto caricata con successo:', photoURL);
         } catch (uploadError) {
           console.error('Errore upload foto:', uploadError);
-          alert('Errore durante il caricamento della foto. Il profilo verrà salvato senza foto.');
+          showToast('Errore durante il caricamento della foto. Il profilo verrà salvato senza foto.', 'error');
           // Continua comunque con il salvataggio del resto
         }
       }
@@ -336,11 +338,11 @@ export default function EditProfilePage() {
       await updateDoc(userRef, updateData);
 
       await refreshProfile();
-      alert('Profilo aggiornato con successo!');
+      showToast('Profilo aggiornato con successo!', 'success');
       navigate('/dashboard');
     } catch (error: any) {
       console.error('Errore aggiornamento profilo:', error);
-      alert(`Errore durante l'aggiornamento del profilo: ${error.message || error}`);
+      showToast(`Errore durante l'aggiornamento del profilo: ${error.message || error}`, 'error');
     } finally {
       setLoading(false);
     }
@@ -349,12 +351,22 @@ export default function EditProfilePage() {
   const handleDeleteAccount = async () => {
     if (!user) return;
 
-    const firstConfirm = confirm('Sei sicuro di voler eliminare definitivamente il tuo account? Questa azione non può essere annullata.');
+    const firstConfirm = await showConfirm({
+      title: 'Elimina account',
+      message: 'Sei sicuro di voler eliminare definitivamente il tuo account? Questa azione non può essere annullata.',
+      variant: 'danger',
+      confirmText: 'Elimina'
+    });
     if (!firstConfirm) return;
 
-    const typedConfirmation = prompt('Per confermare, scrivi ELIMINA');
-    if (typedConfirmation !== 'ELIMINA') {
-      alert('Eliminazione account annullata.');
+    const typedConfirmation = await showConfirm({
+      title: 'Conferma eliminazione',
+      message: 'Per confermare, clicca "ELIMINA". Questa operazione è irreversibile.',
+      variant: 'danger',
+      confirmText: 'ELIMINA'
+    });
+    if (!typedConfirmation) {
+      showToast('Eliminazione account annullata.', 'info');
       return;
     }
 
@@ -362,14 +374,14 @@ export default function EditProfilePage() {
     try {
       await deleteDoc(doc(db, 'users', user.uid));
       await deleteCurrentUser();
-      alert('Il tuo account è stato eliminato con successo.');
+      showToast('Il tuo account è stato eliminato con successo.', 'success');
       navigate('/');
     } catch (error: any) {
       console.error('Errore eliminazione account:', error);
       if (error?.code === 'auth/requires-recent-login') {
-        alert('Per motivi di sicurezza devi effettuare nuovamente l\'accesso prima di eliminare l\'account. Esci, rientra e riprova.');
+        showToast('Per motivi di sicurezza devi effettuare nuovamente l\'accesso prima di eliminare l\'account. Esci, rientra e riprova.', 'warning');
       } else {
-        alert(`Errore durante l'eliminazione dell'account: ${error?.message || error}`);
+        showToast(`Errore durante l'eliminazione dell'account: ${error?.message || error}`, 'error');
       }
     } finally {
       setDeletingAccount(false);

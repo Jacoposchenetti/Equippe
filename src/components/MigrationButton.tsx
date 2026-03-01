@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { collection, getDocs, updateDoc, Timestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { useModal } from '@/contexts/ModalContext';
 
 export default function MigrationButton() {
+  const { showToast } = useModal();
   const [isRunning, setIsRunning] = useState(false);
   const [results, setResults] = useState<{updated: number; skipped: number} | null>(null);
 
@@ -54,7 +56,7 @@ export default function MigrationButton() {
       
     } catch (error) {
       console.error('❌ Errore migrazione:', error);
-      alert('Errore durante la migrazione: ' + error);
+      showToast('Errore durante la migrazione: ' + error, 'error');
     } finally {
       setIsRunning(false);
     }

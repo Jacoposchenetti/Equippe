@@ -2,11 +2,13 @@
 
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useModal } from '@/contexts/ModalContext';
 import { useLocation } from 'react-router-dom';
 import { requestNotificationPermission, saveFCMToken, onMessageListener } from '@/lib/notifications';
 
 export default function PushNotificationManager() {
   const { user, userProfile } = useAuth();
+  const { showToast } = useModal();
   const location = useLocation();
   const pathname = location.pathname;
   const [permission, setPermission] = useState<NotificationPermission>('default');
@@ -79,7 +81,7 @@ export default function PushNotificationManager() {
       setShowPrompt(false);
       
       // Mostra conferma
-      alert('🔔 Notifiche push abilitate con successo!');
+      showToast('Notifiche push abilitate con successo!', 'success');
     } else {
       setPermission(Notification.permission);
       setShowPrompt(false);

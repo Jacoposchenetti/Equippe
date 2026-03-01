@@ -7,10 +7,12 @@ import { User, Conversation, Team } from '@/types/equippe';
 import Header from '@/components/Header';
 import { notifyTeamInviteReceived } from '@/lib/notifications';
 import { useCanInteract } from '@/hooks/useCanInteract';
+import { useModal } from '@/contexts/ModalContext';
 
 export default function ProfilePage() {
   const { user: currentUser, userProfile } = useAuth();
   const { canInteract, message: canInteractMessage } = useCanInteract();
+  const { showToast } = useModal();
   const navigate = useNavigate();
   const params = useParams();
   const uid = params.uid as string;
@@ -117,7 +119,7 @@ export default function ProfilePage() {
 
   const handleSendInvite = async () => {
     if (!selectedTeamId) {
-      alert('Seleziona un\'équipe');
+      showToast('Seleziona un\'équipe', 'warning');
       return;
     }
 
@@ -137,14 +139,14 @@ export default function ProfilePage() {
 
       const existingInviteSnapshot = await getDocs(existingInviteQuery);
       if (!existingInviteSnapshot.empty) {
-        alert('Esiste già un invito pendente per questo professionista in questa équipe');
+        showToast('Esiste già un invito pendente per questo professionista in questa équipe', 'warning');
         return;
       }
 
       // Controlla se l'utente è già membro del team
       const selectedTeam = adminTeams.find(t => t.id === selectedTeamId);
       if (selectedTeam?.memberIds?.includes(profileUser.uid)) {
-        alert('Questo professionista è già membro dell\'équipe selezionata');
+        showToast('Questo professionista è già membro dell\'équipe selezionata', 'warning');
         return;
       }
 
@@ -173,10 +175,10 @@ export default function ProfilePage() {
 
       setShowInviteModal(false);
       setSelectedTeamId('');
-      alert('Invito inviato con successo!');
+      showToast('Invito inviato con successo!', 'success');
     } catch (error) {
       console.error('Errore invio invito:', error);
-      alert('Errore durante l\'invio dell\'invito');
+      showToast('Errore durante l\'invio dell\'invito', 'error');
     } finally {
       setSendingInvite(false);
     }
@@ -243,7 +245,7 @@ export default function ProfilePage() {
       navigate(`/messages?conversation=${docRef.id}`);
     } catch (error) {
       console.error('Errore avvio conversazione:', error);
-      alert('Errore durante l\'avvio della conversazione. Verifica di essere autenticato.');
+      showToast('Errore durante l\'avvio della conversazione. Verifica di essere autenticato.', 'error');
     } finally {
       setStartingConversation(false);
     }

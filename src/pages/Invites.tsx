@@ -10,6 +10,7 @@ import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { notifyTeamInviteResponse } from '@/lib/notifications';
 import { occupyPositions } from '@/lib/teamPositions';
+import { useModal } from '@/contexts/ModalContext';
 
 interface TeamInvite {
   id: string;
@@ -31,6 +32,7 @@ interface InviteWithData extends TeamInvite {
 export default function InvitesPage() {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
+  const { showToast, showConfirm } = useModal();
   const [receivedInvites, setReceivedInvites] = useState<InviteWithData[]>([]);
   const [sentInvites, setSentInvites] = useState<InviteWithData[]>([]);
   const [loading, setLoading] = useState(true);
@@ -161,16 +163,22 @@ export default function InvitesPage() {
         await occupyPositions(invite.teamId, user.uid);
       }
 
-      alert('Invito accettato! Ora fai parte dell\'Equipé');
+      showToast('Invito accettato! Ora fai parte dell\'Equipé', 'success');
       await loadInvites();
     } catch (error) {
       console.error('Errore accettazione invito:', error);
-      alert('Errore durante l\'accettazione dell\'invito');
+      showToast('Errore durante l\'accettazione dell\'invito', 'error');
     }
   };
 
   const handleRejectInvite = async (invite: InviteWithData) => {
-    if (!confirm('Sei sicuro di voler rifiutare questo invito?')) return;
+    const confirmed = await showConfirm({
+      title: 'Rifiuta invito',
+      message: 'Sei sicuro di voler rifiutare questo invito?',
+      variant: 'danger',
+      confirmText: 'Rifiuta',
+    });
+    if (!confirmed) return;
 
     try {
       await updateDoc(doc(db, 'teamInvites', invite.id), {
@@ -192,16 +200,22 @@ export default function InvitesPage() {
         );
       }
 
-      alert('Invito rifiutato');
+      showToast('Invito rifiutato', 'success');
       await loadInvites();
     } catch (error) {
       console.error('Errore rifiuto invito:', error);
-      alert('Errore durante il rifiuto dell\'invito');
+      showToast('Errore durante il rifiuto dell\'invito', 'error');
     }
   };
 
   const handleCancelInvite = async (invite: InviteWithData) => {
-    if (!confirm('Sei sicuro di voler annullare questo invito?')) return;
+    const confirmed = await showConfirm({
+      title: 'Annulla invito',
+      message: 'Sei sicuro di voler annullare questo invito?',
+      variant: 'warning',
+      confirmText: 'Annulla invito',
+    });
+    if (!confirmed) return;
 
     try {
       await updateDoc(doc(db, 'teamInvites', invite.id), {
@@ -212,11 +226,11 @@ export default function InvitesPage() {
       // Opzionalmente, potresti notificare l'utente che l'invito è stato annullato
       // Ma per ora evitiamo di inviare troppi spam di notifiche
       
-      alert('Invito annullato con successo');
+      showToast('Invito annullato con successo', 'success');
       await loadInvites();
     } catch (error) {
       console.error('Errore annullamento invito:', error);
-      alert('Errore durante l\'annullamento dell\'invito');
+      showToast('Errore durante l\'annullamento dell\'invito', 'error');
     }
   };
 

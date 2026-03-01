@@ -8,11 +8,13 @@ import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { notifyNewMessage } from '@/lib/notifications';
 import { uploadFile, validateFile, getFileIcon, formatFileSize } from '@/lib/fileUpload';
+import { useModal } from '@/contexts/ModalContext';
 
 export default function MessagesPage() {
   const { user, userProfile } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const { showToast } = useModal();
   
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [teams, setTeams] = useState<Team[]>([]);
@@ -349,7 +351,7 @@ export default function MessagesPage() {
       setSelectedConversation(convRef.id);
     } catch (err) {
       console.error('Errore nella creazione della conversazione:', err);
-      alert('Errore nella creazione della conversazione. Riprova.');
+      showToast('Errore nella creazione della conversazione. Riprova.', 'error');
     }
 
     setCreatingConversation(false);
@@ -371,7 +373,7 @@ export default function MessagesPage() {
     });
     
     if (errors.length > 0) {
-      alert('Errori nei file:\n' + errors.join('\n'));
+      showToast('Errori nei file: ' + errors.join(', '), 'error');
     }
     
     if (validFiles.length > 0) {
@@ -413,7 +415,7 @@ export default function MessagesPage() {
       
     } catch (error) {
       console.error('Error uploading files:', error);
-      alert('Errore durante l\'upload dei file');
+      showToast('Errore durante l\'upload dei file', 'error');
     } finally {
       // Pulisci stati upload
       setUploadingFiles(prev => prev.filter(f => !files.includes(f)));
@@ -520,7 +522,7 @@ export default function MessagesPage() {
       setPendingAttachments([]);
     } catch (error) {
       console.error('Error sending message:', error);
-      alert('Errore nell\'invio del messaggio');
+      showToast('Errore nell\'invio del messaggio', 'error');
     }
 
     setSending(false);

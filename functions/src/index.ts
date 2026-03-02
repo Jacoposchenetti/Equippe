@@ -549,15 +549,17 @@ export const sendProfessionStatusEmail = functions
 
 /**
  * 3. Email notifica nuovo messaggio privato
- * Trigger: onCreate su conversations/{conversationId}/messages
+ * Trigger: onCreate su messages (collection top-level)
  */
 export const sendNewMessageEmail = functions
   .region('europe-west1')
   .firestore
-  .document('conversations/{conversationId}/messages/{messageId}')
+  .document('messages/{messageId}')
   .onCreate(async (snapshot, context) => {
     const message = snapshot.data();
-    const conversationId = context.params.conversationId;
+    const conversationId = message.conversationId;
+
+    if (!conversationId) return null;
 
     // Ottieni conversazione
     const conversationDoc = await admin.firestore()
@@ -570,7 +572,7 @@ export const sendNewMessageEmail = functions
     const conversation = conversationDoc.data();
     
     // Se è un messaggio di gruppo (team), salta (gestito da altra funzione)
-    if (conversation?.teamId) return null;
+    if (conversation?.teamId || conversation?.type === 'team') return null;
 
     // Determina il destinatario (l'altro partecipante)
     const recipientId = conversation?.participants.find((id: string) => id !== message.senderId);
@@ -588,9 +590,10 @@ export const sendNewMessageEmail = functions
     const recipient = recipientDoc.data();
 
     const senderName = `${sender?.profile?.nome || ''} ${sender?.profile?.cognome || ''}`.trim();
-    const messagePreview = message.text.length > 100 
-      ? message.text.substring(0, 100) + '...' 
-      : message.text;
+    const messageText = message.content || message.text || '';
+    const messagePreview = messageText.length > 100 
+      ? messageText.substring(0, 100) + '...' 
+      : messageText;
 
     await sendEmail(
       recipient?.email,
@@ -621,15 +624,22 @@ export const sendNewMessageEmail = functions
 
 /**
  * 4. Email notifica nuovo messaggio in gruppo equipé
- * Trigger: onCreate su conversations/{conversationId}/messages per conversazioni di team
+ * Trigger: onCreate su messages (collection top-level) per conversazioni di team
  */
 export const sendTeamMessageEmail = functions
   .region('europe-west1')
   .firestore
-  .document('conversations/{conversationId}/messages/{messageId}')
+  .document('messages/{messageId}')
   .onCreate(async (snapshot, context) => {
     const message = snapshot.data();
-    const conversationId = context.params.conversationId;
+    const conversationId = message.conversationId;
+
+    console.log('📨 sendTeamMessageEmail triggered, conversationId:', conversationId);
+
+    if (!conversationId) {
+      console.log('⚠️ sendTeamMessageEmail: no conversationId, skipping');
+      return null;
+    }
 
     // Ottieni conversazione
     const conversationDoc = await admin.firestore()
@@ -637,20 +647,36 @@ export const sendTeamMessageEmail = functions
       .doc(conversationId)
       .get();
 
-    if (!conversationDoc.exists) return null;
+    if (!conversationDoc.exists) {
+      console.log('⚠️ sendTeamMessageEmail: conversation not found');
+      return null;
+    }
 
     const conversation = conversationDoc.data();
+    console.log('📨 sendTeamMessageEmail: conversation type:', conversation?.type, 'teamId:', conversation?.teamId);
     
     // Solo messaggi di team
-    if (!conversation?.teamId) return null;
+    if (!conversation?.teamId && conversation?.type !== 'team') {
+      console.log('⚠️ sendTeamMessageEmail: not a team conversation, skipping');
+      return null;
+    }
 
     // Ottieni team
+    const teamId = conversation.teamId;
+    if (!teamId) {
+      console.log('⚠️ sendTeamMessageEmail: teamId is missing, skipping');
+      return null;
+    }
+
     const teamDoc = await admin.firestore()
       .collection('teams')
-      .doc(conversation.teamId)
+      .doc(teamId)
       .get();
 
-    if (!teamDoc.exists) return null;
+    if (!teamDoc.exists) {
+      console.log('⚠️ sendTeamMessageEmail: team not found:', teamId);
+      return null;
+    }
 
     const team = teamDoc.data();
 
@@ -660,17 +686,35 @@ export const sendTeamMessageEmail = functions
       .doc(message.senderId)
       .get();
 
-    if (!senderDoc.exists) return null;
+    if (!senderDoc.exists) {
+      console.log('⚠️ sendTeamMessageEmail: sender not found:', message.senderId);
+      return null;
+    }
 
     const sender = senderDoc.data();
     const senderName = `${sender?.profile?.nome || ''} ${sender?.profile?.cognome || ''}`.trim();
 
     // Invia email a tutti i membri tranne il mittente
-    const recipients = conversation.participants.filter((id: string) => id !== message.senderId);
+    // Usa conversation.participants, ma se vuoto/incompleto fallback ai membri del team
+    const convParticipants = conversation.participants?.filter((id: string) => id !== message.senderId) || [];
+    const teamMemberIds = team?.memberIds || team?.membri || [];
+    const teamRecipients = teamMemberIds.filter((id: string) => id !== message.senderId);
+    
+    // Usa i destinatari dalla conversazione, oppure dal team se la conversazione non li ha
+    const recipients = convParticipants.length > 0 ? convParticipants : teamRecipients;
+    console.log('📨 sendTeamMessageEmail: conv participants (excl sender):', convParticipants.length,
+      'team members (excl sender):', teamRecipients.length,
+      'using:', recipients.length);
 
-    const messagePreview = message.text.length > 100 
-      ? message.text.substring(0, 100) + '...' 
-      : message.text;
+    if (recipients.length === 0) {
+      console.log('⚠️ sendTeamMessageEmail: no recipients from conversation or team, skipping');
+      return null;
+    }
+
+    const messageText = message.content || message.text || '';
+    const messagePreview = messageText.length > 100 
+      ? messageText.substring(0, 100) + '...' 
+      : messageText;
 
     // Ottieni email di tutti i destinatari
     const recipientDocs = await Promise.all(
@@ -678,13 +722,19 @@ export const sendTeamMessageEmail = functions
     );
 
     // Invia email a ciascun membro
-    await Promise.all(
+    const results = await Promise.all(
       recipientDocs
         .filter(doc => doc.exists)
         .map(doc => {
           const userData = doc.data();
+          const recipientEmail = userData?.email || userData?.profile?.email;
+          console.log('📨 sendTeamMessageEmail: sending to', recipientEmail);
+          if (!recipientEmail) {
+            console.log('⚠️ sendTeamMessageEmail: no email for user', doc.id);
+            return Promise.resolve(false);
+          }
           return sendEmail(
-            userData?.email,
+            recipientEmail,
             `Nuovo messaggio in ${team?.nome || 'team'}`,
             `
               <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -709,6 +759,7 @@ export const sendTeamMessageEmail = functions
         })
     );
 
+    console.log('📨 sendTeamMessageEmail: completed, results:', results);
     return null;
   });
 
@@ -897,7 +948,7 @@ export const sendTeamRequestStatusEmail = functions
 
 /**
  * 7. Email referral ricevuto
- * Trigger: onCreate su referrals quando type='received'
+ * Trigger: onCreate su referrals
  */
 export const sendReferralReceivedEmail = functions
   .region('europe-west1')
@@ -905,102 +956,84 @@ export const sendReferralReceivedEmail = functions
   .document('referrals/{referralId}')
   .onCreate(async (snapshot, context) => {
     const referral = snapshot.data();
+    const referralId = context.params.referralId;
 
-    // Solo per referral ricevuti
-    if (referral.type !== 'received') return null;
+    const receiverUid = referral.receiverUid;
+    const senderUid = referral.senderUid;
 
-    // Determina se è referral individuale o di team
-    const recipientId = referral.userId || referral.teamId;
-    const isTeam = !!referral.teamId;
+    if (!receiverUid || !senderUid) {
+      console.log('❌ Referral senza senderUid o receiverUid:', referralId);
+      return null;
+    }
 
-    if (!recipientId) return null;
-
-    // Ottieni mittente
-    const senderDoc = await admin.firestore()
-      .collection('users')
-      .doc(referral.senderId)
-      .get();
-
-    if (!senderDoc.exists) return null;
-
-    const sender = senderDoc.data();
-    const senderName = `${sender?.profile?.nome || ''} ${sender?.profile?.cognome || ''}`.trim();
-
-    if (isTeam) {
-      // Referral per team - invia a tutti i membri
-      const teamDoc = await admin.firestore()
-        .collection('teams')
-        .doc(recipientId)
-        .get();
-
-      if (!teamDoc.exists) return null;
-
-      const team = teamDoc.data();
-      const memberDocs = await Promise.all(
-        (team?.membri || []).map((id: string) => 
-          admin.firestore().collection('users').doc(id).get()
-        )
-      );
-
-      await Promise.all(
-        memberDocs
-          .filter(doc => doc.exists)
-          .map(doc => {
-            const userData = doc.data();
-            return sendEmail(
-              userData?.email,
-              `Nuovo Referral per il team ${team?.nome || ''}`,
-              `
-                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                  <h2 style="color: #0066cc;">Nuovo Referral Ricevuto! 🎯</h2>
-                  <p><strong>${senderName}</strong> ha inviato un referral al vostro team <strong>${team?.nome || ''}</strong>:</p>
-                  <div style="background-color: #f5f5f5; padding: 20px; border-radius: 8px; margin: 20px 0;">
-                    <h4 style="margin: 0 0 10px 0;">Cliente: ${referral.clientName || 'N/D'}</h4>
-                    <p style="margin: 5px 0;"><strong>Email:</strong> ${referral.clientEmail || 'N/D'}</p>
-                    ${referral.clientPhone ? `<p style="margin: 5px 0;"><strong>Telefono:</strong> ${referral.clientPhone}</p>` : ''}
-                    ${referral.notes ? `<p style="margin: 10px 0 0 0;"><strong>Note:</strong> ${referral.notes}</p>` : ''}
-                  </div>
-                  <p style="text-align: center; margin: 30px 0;">
-                    <a href="https://tuaequipe.it/referrals" 
-                       style="background-color: #0066cc; color: white; padding: 12px 24px; 
-                              text-decoration: none; border-radius: 5px; display: inline-block;">
-                      Visualizza Referral
-                    </a>
-                  </p>
-                  <p>Puoi accettare o rifiutare il referral dalla tua area referral.</p>
-                  <br>
-                  <p>Il team di Equipe</p>
-                </div>
-              `
-            );
-          })
-      );
-    } else {
-      // Referral individuale
-      const userDoc = await admin.firestore()
+    try {
+      // Ottieni mittente
+      const senderDoc = await admin.firestore()
         .collection('users')
-        .doc(recipientId)
+        .doc(senderUid)
         .get();
 
-      if (!userDoc.exists) return null;
+      if (!senderDoc.exists) {
+        console.log('❌ Mittente non trovato:', senderUid);
+        return null;
+      }
 
-      const user = userDoc.data();
+      const sender = senderDoc.data();
+      const senderName = `${sender?.profile?.nome || ''} ${sender?.profile?.cognome || ''}`.trim() || 'Un collega';
 
+      // Ottieni destinatario
+      const receiverDoc = await admin.firestore()
+        .collection('users')
+        .doc(receiverUid)
+        .get();
+
+      if (!receiverDoc.exists) {
+        console.log('❌ Destinatario non trovato:', receiverUid);
+        return null;
+      }
+
+      const receiver = receiverDoc.data();
+      const receiverEmail = receiver?.email;
+
+      if (!receiverEmail) {
+        console.log('❌ Email destinatario non trovata:', receiverUid);
+        return null;
+      }
+
+      const urgencyLabels: Record<string, string> = {
+        low: '🟢 Bassa',
+        normal: '🟡 Normale',
+        high: '🔴 Alta',
+      };
+      const urgencyLabel = urgencyLabels[referral.urgency] || 'Normale';
+
+      // Crea notifica interna
+      await createInternalNotification({
+        userId: receiverUid,
+        type: 'referral_received',
+        title: 'Nuovo Referral Ricevuto',
+        message: `${senderName} ti ha inviato un nuovo referral`,
+        senderId: senderUid,
+        senderName,
+        senderPhotoURL: sender?.profile?.photoURL || '',
+        referralId,
+      });
+
+      // Invia email
       await sendEmail(
-        user?.email,
+        receiverEmail,
         `Nuovo Referral da ${senderName}`,
         `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
             <h2 style="color: #0066cc;">Nuovo Referral Ricevuto! 🎯</h2>
-            <p><strong>${senderName}</strong> ti ha inviato un referral:</p>
+            <p><strong>${senderName}</strong> ti ha inviato un referral.</p>
             <div style="background-color: #f5f5f5; padding: 20px; border-radius: 8px; margin: 20px 0;">
-              <h4 style="margin: 0 0 10px 0;">Cliente: ${referral.clientName || 'N/D'}</h4>
-              <p style="margin: 5px 0;"><strong>Email:</strong> ${referral.clientEmail || 'N/D'}</p>
-              ${referral.clientPhone ? `<p style="margin: 5px 0;"><strong>Telefono:</strong> ${referral.clientPhone}</p>` : ''}
-              ${referral.notes ? `<p style="margin: 10px 0 0 0;"><strong>Note:</strong> ${referral.notes}</p>` : ''}
+              <p style="margin: 5px 0;"><strong>Urgenza:</strong> ${urgencyLabel}</p>
+              <p style="margin: 5px 0;"><strong>Stato:</strong> In attesa di accettazione</p>
             </div>
+            <p style="color: #666; font-size: 13px;">🔒 I dati sensibili del paziente sono protetti. Accedi alla piattaforma per visualizzarli.</p>
             <p style="text-align: center; margin: 30px 0;">
-              <a href="https://tuaequipe.it/referrals" 
+              <a href="https://tuaequipe.it/referrals/${referralId}" 
                  style="background-color: #0066cc; color: white; padding: 12px 24px; 
                         text-decoration: none; border-radius: 5px; display: inline-block;">
                 Visualizza Referral
@@ -1012,9 +1045,13 @@ export const sendReferralReceivedEmail = functions
           </div>
         `
       );
-    }
 
-    return null;
+      console.log('✅ Email referral ricevuto inviata a:', receiverEmail);
+      return null;
+    } catch (error) {
+      console.error('❌ Errore invio email referral ricevuto:', error);
+      return null;
+    }
   });
 
 /**
@@ -1028,76 +1065,81 @@ export const sendReferralStatusEmail = functions
   .onUpdate(async (change, context) => {
     const before = change.before.data();
     const after = change.after.data();
+    const referralId = context.params.referralId;
 
     // Controlla se lo status è cambiato
     if (before.status === after.status) return null;
 
-    // Solo per referral inviati
-    if (after.type !== 'sent') return null;
-
-    // Ottieni mittente (chi ha inviato il referral originale)
-    const senderDoc = await admin.firestore()
-      .collection('users')
-      .doc(after.senderId)
-      .get();
-
-    if (!senderDoc.exists) return null;
-
-    const sender = senderDoc.data();
-
-    // Determina se è stato accettato o rifiutato
     const isAccepted = after.status === 'accepted';
     const isRejected = after.status === 'rejected';
 
     if (!isAccepted && !isRejected) return null;
 
-    // Ottieni nome del destinatario
-    let recipientName = 'il destinatario';
-    if (after.userId) {
-      const userDoc = await admin.firestore().collection('users').doc(after.userId).get();
-      if (userDoc.exists) {
-        const userData = userDoc.data();
-        recipientName = `${userData?.profile?.nome || ''} ${userData?.profile?.cognome || ''}`.trim();
-      }
-    } else if (after.teamId) {
-      const teamDoc = await admin.firestore().collection('teams').doc(after.teamId).get();
-      if (teamDoc.exists) {
-        recipientName = `il team ${teamDoc.data()?.nome || ''}`;
-      }
-    }
+    try {
+      // Ottieni mittente (chi ha inviato il referral originale)
+      const senderDoc = await admin.firestore()
+        .collection('users')
+        .doc(after.senderUid)
+        .get();
 
-    await sendEmail(
-      sender?.email,
-      isAccepted 
-        ? `✅ Referral Accettato da ${recipientName}` 
-        : `❌ Referral Rifiutato da ${recipientName}`,
-      `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <h2 style="color: ${isAccepted ? '#28a745' : '#dc3545'};">
-            Referral ${isAccepted ? 'Accettato' : 'Rifiutato'} ${isAccepted ? '✅' : '❌'}
-          </h2>
-          <p>${recipientName} ha ${isAccepted ? 'accettato' : 'rifiutato'} il referral che hai inviato:</p>
-          <div style="background-color: #f5f5f5; padding: 20px; border-radius: 8px; margin: 20px 0;">
-            <h4 style="margin: 0 0 10px 0;">Cliente: ${after.clientName || 'N/D'}</h4>
-            <p style="margin: 5px 0;"><strong>Email:</strong> ${after.clientEmail || 'N/D'}</p>
-            ${after.clientPhone ? `<p style="margin: 5px 0;"><strong>Telefono:</strong> ${after.clientPhone}</p>` : ''}
+      if (!senderDoc.exists) return null;
+
+      const sender = senderDoc.data();
+
+      // Ottieni nome del destinatario (chi ha accettato/rifiutato)
+      let recipientName = 'il destinatario';
+      if (after.receiverUid) {
+        const receiverDoc = await admin.firestore()
+          .collection('users')
+          .doc(after.receiverUid)
+          .get();
+        if (receiverDoc.exists) {
+          const receiverData = receiverDoc.data();
+          recipientName = `${receiverData?.profile?.nome || ''} ${receiverData?.profile?.cognome || ''}`.trim() || 'il destinatario';
+        }
+      }
+
+      // Crea notifica interna per il mittente
+      await createInternalNotification({
+        userId: after.senderUid,
+        type: isAccepted ? 'referral_accepted' : 'referral_rejected',
+        title: isAccepted ? 'Referral Accettato' : 'Referral Rifiutato',
+        message: `${recipientName} ha ${isAccepted ? 'accettato' : 'rifiutato'} il tuo referral`,
+        referralId,
+      });
+
+      await sendEmail(
+        sender?.email,
+        isAccepted 
+          ? `✅ Referral Accettato da ${recipientName}` 
+          : `❌ Referral Rifiutato da ${recipientName}`,
+        `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2 style="color: ${isAccepted ? '#28a745' : '#dc3545'};">
+              Referral ${isAccepted ? 'Accettato' : 'Rifiutato'} ${isAccepted ? '✅' : '❌'}
+            </h2>
+            <p><strong>${recipientName}</strong> ha ${isAccepted ? 'accettato' : 'rifiutato'} il referral che hai inviato.</p>
+            ${isAccepted 
+              ? '<p>Il destinatario prenderà in carico il paziente. Grazie per la collaborazione!</p>' 
+              : '<p>Il destinatario non è disponibile per questo referral al momento.</p>'}
+            <p style="text-align: center; margin: 30px 0;">
+              <a href="https://tuaequipe.it/referrals/${referralId}" 
+                 style="background-color: #0066cc; color: white; padding: 12px 24px; 
+                        text-decoration: none; border-radius: 5px; display: inline-block;">
+                Visualizza Referral
+              </a>
+            </p>
+            <br>
+            <p>Il team di Equipe</p>
           </div>
-          ${isAccepted 
-            ? '<p>Il destinatario prenderà in carico il cliente. Grazie per aver condiviso questa opportunità!</p>' 
-            : '<p>Il destinatario non è disponibile per questo referral al momento.</p>'}
-          <p style="text-align: center; margin: 30px 0;">
-            <a href="https://tuaequipe.it/referrals" 
-               style="background-color: #0066cc; color: white; padding: 12px 24px; 
-                      text-decoration: none; border-radius: 5px; display: inline-block;">
-              Visualizza Tutti i Referral
-            </a>
-          </p>
-          <br>
-          <p>Il team di Equipe</p>
-        </div>
-      `
-    );
+        `
+      );
 
-    return null;
+      console.log('✅ Email stato referral inviata a:', sender?.email);
+      return null;
+    } catch (error) {
+      console.error('❌ Errore invio email stato referral:', error);
+      return null;
+    }
   });
 

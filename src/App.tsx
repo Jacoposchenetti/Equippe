@@ -1,6 +1,16 @@
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
+import { useEffect } from 'react'
 import { useAuth } from './contexts/AuthContext'
 import VerifyEmailPage from './pages/VerifyEmailPage'
+
+// Scroll to top on route change
+function ScrollToTop() {
+  const { pathname } = useLocation()
+  useEffect(() => {
+    window.scrollTo(0, 0)
+  }, [pathname])
+  return null
+}
 
 // Pages
 import LoginPage from './pages/LoginPage'
@@ -78,6 +88,7 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
 function App() {
   return (
     <div className="App">
+      <ScrollToTop />
       <Routes>
         {/* Public Routes */}
         <Route path="/login" element={

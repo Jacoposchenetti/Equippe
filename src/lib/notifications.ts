@@ -342,3 +342,38 @@ export async function saveFCMToken(userId: string, token: string) {
   }
 }
 
+/**
+ * Aggiorna il badge numerico sull'icona dell'app (PWA installata)
+ * Usa la Badging API supportata su Android Chrome, iOS Safari 16.4+, Windows/macOS
+ * @param count Numero di notifiche non lette (0 per rimuovere il badge)
+ */
+export async function updateAppBadge(count: number) {
+  try {
+    if ('setAppBadge' in navigator) {
+      if (count > 0) {
+        await (navigator as any).setAppBadge(count);
+        console.log(`🔴 Badge app aggiornato: ${count}`);
+      } else {
+        await (navigator as any).clearAppBadge();
+        console.log('⚪ Badge app rimosso');
+      }
+    }
+  } catch (error) {
+    console.error('Errore aggiornamento badge app:', error);
+  }
+}
+
+/**
+ * Rimuove il badge dall'icona dell'app
+ */
+export async function clearAppBadge() {
+  try {
+    if ('clearAppBadge' in navigator) {
+      await (navigator as any).clearAppBadge();
+      console.log('⚪ Badge app rimosso');
+    }
+  } catch (error) {
+    console.error('Errore rimozione badge app:', error);
+  }
+}
+

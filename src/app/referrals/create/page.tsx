@@ -301,7 +301,7 @@ export default function CreatePazientePage() {
           </div>
 
           <div className="border-t pt-6">
-            <h3 className="text-base sm:text-lg font-semibold mb-4">Dati Paziente (Crittografati)</h3>
+            <h3 className="text-base sm:text-lg font-semibold mb-4">Dati Paziente</h3>
             
             {/* Nome Paziente */}
             <div className="mb-4">
@@ -365,10 +365,7 @@ export default function CreatePazientePage() {
               />
             </div>
 
-            <div className="bg-blue-50 p-4 rounded text-sm text-blue-800">
-              <strong>Privacy e Sicurezza:</strong> Tutti i dati sensibili del paziente saranno protetti 
-              prima dell'invio, in conformità con il GDPR.
-            </div>
+
           </div>
 
           {/* Pulsanti */}

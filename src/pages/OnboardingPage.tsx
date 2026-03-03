@@ -7,12 +7,15 @@ import LocationAutocomplete from '@/components/LocationAutocomplete';
 import DocumentiProfessioneForm from '@/components/DocumentiProfessioneForm';
 import { ProfessioneConDocumenti } from '@/types/equippe';
 import { PROFESSIONI_DISPONIBILI } from '@/lib/professioni';
+import { requestNotificationPermission, saveFCMToken } from '@/lib/notifications';
 
 export default function OnboardingPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [showNotificationPrompt, setShowNotificationPrompt] = useState(false);
+  const [notificationLoading, setNotificationLoading] = useState(false);
   const [formData, setFormData] = useState({
     professioniConDocumenti: [] as ProfessioneConDocumenti[],
     indirizzo: '',
@@ -136,7 +139,8 @@ export default function OnboardingPage() {
         createdAt: Timestamp.now(),
         updatedAt: Timestamp.now(),
       });
-      navigate('/dashboard');
+      // Mostra il prompt per le notifiche push prima di andare alla dashboard
+      setShowNotificationPrompt(true);
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -144,7 +148,78 @@ export default function OnboardingPage() {
     }
   };
 
+  const handleEnableNotifications = async () => {
+    setNotificationLoading(true);
+    try {
+      const token = await requestNotificationPermission();
+      if (token && user) {
+        await saveFCMToken(user.uid, token);
+      }
+    } catch (err) {
+      console.error('Errore abilitazione notifiche:', err);
+    } finally {
+      setNotificationLoading(false);
+      navigate('/dashboard');
+    }
+  };
+
+  const handleSkipNotifications = () => {
+    navigate('/dashboard');
+  };
+
   if (!user) return null;
+
+  // Step finale: richiesta notifiche push
+  if (showNotificationPrompt) {
+    return (
+      <div className="min-h-screen bg-gray-50 py-12 px-4">
+        <div className="max-w-md mx-auto bg-white shadow-lg rounded-2xl p-8 text-center">
+          <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-6">
+            <svg className="w-10 h-10 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+            </svg>
+          </div>
+
+          <h2 className="text-2xl font-bold text-gray-900 mb-3">Resta sempre aggiornato</h2>
+          <p className="text-gray-600 mb-6 leading-relaxed">
+            Attiva le notifiche per ricevere avvisi istantanei quando qualcuno ti invia un messaggio, 
+            ti invita in un'équipe o ti invia una referral.
+          </p>
+
+          <div className="space-y-3">
+            <button
+              onClick={handleEnableNotifications}
+              disabled={notificationLoading}
+              className="w-full py-3 px-4 bg-blue-600 text-white rounded-xl hover:bg-blue-700 disabled:opacity-50 font-semibold text-lg transition-colors"
+            >
+              {notificationLoading ? (
+                <span className="flex items-center justify-center gap-2">
+                  <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                  </svg>
+                  Attivazione...
+                </span>
+              ) : (
+                '🔔 Attiva le Notifiche'
+              )}
+            </button>
+
+            <button
+              onClick={handleSkipNotifications}
+              className="w-full py-3 px-4 text-gray-500 hover:text-gray-700 text-sm transition-colors"
+            >
+              Forse più tardi
+            </button>
+          </div>
+
+          <p className="text-xs text-gray-400 mt-6">
+            Potrai sempre cambiare questa preferenza dalle impostazioni del tuo profilo.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 py-12 px-4">

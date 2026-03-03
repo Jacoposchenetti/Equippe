@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useModal } from '@/contexts/ModalContext';
 import { useLocation } from 'react-router-dom';
-import { requestNotificationPermission, saveFCMToken, onMessageListener } from '@/lib/notifications';
+import { requestNotificationPermission, saveFCMToken, onMessageListener, updateAppBadge } from '@/lib/notifications';
 
 export default function PushNotificationManager() {
   const { user, userProfile } = useAuth();
@@ -60,6 +60,12 @@ export default function PushNotificationManager() {
           tag: payload.data?.notificationId,
           data: payload.data
         });
+      }
+
+      // Aggiorna il badge sull'icona dell'app (il conteggio esatto viene
+      // sincronizzato da NotificationBell tramite il listener Firestore)
+      if ('setAppBadge' in navigator) {
+        (navigator as any).setAppBadge().catch(() => {});
       }
     });
 

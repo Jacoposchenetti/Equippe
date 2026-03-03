@@ -296,8 +296,12 @@ export default function ProfilePage() {
                 <div className="mt-2 space-y-1">
                   {profileUser.profile.studi && profileUser.profile.studi.length > 0 ? (
                     <>
-                      <div className="text-sm font-medium text-gray-700 mb-2">
-                        📍 {profileUser.profile.studi.length === 1 ? 'Studio' : 'Studi'} di Lavoro:
+                      <div className="text-sm font-medium text-gray-700 mb-2 flex items-center gap-1">
+                        <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                        {profileUser.profile.studi.length === 1 ? 'Studio' : 'Studi'} di Lavoro:
                       </div>
                       {profileUser.profile.studi.map((studio, index) => (
                         <div key={index} className="flex items-start gap-2 text-gray-600">
@@ -327,8 +331,12 @@ export default function ProfilePage() {
                         </p>
                       )}
                       {profileUser.profile.location.zonaRoma && (
-                        <p className="text-gray-600 text-sm">
-                          📍 {profileUser.profile.location.zonaRoma}
+                        <p className="text-gray-600 text-sm flex items-center gap-1">
+                          <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                          </svg>
+                          {profileUser.profile.location.zonaRoma}
                         </p>
                       )}
                       {!profileUser.profile.location.indirizzo && (

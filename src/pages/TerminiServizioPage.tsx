@@ -5,7 +5,7 @@ export default function TerminiServizio() {
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-4xl mx-auto px-6">
         <div className="bg-white rounded-lg shadow-sm p-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-8">Termini e Condizioni di Servizio</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-3 sm:mb-8">Termini e Condizioni di Servizio</h1>
           
           <div className="prose prose-gray max-w-none">
             <p className="text-sm text-gray-600 mb-6">

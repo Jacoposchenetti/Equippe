@@ -2,6 +2,7 @@ import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { useEffect } from 'react'
 import { useAuth } from './contexts/AuthContext'
 import VerifyEmailPage from './pages/VerifyEmailPage'
+import PWAInstallPrompt from './components/PWAInstallPrompt'
 
 // Scroll to top on route change
 function ScrollToTop() {
@@ -89,6 +90,7 @@ function App() {
   return (
     <div className="App">
       <ScrollToTop />
+      <PWAInstallPrompt />
       <Routes>
         {/* Public Routes */}
         <Route path="/login" element={

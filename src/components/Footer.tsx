@@ -68,6 +68,8 @@ export default function Footer() {
               L'accesso e l'utilizzo sono soggetti alla verifica delle credenziali professionali.
             </p>
           </div>
+          {/* Extra space for mobile bottom nav */}
+          <div className="md:hidden h-20" />
         </div>
       </div>
     </footer>

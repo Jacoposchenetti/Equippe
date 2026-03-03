@@ -6,6 +6,7 @@ import { db } from '@/lib/firebase';
 import { collection, query, where, onSnapshot, orderBy, updateDoc, doc, Timestamp, getDoc } from 'firebase/firestore';
 import { Notification } from '@/types/equippe';
 import { useNavigate } from 'react-router-dom';
+import { updateAppBadge } from '@/lib/notifications';
 
 export default function NotificationBell() {
   const { user } = useAuth();
@@ -73,6 +74,11 @@ export default function NotificationBell() {
 
     return () => unsubscribe();
   }, [user]);
+
+  // Sincronizza il badge sull'icona dell'app con il conteggio notifiche non lette
+  useEffect(() => {
+    updateAppBadge(unreadCount);
+  }, [unreadCount]);
 
   const markAsRead = async (notificationId: string) => {
     try {
@@ -219,19 +225,32 @@ export default function NotificationBell() {
       {showDropdown && (
         <>
           {/* Overlay per chiudere */}
+          {/* Overlay per chiudere - visibile solo su desktop */}
           <div
-            className="fixed inset-0 z-10"
+            className="fixed inset-0 z-10 hidden sm:block"
             onClick={() => setShowDropdown(false)}
           />
           
-          <div className="absolute right-0 mt-2 w-72 sm:w-96 bg-white rounded-lg shadow-xl z-20 max-h-[70vh] sm:max-h-[80vh] overflow-hidden flex flex-col">
+          {/* Full-screen su mobile, dropdown su desktop */}
+          <div className="fixed inset-0 z-20 bg-white flex flex-col sm:absolute sm:inset-auto sm:right-0 sm:mt-2 sm:w-96 sm:rounded-lg sm:shadow-xl sm:max-h-[80vh]">
             {/* Header */}
-            <div className="p-3 sm:p-4 border-b border-gray-200 flex justify-between items-center">
-              <h3 className="text-base sm:text-lg font-semibold text-gray-900">Notifiche</h3>
+            <div className="p-4 border-b border-gray-200 flex justify-between items-center">
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => setShowDropdown(false)}
+                  className="sm:hidden p-1 -ml-1 text-gray-600 hover:text-gray-900"
+                  aria-label="Chiudi"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                  </svg>
+                </button>
+                <h3 className="text-lg font-semibold text-gray-900">Notifiche</h3>
+              </div>
               {unreadCount > 0 && (
                 <button
                   onClick={markAllAsRead}
-                  className="text-xs sm:text-sm text-blue-600 hover:text-blue-800"
+                  className="text-sm text-blue-600 hover:text-blue-800"
                 >
                   Segna tutte come lette
                 </button>
@@ -241,7 +260,7 @@ export default function NotificationBell() {
             {/* Lista Notifiche */}
             <div className="overflow-y-auto flex-1">
               {notifications.length === 0 ? (
-                <div className="p-6 sm:p-8 text-center text-gray-500">
+                <div className="p-8 text-center text-gray-500">
                   <p className="text-sm">Nessuna notifica</p>
                 </div>
               ) : (

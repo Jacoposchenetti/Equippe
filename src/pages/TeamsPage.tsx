@@ -108,8 +108,8 @@ export default function TeamsPage() {
     <div className="min-h-screen bg-gray-50">
       <Header />
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
-        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6 sm:mb-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-0 pb-24 sm:py-8">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-3 sm:mb-8">
           <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900">Le Mie Equipé</h1>
           {canInteract ? (
             <Link
@@ -189,11 +189,6 @@ export default function TeamsPage() {
                 </div>
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-gray-500">{team.members.length} membri</span>
-                  <span className={`px-3 py-1 rounded ${
-                    team.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
-                  }`}>
-                    {team.status === 'active' ? 'Attivo' : 'Inattivo'}
-                  </span>
                 </div>
                 <div className="mt-4">
                   <span className="text-xs font-semibold text-gray-700">Specializzazioni del team:</span>

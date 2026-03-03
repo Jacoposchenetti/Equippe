@@ -222,11 +222,10 @@ export default function PazienteDetailPage() {
           </div>
         </div>
 
-        {/* Dati Paziente Decriptati */}
+        {/* Dati Paziente */}
         <div className="bg-white p-4 sm:p-6 lg:p-8 rounded-lg shadow mb-6">
-          <div className="flex items-center gap-2 mb-6">
-            <h3 className="text-xl sm:text-2xl font-bold">🔓 Dati Paziente</h3>
-            <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">Decriptato</span>
+          <div className="mb-6">
+            <h3 className="text-xl sm:text-2xl font-bold">Dati Paziente</h3>
           </div>
 
           <div className="space-y-4">

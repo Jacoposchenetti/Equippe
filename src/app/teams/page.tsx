@@ -159,11 +159,6 @@ export default function TeamsPage() {
                 </div>
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-gray-500">{team.members.length} membri</span>
-                  <span className={`px-3 py-1 rounded ${
-                    team.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
-                  }`}>
-                    {team.status === 'active' ? 'Attivo' : 'Inattivo'}
-                  </span>
                 </div>
                 <div className="mt-4">
                   <span className="text-xs font-semibold text-gray-700">Specializzazioni del team:</span>

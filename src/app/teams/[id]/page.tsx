@@ -836,13 +836,7 @@ export default function TeamDetailPage() {
                   )}
                 </div>
               </div>
-              <div className="flex items-center gap-3">
-                <span className={`px-4 py-2 rounded-lg font-medium ${
-                  team.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'
-                }`}>
-                  {team.status === 'active' ? '✓ Attivo' : 'Inattivo'}
-                </span>
-              </div>
+
             </div>
 
             <div className="border-t border-gray-200 pt-6">
@@ -1288,28 +1282,6 @@ export default function TeamDetailPage() {
               </h3>
             </div>
             <div className="p-6">
-              <div className="mb-4 p-4 bg-blue-50 rounded-lg">
-                <div className="flex items-start gap-3">
-                  <svg className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                  </svg>
-                  <div className="flex-1">
-                    <p className="font-semibold text-gray-900 mb-1">📍 {team.indirizzo}</p>
-                    <p className="text-sm text-gray-600">
-                      Raggio di copertura: <span className="font-bold text-blue-600">{team.raggioKm} km</span>
-                      {' • '}
-                      Area coperta: circa <span className="font-bold">{(Math.PI * (team.raggioKm || 0) * (team.raggioKm || 0)).toFixed(1)} km²</span>
-                    </p>
-                    {team.remoto && (
-                      <p className="text-sm text-green-600 font-medium mt-1">
-                        ✓ Disponibile anche per lavoro da remoto
-                      </p>
-                    )}
-                  </div>
-                </div>
-              </div>
-              
               <div style={{ position: 'relative', zIndex: 1 }}>
                 <MapSelector
                   coordinate={team.coordinate}

@@ -359,15 +359,7 @@ export default function MapSelector({
         </div>
       </div>
 
-      {coordinate && (
-        <div className="text-sm text-gray-600 bg-blue-50 p-3 rounded">
-          <strong>Posizione selezionata:</strong>
-          <br />
-          Latitudine: {coordinate.lat.toFixed(6)}, Longitudine: {coordinate.lng.toFixed(6)}
-          <br />
-          Area coperta: circa {(Math.PI * raggioKm * raggioKm).toFixed(1)} km²
-        </div>
-      )}
+
     </div>
   );
 }

@@ -30,6 +30,7 @@ export default function TeamDetailPage() {
   const [requestMessage, setRequestMessage] = useState('');
   const [availableUsers, setAvailableUsers] = useState<User[]>([]);
   const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
+  const [inviteSearch, setInviteSearch] = useState('');
   const [pendingRequests, setPendingRequests] = useState<any[]>([]);
   const [teamConversation, setTeamConversation] = useState<Conversation | null>(null);
 
@@ -315,6 +316,7 @@ export default function TeamDetailPage() {
 
       setShowInviteModal(false);
       setSelectedUsers([]);
+      setInviteSearch('');
       showToast(`Inviti inviati a ${selectedUsers.length} professionisti!`, 'success');
     } catch (error) {
       console.error('Errore invio inviti:', error);
@@ -448,6 +450,16 @@ export default function TeamDetailPage() {
         // Conversazione esistente trovata
         const conversationDoc = conversationSnapshot.docs[0];
         const conversationData = { id: conversationDoc.id, ...conversationDoc.data() } as Conversation;
+        
+        // Assicurati che l'utente corrente sia nei participants
+        if (!conversationData.participants?.includes(user.uid)) {
+          const updatedParticipants = [...(conversationData.participants || []), user.uid];
+          await updateDoc(doc(db, 'conversations', conversationDoc.id), {
+            participants: updatedParticipants
+          });
+          conversationData.participants = updatedParticipants;
+        }
+        
         setTeamConversation(conversationData);
       } else {
         // Nessuna conversazione trovata - sarà creata quando l'utente aprirà la chat
@@ -462,6 +474,26 @@ export default function TeamDetailPage() {
     if (!team || !user) return null;
 
     try {
+      // Controlla prima se esiste già (potrebbe essere stata creata nel frattempo)
+      const existingQuery = query(
+        collection(db, 'conversations'),
+        where('type', '==', 'team'),
+        where('teamId', '==', team.id || teamId)
+      );
+      const existingSnapshot = await getDocs(existingQuery);
+      if (!existingSnapshot.empty) {
+        const existingConv = existingSnapshot.docs[0];
+        // Assicurati che l'utente corrente sia nei participants
+        const existingData = existingConv.data();
+        const currentParticipants: string[] = existingData.participants || [];
+        if (!currentParticipants.includes(user.uid)) {
+          await updateDoc(doc(db, 'conversations', existingConv.id), {
+            participants: [...currentParticipants, user.uid]
+          });
+        }
+        return existingConv.id;
+      }
+
       // Crea i dati dei partecipanti
       const participantsData: { [key: string]: { name: string; photoURL?: string } } = {};
       const participants: string[] = [];
@@ -479,6 +511,23 @@ export default function TeamDetailPage() {
               photoURL: memberData.profile.photoURL
             };
           }
+        }
+      }
+
+      // Assicurati che l'utente corrente sia sempre incluso
+      if (!participants.includes(user.uid)) {
+        participants.push(user.uid);
+        participantsData[user.uid] = {
+          name: userProfile?.profile?.nome || user.displayName || 'Tu',
+          photoURL: userProfile?.profile?.photoURL || user.photoURL || ''
+        };
+      }
+
+      // Aggiungi anche i memberIds del team se presenti e non già inclusi
+      const teamMemberIds = team.memberIds || [];
+      for (const mid of teamMemberIds) {
+        if (!participants.includes(mid)) {
+          participants.push(mid);
         }
       }
 
@@ -630,7 +679,7 @@ export default function TeamDetailPage() {
     <div className="min-h-screen bg-gray-50">
       <Header />
 
-      <div className="max-w-5xl mx-auto px-6 py-8">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 pt-0 pb-24 sm:py-8">
         <Link to="/teams" className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700 mb-6 font-medium">
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -752,13 +801,7 @@ export default function TeamDetailPage() {
                   )}
                 </div>
               </div>
-              <div className="flex items-center gap-3">
-                <span className={`px-4 py-2 rounded-lg font-medium ${
-                  team.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'
-                }`}>
-                  {team.status === 'active' ? '✓ Attivo' : 'Inattivo'}
-                </span>
-              </div>
+
             </div>
 
             <div className="border-t border-gray-200 pt-6">
@@ -894,6 +937,118 @@ export default function TeamDetailPage() {
             )}
           </div>
         </div>
+
+        {/* Sezione Invita Membri - solo admin */}
+        {isAdmin && (
+          <div className="bg-white rounded-xl shadow-sm mb-6 overflow-hidden border-2 border-blue-200">
+            <div className="px-4 sm:px-6 lg:px-8 py-4 sm:py-6 border-b border-blue-200 bg-blue-50">
+              <h3 className="text-xl sm:text-2xl font-bold text-gray-900 flex items-center gap-2">
+                <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                </svg>
+                Invita Membri
+              </h3>
+              <p className="text-sm text-gray-600 mt-1">Cerca i professionisti da invitare nella tua équipe</p>
+            </div>
+            <div className="p-4 sm:p-6">
+              {/* Utenti selezionati (pills) */}
+              {selectedUsers.length > 0 && (
+                <div className="flex flex-wrap gap-2 mb-3">
+                  {selectedUsers.map(uid => {
+                    const usr = availableUsers.find(u => u.uid === uid);
+                    return (
+                      <span key={uid} className="inline-flex items-center gap-1 bg-blue-100 text-blue-800 text-sm px-3 py-1 rounded-full">
+                        {usr?.profile?.nome || usr?.email || uid}
+                        <button
+                          type="button"
+                          onClick={() => toggleUserSelection(uid)}
+                          className="ml-1 text-blue-600 hover:text-blue-900 font-bold"
+                        >
+                          ×
+                        </button>
+                      </span>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Search bar */}
+              <input
+                type="text"
+                value={inviteSearch}
+                onChange={(e) => setInviteSearch(e.target.value)}
+                placeholder="Cerca per nome, email o specializzazione..."
+                className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 mb-2"
+              />
+
+              {/* Risultati ricerca */}
+              {inviteSearch.trim().length >= 2 && (() => {
+                const q = inviteSearch.trim().toLowerCase();
+                const filtered = availableUsers.filter(u =>
+                  !selectedUsers.includes(u.uid) && (
+                    (u.profile?.nome?.toLowerCase().includes(q)) ||
+                    (u.email?.toLowerCase().includes(q)) ||
+                    (u.profile?.specializzazioni?.some((s: string) => s.toLowerCase().includes(q)))
+                  )
+                );
+                return filtered.length === 0 ? (
+                  <p className="text-gray-500 text-center py-4 border rounded-lg">Nessun professionista trovato</p>
+                ) : (
+                  <div className="max-h-60 overflow-y-auto border rounded-lg">
+                    {filtered.map((usr) => (
+                      <label key={usr.uid} className="flex items-start p-3 hover:bg-blue-50 cursor-pointer border-b last:border-b-0 transition">
+                        <input
+                          type="checkbox"
+                          checked={selectedUsers.includes(usr.uid)}
+                          onChange={() => toggleUserSelection(usr.uid)}
+                          className="mr-3 mt-1 w-4 h-4 text-blue-600"
+                        />
+                        <div className="flex-1">
+                          <div className="font-semibold text-gray-900">{usr.profile?.nome || 'Nome non disponibile'}</div>
+                          <div className="text-sm text-gray-600">{usr.email}</div>
+                          {usr.profile?.specializzazioni && usr.profile.specializzazioni.length > 0 && (
+                            <div className="text-xs text-gray-500 mt-1">
+                              {usr.profile.specializzazioni.join(', ')}
+                            </div>
+                          )}
+                          {usr.profile?.location?.città && (
+                            <div className="text-xs text-gray-400 mt-0.5 flex items-center gap-1">
+                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                              </svg>
+                              {usr.profile.location.città}
+                            </div>
+                          )}
+                        </div>
+                      </label>
+                    ))}
+                  </div>
+                );
+              })()}
+
+              {/* Pulsante Invita */}
+              {selectedUsers.length > 0 && (
+                <div className="mt-4 flex gap-3">
+                  <button
+                    onClick={handleInviteMembers}
+                    className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition shadow-sm"
+                  >
+                    Invita ({selectedUsers.length})
+                  </button>
+                  <button
+                    onClick={() => {
+                      setSelectedUsers([]);
+                      setInviteSearch('');
+                    }}
+                    className="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg font-medium hover:bg-gray-300 transition"
+                  >
+                    Annulla
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Sezione Posizioni Aperte - sempre visibile per admin */}
         <div className="bg-white rounded-xl shadow-sm mb-6 overflow-hidden border-2 border-amber-200">
@@ -1219,28 +1374,6 @@ export default function TeamDetailPage() {
               </h3>
             </div>
             <div className="p-6">
-              <div className="mb-4 p-4 bg-blue-50 rounded-lg">
-                <div className="flex items-start gap-3">
-                  <svg className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                  </svg>
-                  <div className="flex-1">
-                    <p className="font-semibold text-gray-900 mb-1">📍 {team.indirizzo}</p>
-                    <p className="text-sm text-gray-600">
-                      Raggio di copertura: <span className="font-bold text-blue-600">{team.raggioKm} km</span>
-                      {' • '}
-                      Area coperta: circa <span className="font-bold">{(Math.PI * (team.raggioKm || 0) * (team.raggioKm || 0)).toFixed(1)} km²</span>
-                    </p>
-                    {team.remoto && (
-                      <p className="text-sm text-green-600 font-medium mt-1">
-                        ✓ Disponibile anche per lavoro da remoto
-                      </p>
-                    )}
-                  </div>
-                </div>
-              </div>
-              
               <div style={{ position: 'relative', zIndex: 1 }}>
                 <MapSelector
                   coordinate={team.coordinate}
@@ -1342,77 +1475,6 @@ export default function TeamDetailPage() {
                   className="flex-1 px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium transition"
                 >
                   Invia Richiesta
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {showInviteModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[85vh] overflow-hidden flex flex-col">
-              <div className="px-8 py-6 border-b border-gray-200">
-                <h3 className="text-2xl font-bold text-gray-900">Invita Nuovi Membri</h3>
-                <p className="text-sm text-gray-600 mt-1">Seleziona i professionisti da invitare al team</p>
-              </div>
-              
-              <div className="flex-1 overflow-y-auto p-6">
-                {availableUsers.length === 0 ? (
-                  <div className="text-center py-12">
-                    <svg className="w-16 h-16 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                    </svg>
-                    <p className="text-gray-600 font-medium">Tutti i professionisti sono già membri</p>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {availableUsers.map((user) => (
-                      <label key={user.uid} className="flex items-start p-4 hover:bg-blue-50 rounded-xl cursor-pointer border-2 border-gray-200 hover:border-blue-300 transition">
-                        <input
-                          type="checkbox"
-                          checked={selectedUsers.includes(user.uid)}
-                          onChange={() => toggleUserSelection(user.uid)}
-                          className="mr-4 mt-1.5 w-5 h-5 text-blue-600 rounded"
-                        />
-                        <div className="flex-1">
-                          <div className="font-bold text-gray-900">{user.profile.nome}</div>
-                          <div className="text-sm text-gray-600 mb-2">{user.email}</div>
-                          <div className="flex flex-wrap gap-1 mb-2">
-                            {user.profile.specializzazioni.map(spec => (
-                              <span key={spec} className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded font-medium">
-                                {spec}
-                              </span>
-                            ))}
-                          </div>
-                          <div className="text-xs text-gray-500 flex items-center gap-1">
-                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                            </svg>
-                            {user.profile.location.città}
-                          </div>
-                        </div>
-                      </label>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              <div className="px-8 py-6 border-t border-gray-200 flex gap-3">
-                <button
-                  onClick={handleInviteMembers}
-                  disabled={selectedUsers.length === 0}
-                  className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition shadow-sm"
-                >
-                  Invita {selectedUsers.length > 0 && `(${selectedUsers.length})`}
-                </button>
-                <button
-                  onClick={() => {
-                    setShowInviteModal(false);
-                    setSelectedUsers([]);
-                  }}
-                  className="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg font-medium hover:bg-gray-300 transition"
-                >
-                  Annulla
                 </button>
               </div>
             </div>

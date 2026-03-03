@@ -31,6 +31,14 @@ messaging.onBackgroundMessage((payload) => {
     actions: payload.data?.actions ? JSON.parse(payload.data.actions) : []
   };
 
+  // Aggiorna il badge numerico sull'icona dell'app (come Instagram)
+  if ('setAppBadge' in navigator) {
+    // Incrementa il contatore badge
+    // Usa un approccio semplice: leggi il conteggio corrente da un flag interno
+    self._badgeCount = (self._badgeCount || 0) + 1;
+    navigator.setAppBadge(self._badgeCount).catch(() => {});
+  }
+
   return self.registration.showNotification(notificationTitle, notificationOptions);
 });
 
@@ -39,6 +47,16 @@ self.addEventListener('notificationclick', (event) => {
   console.log('[firebase-messaging-sw.js] Notification clicked:', event);
   
   event.notification.close();
+
+  // Decrementa il contatore badge quando si clicca sulla notifica
+  if ('setAppBadge' in navigator) {
+    self._badgeCount = Math.max(0, (self._badgeCount || 1) - 1);
+    if (self._badgeCount > 0) {
+      navigator.setAppBadge(self._badgeCount).catch(() => {});
+    } else {
+      navigator.clearAppBadge().catch(() => {});
+    }
+  }
 
   const urlToOpen = event.notification.data?.url || '/dashboard';
 

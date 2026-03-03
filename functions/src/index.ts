@@ -118,6 +118,7 @@ function getNotificationUrl(notification: any): string {
     case 'team_invite_response':
       return `${baseUrl}/invites`;
     
+    case 'message':
     case 'new_message':
       return `${baseUrl}/messages?conversation=${notification.conversationId}`;
     
@@ -210,7 +211,7 @@ export const sendProfessionVerificationEmail = functions
           from: EMAIL_FROM.noreply,
           to: ADMIN_EMAILS,
           subject: `Nuova richiesta verifica professione: ${professione.professione}`,
-          html: `
+          html: wrapEmailTemplate(`
             <h2>Nuova Richiesta di Verifica Professione</h2>
             <p><strong>Utente:</strong> ${after.profile?.nome} ${after.profile?.cognome}</p>
             <p><strong>Email:</strong> ${after.profile?.email}</p>
@@ -223,7 +224,7 @@ export const sendProfessionVerificationEmail = functions
               ).join('') || '<li>Nessun documento</li>'}
             </ul>
             <p><a href="https://tuaequipe.it/admin/verifications?filter=with-pending-professions">Vai al pannello di verifica</a></p>
-          `,
+          `),
         });
 
         if (adminIds.size > 0) {
@@ -270,7 +271,7 @@ export const sendProfessionApprovedEmail = functions
         from: EMAIL_FROM.info,
         to: userEmail,
         subject: 'Professione Approvata - Equipe',
-        html: `
+        html: wrapEmailTemplate(`
           <h2>Congratulazioni!</h2>
           <p>Ciao ${userName},</p>
           <p>La tua richiesta per la professione <strong>${professione}</strong> è stata approvata!</p>
@@ -278,7 +279,7 @@ export const sendProfessionApprovedEmail = functions
           <p><a href="https://tuaequipe.it/profile/edit">Vai al tuo profilo</a></p>
           <br>
           <p>Il team di Equipe</p>
-        `,
+        `),
       });
 
       console.log('✅ Email approvazione professione inviata a:', userEmail);
@@ -308,7 +309,7 @@ export const sendProfessionRejectedEmail = functions
         from: EMAIL_FROM.support,
         to: userEmail,
         subject: 'Richiesta Professione Non Approvata - Equipe',
-        html: `
+        html: wrapEmailTemplate(`
           <h2>Richiesta Non Approvata</h2>
           <p>Ciao ${userName},</p>
           <p>La tua richiesta per la professione <strong>${professione}</strong> non è stata approvata.</p>
@@ -316,7 +317,7 @@ export const sendProfessionRejectedEmail = functions
           <p>Se ritieni ci sia stato un errore o desideri fornire ulteriore documentazione, puoi contattarci a support@tuaequipe.it</p>
           <br>
           <p>Il team di Equipe</p>
-        `,
+        `),
       });
 
       console.log('✅ Email rifiuto professione inviata a:', userEmail);
@@ -341,10 +342,35 @@ const EMAIL_FROM = {
 const ADMIN_EMAILS = ['admin@tuaequipe.it', 'jschenetti@gmail.com'];
 
 /**
+ * Wraps email body HTML with branded header (logo) and footer
+ */
+function wrapEmailTemplate(bodyHtml: string): string {
+  return `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff;">
+      <!-- Header con logo -->
+      <div style="text-align: center; padding: 24px 0 16px 0; border-bottom: 2px solid #0066cc;">
+        <a href="https://tuaequipe.it" target="_blank">
+          <img src="https://tuaequipe.it/logo-equipe.png" alt="Equipe" style="height: 48px; width: auto;" />
+        </a>
+      </div>
+      <!-- Body -->
+      <div style="padding: 24px 20px;">
+        ${bodyHtml}
+      </div>
+      <!-- Footer -->
+      <div style="text-align: center; padding: 16px 20px; border-top: 1px solid #eee; color: #999; font-size: 12px;">
+        <p style="margin: 4px 0;">&copy; ${new Date().getFullYear()} Equipe &mdash; <a href="https://tuaequipe.it" style="color: #999;">tuaequipe.it</a></p>
+        <p style="margin: 4px 0;">La piattaforma per professionisti sanitari</p>
+      </div>
+    </div>
+  `;
+}
+
+/**
  * Funzione helper per inviare email
  * @param to - destinatario
  * @param subject - oggetto
- * @param html - corpo HTML
+ * @param html - corpo HTML (verrà wrappato con header logo e footer)
  * @param from - mittente (default: noreply@tuaequipe.it)
  */
 async function sendEmail(to: string, subject: string, html: string, from?: string) {
@@ -353,7 +379,7 @@ async function sendEmail(to: string, subject: string, html: string, from?: strin
       from: from || EMAIL_FROM.noreply,
       to,
       subject,
-      html,
+      html: wrapEmailTemplate(html),
     });
     console.log(`✅ Email inviata a ${to}: ${subject}`);
     return true;

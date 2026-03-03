@@ -62,8 +62,17 @@ export default function MessagesPage() {
   // Seleziona automaticamente la conversazione se specificata nell'URL
   useEffect(() => {
     const conversationId = searchParams.get('conversation');
-    if (conversationId && conversations.length > 0) {
-      setSelectedConversation(conversationId);
+    if (!conversationId) return;
+    
+    // Se già selezionata, non fare nulla
+    if (selectedConversation === conversationId) return;
+    
+    // Attendi che la conversazione sia disponibile nella lista
+    if (conversations.length > 0) {
+      const exists = conversations.some(c => c.id === conversationId);
+      if (exists) {
+        setSelectedConversation(conversationId);
+      }
     }
   }, [searchParams, conversations]);
 
@@ -155,6 +164,53 @@ export default function MessagesPage() {
           unreadCount: Object.fromEntries(teamMembers.map(id => [id, 0])),
           createdAt: Timestamp.now()
         });
+      } else {
+        // Conversazione esiste già: sincronizza i participants con i membri attuali del team
+        const existingConv = existingSnapshot.docs[0];
+        const existingData = existingConv.data();
+        const currentParticipants: string[] = existingData.participants || [];
+        const teamMembers = team.memberIds || team.members?.map(m => m.uid) || [];
+        
+        // Controlla se ci sono membri del team non presenti nei participants
+        const missingMembers = teamMembers.filter(id => !currentParticipants.includes(id));
+        const removedMembers = currentParticipants.filter(id => !teamMembers.includes(id));
+        
+        if (missingMembers.length > 0 || removedMembers.length > 0) {
+          const updatedParticipantsData = { ...(existingData.participantsData || {}) };
+          
+          // Aggiungi dati dei nuovi membri
+          for (const memberId of missingMembers) {
+            try {
+              if (memberId === user?.uid) {
+                updatedParticipantsData[memberId] = {
+                  name: userProfile?.profile?.nome || 'Tu',
+                  photoURL: userProfile?.profile?.photoURL || ''
+                };
+              } else {
+                const memberDoc = await getDoc(doc(db, 'users', memberId));
+                if (memberDoc.exists()) {
+                  const userData = memberDoc.data();
+                  updatedParticipantsData[memberId] = {
+                    name: userData.profile?.nome || 'Utente',
+                    photoURL: userData.profile?.photoURL || ''
+                  };
+                }
+              }
+            } catch (error) {
+              console.error('Error loading new member data:', error);
+            }
+          }
+          
+          // Rimuovi dati dei membri usciti
+          for (const memberId of removedMembers) {
+            delete updatedParticipantsData[memberId];
+          }
+          
+          await updateDoc(doc(db, 'conversations', existingConv.id), {
+            participants: teamMembers,
+            participantsData: updatedParticipantsData
+          });
+        }
       }
     } catch (error) {
       console.error('Error creating team conversation:', error);
@@ -299,13 +355,8 @@ export default function MessagesPage() {
             validConvs.push(conv);
           }
 
-          // Ordina per tipo (team prima) e poi per ultimo messaggio
+          // Ordina per ultimo messaggio (più recente prima)
           validConvs.sort((a, b) => {
-            // Prima le chat di team
-            if (a.type === 'team' && b.type !== 'team') return -1;
-            if (b.type === 'team' && a.type !== 'team') return 1;
-            
-            // Poi per ultimo messaggio
             const timeA = a.lastMessageTime?.toMillis() || 0;
             const timeB = b.lastMessageTime?.toMillis() || 0;
             return timeB - timeA;
@@ -634,8 +685,8 @@ export default function MessagesPage() {
     <div className="min-h-screen bg-gray-50">
       <Header />
 
-      <div className="max-w-7xl mx-auto px-6 py-8">
-        <h1 className="text-4xl font-bold text-gray-900 mb-8">Messaggi</h1>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-0 pb-24 sm:py-8">
+        <h1 className="text-2xl sm:text-4xl font-bold text-gray-900 mb-3 sm:mb-8">Messaggi</h1>
 
         <div className="bg-white rounded-xl shadow-sm" style={{ height: '70vh', display: 'flex' }}>
           <div className="flex md:grid md:grid-cols-12 w-full h-full">

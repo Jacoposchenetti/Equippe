@@ -585,7 +585,7 @@ export default function EditProfilePage() {
     <div className="min-h-screen bg-gray-50">
       <Header />
       
-      <div className="max-w-4xl mx-auto px-6 py-8">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 pt-0 pb-24 sm:py-8">
         <div className="mb-8">
           <h1 className="text-4xl font-bold text-gray-900">Modifica Profilo</h1>
           <p className="text-gray-600 mt-2">Aggiorna le tue informazioni professionali</p>
@@ -816,24 +816,24 @@ export default function EditProfilePage() {
                 <h3 className="text-lg font-semibold text-green-700 mb-3">✓ Professioni Approvate</h3>
                 <div className="space-y-2">
                   {professioniApprovate.map((prof, index) => (
-                    <div key={index} className="flex items-center justify-between p-3 bg-green-50 border border-green-200 rounded-lg">
-                      <div>
-                        <p className="font-medium text-green-900">{prof.professione}</p>
+                    <div key={index} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 bg-green-50 border border-green-200 rounded-lg">
+                      <div className="min-w-0 flex-1">
+                        <p className="font-medium text-green-900 text-sm sm:text-base">{prof.professione}</p>
                         {prof.tematiche && prof.tematiche.length > 0 && (
-                          <p className="text-sm text-green-700">Tematiche: {prof.tematiche.join(', ')}</p>
+                          <p className="text-xs sm:text-sm text-green-700 truncate">Tematiche: {prof.tematiche.join(', ')}</p>
                         )}
                         {prof.anniEsperienza && (
-                          <p className="text-sm text-green-700">Esperienza: {prof.anniEsperienza} anni</p>
+                          <p className="text-xs sm:text-sm text-green-700">Esperienza: {prof.anniEsperienza} anni</p>
                         )}
                       </div>
-                      <div className="flex items-center gap-2">
-                        <span className="px-3 py-1 bg-green-200 text-green-800 rounded-full text-sm font-medium">
+                      <div className="flex items-center gap-1.5 flex-shrink-0">
+                        <span className="px-2 py-0.5 bg-green-200 text-green-800 rounded-full text-xs font-medium">
                           Approvata
                         </span>
                         <button
                           type="button"
                           onClick={() => handleRemoveProfessioneApprovata(index)}
-                          className="px-3 py-1 text-sm font-medium text-red-700 bg-red-100 rounded-full hover:bg-red-200 transition-colors"
+                          className="px-2 py-0.5 text-xs font-medium text-red-700 bg-red-100 rounded-full hover:bg-red-200 transition-colors"
                           title="Rimuovi professione"
                         >
                           Rimuovi
@@ -851,27 +851,27 @@ export default function EditProfilePage() {
                 <h3 className="text-lg font-semibold text-yellow-700 mb-3">⏳ In Attesa di Approvazione</h3>
                 <div className="space-y-2">
                   {professioniPending.map((prof, index) => (
-                    <div key={index} className="flex items-center justify-between p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                      <div>
-                        <p className="font-medium text-yellow-900">{prof.professione}</p>
+                    <div key={index} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                      <div className="min-w-0 flex-1">
+                        <p className="font-medium text-yellow-900 text-sm sm:text-base">{prof.professione}</p>
                         {prof.tematiche && prof.tematiche.length > 0 && (
-                          <p className="text-sm text-yellow-700">Tematiche: {prof.tematiche.join(', ')}</p>
+                          <p className="text-xs sm:text-sm text-yellow-700 truncate">Tematiche: {prof.tematiche.join(', ')}</p>
                         )}
                         {prof.anniEsperienza && (
-                          <p className="text-sm text-yellow-700">Esperienza: {prof.anniEsperienza} anni</p>
+                          <p className="text-xs sm:text-sm text-yellow-700">Esperienza: {prof.anniEsperienza} anni</p>
                         )}
                       </div>
-                      <div className="flex items-center gap-2">
-                        <span className="px-3 py-1 bg-yellow-200 text-yellow-800 rounded-full text-sm font-medium">
+                      <div className="flex items-center gap-1.5 flex-shrink-0">
+                        <span className="px-2 py-0.5 bg-yellow-200 text-yellow-800 rounded-full text-xs font-medium">
                           In Attesa
                         </span>
                         <button
                           type="button"
                           onClick={() => handleRemoveProfessionePending(index)}
-                          className="px-3 py-1 text-sm font-medium text-red-700 bg-red-100 rounded-full hover:bg-red-200 transition-colors"
+                          className="px-2 py-0.5 text-xs font-medium text-red-700 bg-red-100 rounded-full hover:bg-red-200 transition-colors"
                           title="Annulla richiesta"
                         >
-                          Annulla richiesta
+                          Annulla
                         </button>
                       </div>
                     </div>

@@ -1169,3 +1169,70 @@ export const sendReferralStatusEmail = functions
     }
   });
 
+/**
+ * Cloud Function per inviare email di recupero password tramite Resend
+ * Genera un link di reset password con Firebase Admin SDK e lo invia
+ * con il template brandizzato tramite Resend.
+ */
+export const sendPasswordResetEmailCustom = functions
+  .region('europe-west1')
+  .https.onCall(async (data, context) => {
+    const { email } = data;
+
+    if (!email || typeof email !== 'string') {
+      throw new functions.https.HttpsError('invalid-argument', 'Email richiesta.');
+    }
+
+    try {
+      // Verifica che l'utente esista in Firebase Auth
+      let userRecord;
+      try {
+        userRecord = await admin.auth().getUserByEmail(email);
+      } catch {
+        // Non rivelare se l'utente esiste o meno per sicurezza
+        console.log('⚠️ Utente non trovato per reset password:', email);
+        return { success: true };
+      }
+
+      // Genera il link di reset password (link Firebase standard)
+      const resetLink = await admin.auth().generatePasswordResetLink(email, {
+        url: 'https://tuaequipe.it/login',
+      });
+
+      const nome = userRecord.displayName || 'Utente';
+
+      // Invia l'email tramite Resend con template brandizzato
+      await sendEmail(
+        email,
+        'Reimposta la tua password - Equipe',
+        `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2 style="color: #0066cc;">Reimposta la tua password</h2>
+            <p>Ciao ${nome},</p>
+            <p>Abbiamo ricevuto una richiesta per reimpostare la password del tuo account Equipe.</p>
+            <p>Clicca il pulsante qui sotto per scegliere una nuova password:</p>
+            <p style="text-align: center; margin: 30px 0;">
+              <a href="${resetLink}" 
+                 style="background-color: #0066cc; color: white; padding: 14px 28px; 
+                        text-decoration: none; border-radius: 5px; display: inline-block;
+                        font-size: 16px; font-weight: bold;">
+                Reimposta Password
+              </a>
+            </p>
+            <p style="color: #666; font-size: 14px;">Se non hai richiesto tu il reset della password, puoi ignorare questa email. Il link scadrà tra 1 ora.</p>
+            <p style="color: #666; font-size: 14px;">Se il pulsante non funziona, copia e incolla questo link nel browser:</p>
+            <p style="word-break: break-all; color: #0066cc; font-size: 13px;">${resetLink}</p>
+            <br>
+            <p>Il team di Equipe</p>
+          </div>
+        `
+      );
+
+      console.log('✅ Email reset password inviata a:', email);
+      return { success: true };
+    } catch (error) {
+      console.error('❌ Errore invio email reset password:', error);
+      throw new functions.https.HttpsError('internal', 'Errore durante l\'invio dell\'email di reset.');
+    }
+  });
+

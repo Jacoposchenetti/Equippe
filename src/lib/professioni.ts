@@ -520,6 +520,35 @@ export const CONFIGURAZIONI_PROFESSIONI: Record<string, ConfigurazioneProfession
     ]
   },
   
+  'Neuropsicomotricista': {
+    nome: 'Neuropsicomotricista',
+    hasAlbo: true,
+    tematiche: [
+      'Disturbi dello sviluppo motorio',
+      'Disturbi della coordinazione',
+      'Disturbi dello spettro autistico',
+      'Ritardo psicomotorio',
+      'Disturbi dell\'attenzione (ADHD)',
+      'Disturbi specifici dell\'apprendimento (DSA)',
+      'Disabilità intellettiva',
+      'Paralisi cerebrali infantili',
+      'Sindromi genetiche',
+      'Disturbi della regolazione emotiva',
+      'Disprassia',
+      'Intervento precoce'
+    ],
+    documentiRichiesti: [
+      {
+        tipo: 'albo',
+        nome: 'Numero iscrizione Albo Neuropsicomotricisti (Ordine TSRM e PSTRP)',
+        obbligatorio: true,
+        placeholder: 'es. 12345',
+        descrizione: 'Numero iscrizione all\'Albo dei Neuropsicomotricisti presso l\'Ordine TSRM e PSTRP'
+      }
+    ],
+    noteAggiuntive: 'Dopo la laurea, per esercitare è obbligatoria l\'iscrizione all\'albo neuropsicomotricisti, istituito presso gli Ordini TSRM e PSTRP (Tecnici Sanitari di Radiologia Medica e delle Professioni Sanitarie Tecniche, della Riabilitazione e della Prevenzione)'
+  },
+  
   'Sessuologo': {
     nome: 'Sessuologo',
     hasAlbo: false,

@@ -68,7 +68,8 @@ export default function EnhancedSearch({ onSearch, availableSpecializations = []
     'Psichiatra',
     'Nutrizionista',
     'Dietologo',
-    'Logopedista'
+    'Logopedista',
+    'Neuropsicomotricista'
   ];
 
   // Tipologie di equipé (basate sulle specializzazioni dei membri)

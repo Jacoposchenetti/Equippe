@@ -86,7 +86,8 @@ export default function TeamsPage() {
         'Psichiatra': 'Psichiatria',
         'Nutrizionista': 'Nutrizione',
         'Dietologo': 'Dietetica',
-        'Logopedista': 'Logopedia'
+        'Logopedista': 'Logopedia',
+        'Neuropsicomotricista': 'Neuropsicomotricità'
       };
       return professionistToDiscipine[spec] || spec;
     }).filter((disc, index, arr) => arr.indexOf(disc) === index); // Rimuovi duplicati anche dopo conversione

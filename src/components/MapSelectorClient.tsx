@@ -20,6 +20,7 @@ interface MapSelectorProps {
   onCoordinateChange?: (coord: { lat: number; lng: number }) => void;
   onIndirizzoChange?: (addr: string) => void;
   onRaggioChange?: (raggio: number) => void;
+  readOnly?: boolean;
   // Nuove props per compatibilità
   initialCenter?: { lat: number; lng: number };
   initialZoom?: number;
@@ -41,6 +42,7 @@ export default function MapSelector({
   onCoordinateChange,
   onIndirizzoChange,
   onRaggioChange,
+  readOnly = false,
   // Nuove props
   initialCenter,
   initialZoom,
@@ -259,17 +261,7 @@ export default function MapSelector({
     
     useEffect(() => {
       if (map) {
-        let zoom = 13;
-        if (raggioKm <= 2) zoom = 15;
-        else if (raggioKm <= 5) zoom = 14;
-        else if (raggioKm <= 10) zoom = 13;
-        else if (raggioKm <= 20) zoom = 12;
-        else zoom = 11;
-        
-        map.setView([coordinate.lat, coordinate.lng], zoom, {
-          animate: true,
-          duration: 1
-        });
+        map.setView([coordinate.lat, coordinate.lng], raggioKm <= 2 ? 15 : raggioKm <= 5 ? 13 : raggioKm <= 10 ? 12 : raggioKm <= 20 ? 11 : raggioKm <= 50 ? 10 : 9);
       }
     }, [coordinate, raggioKm, map]);
     
@@ -286,7 +278,8 @@ export default function MapSelector({
 
   return (
     <div className="space-y-4">
-      {/* Search bar */}
+      {/* Search bar - nascosta in modalità read-only */}
+      {!readOnly && (
       <div className="relative">
         <div className="flex gap-2">
           <input
@@ -325,6 +318,7 @@ export default function MapSelector({
           </div>
         )}
       </div>
+      )}
 
       {/* Map */}
       <div className="w-full h-64 border rounded-lg overflow-hidden relative">
@@ -337,28 +331,54 @@ export default function MapSelector({
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
-          <MapUpdater coordinate={currentCoordinate} raggioKm={raggioKm} />
-          <MapClickHandler
-            onLocationSelect={(lat, lng) => {
-              console.log('🖱️ Click sulla mappa:', { lat, lng });
-              handleCoordinateChange({ lat, lng });
-              reverseGeocode(lat, lng);
-            }}
-          />
+          <MapUpdater coordinate={currentCoordinate} raggioKm={effectiveRaggio} />
+          {!readOnly && (
+            <MapClickHandler
+              onLocationSelect={(lat, lng) => {
+                console.log('🖱️ Click sulla mappa:', { lat, lng });
+                handleCoordinateChange({ lat, lng });
+                reverseGeocode(lat, lng);
+              }}
+            />
+          )}
           {console.log('✅ Rendering marker at:', currentCoordinate)}
           <Marker position={[currentCoordinate.lat, currentCoordinate.lng]} />
           <Circle
             center={[currentCoordinate.lat, currentCoordinate.lng]}
-            radius={raggioKm * 1000}
+            radius={effectiveRaggio * 1000}
             pathOptions={{ color: 'blue', fillColor: 'blue', fillOpacity: 0.1 }}
           />
         </MapContainer>
         
-        <div className="absolute top-2 left-2 bg-white px-3 py-2 rounded shadow-lg text-sm z-[1000] pointer-events-none opacity-80">
-          <p className="font-medium text-gray-700">Clicca sulla mappa o cerca un indirizzo</p>
-        </div>
+        {!readOnly && (
+          <div className="absolute top-2 left-2 bg-white px-3 py-2 rounded shadow-lg text-sm z-[1000] pointer-events-none opacity-80">
+            <p className="font-medium text-gray-700">Clicca sulla mappa o cerca un indirizzo</p>
+          </div>
+        )}
       </div>
 
+      {/* Slider raggio */}
+      {onRaggioChange && (
+        <div className="bg-gray-50 p-4 rounded-lg">
+          <label className="block text-sm font-semibold text-gray-700 mb-2">
+            Raggio di copertura: <span className="text-blue-600">{effectiveRaggio} km</span>
+          </label>
+          <input
+            type="range"
+            min={1}
+            max={50}
+            step={1}
+            value={effectiveRaggio}
+            onChange={(e) => onRaggioChange(parseInt(e.target.value))}
+            className="w-full h-2 bg-blue-200 rounded-lg cursor-pointer accent-blue-600"
+          />
+          <div className="flex justify-between text-xs text-gray-500 mt-1">
+            <span>1 km</span>
+            <span>25 km</span>
+            <span>50 km</span>
+          </div>
+        </div>
+      )}
 
     </div>
   );

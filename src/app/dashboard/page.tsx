@@ -550,7 +550,7 @@ export default function Dashboard() {
                                     <span className="font-semibold text-orange-800 truncate">{ruolo.specializzazione}</span>
                                   </div>
                                   <span className="text-xs bg-orange-200 text-orange-900 px-2 py-0.5 rounded-full font-bold whitespace-nowrap">
-                                    {ruolo.numero - ruolo.occupati}
+                                    {ruolo.numero - (ruolo.occupati || 0)}
                                   </span>
                                 </div>
                               ))}

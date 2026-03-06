@@ -38,6 +38,7 @@ export default function TeamDetailPage() {
   const [editingField, setEditingField] = useState<string | null>(null);
   const [editingValue, setEditingValue] = useState<string>('');
   const [editingPositions, setEditingPositions] = useState<any[]>([]);
+  const [editingLocation, setEditingLocation] = useState<{ coordinate: { lat: number; lng: number } | null; indirizzo: string; raggioKm: number }>({ coordinate: null, indirizzo: '', raggioKm: 10 });
   const [saving, setSaving] = useState(false);
 
   // Specializzazioni disponibili
@@ -596,6 +597,12 @@ export default function TeamDetailPage() {
     setEditingField(field);
     if (field === 'positions') {
       setEditingPositions(Array.isArray(currentValue) ? currentValue : []);
+    } else if (field === 'location') {
+      setEditingLocation({
+        coordinate: team?.coordinate || null,
+        indirizzo: team?.indirizzo || '',
+        raggioKm: team?.raggioKm || 10,
+      });
     } else {
       setEditingValue(typeof currentValue === 'string' ? currentValue : '');
     }
@@ -605,6 +612,7 @@ export default function TeamDetailPage() {
     setEditingField(null);
     setEditingValue('');
     setEditingPositions([]);
+    setEditingLocation({ coordinate: null, indirizzo: '', raggioKm: 10 });
   };
 
   const saveField = async (field: string) => {
@@ -620,6 +628,10 @@ export default function TeamDetailPage() {
         updateData.description = editingValue;
       } else if (field === 'positions') {
         updateData.ruoliCercati = editingPositions;
+      } else if (field === 'location') {
+        if (editingLocation.coordinate) updateData.coordinate = editingLocation.coordinate;
+        if (editingLocation.indirizzo) updateData.indirizzo = editingLocation.indirizzo;
+        updateData.raggioKm = editingLocation.raggioKm;
       }
 
       await updateDoc(doc(db, 'teams', teamId), updateData);
@@ -1088,9 +1100,10 @@ export default function TeamDetailPage() {
                     <h4 className="text-lg font-semibold text-gray-800 mb-4">Posizioni attuali</h4>
                     <div className="space-y-3">
                       {editingPositions.map((pos, index) => {
-                        const postiLiberi = pos.numero - pos.occupati;
-                        const isCompleto = pos.occupati >= pos.numero;
-                        const canRemove = pos.occupati === 0; // Solo se non ci sono membri assegnati
+                        const occupati = pos.occupati || 0;
+                        const postiLiberi = pos.numero - occupati;
+                        const isCompleto = occupati >= pos.numero;
+                        const canRemove = occupati === 0; // Solo se non ci sono membri assegnati
                         
                         return (
                           <div key={index} className={`p-4 rounded-lg border-2 ${
@@ -1110,7 +1123,7 @@ export default function TeamDetailPage() {
                                 </div>
                                 
                                 <div className="flex items-center gap-4 text-sm text-gray-600">
-                                  <span>Membri assegnati: <strong>{pos.occupati}</strong></span>
+                                  <span>Membri assegnati: <strong>{occupati}</strong></span>
                                   <span>Posti totali: <strong>{pos.numero}</strong></span>
                                 </div>
                                 
@@ -1120,7 +1133,7 @@ export default function TeamDetailPage() {
                                     className={`h-2 rounded-full transition-all ${
                                       isCompleto ? 'bg-green-500' : 'bg-amber-500'
                                     }`}
-                                    style={{ width: `${(pos.occupati / pos.numero) * 100}%` }}
+                                    style={{ width: `${(occupati / pos.numero) * 100}%` }}
                                   ></div>
                                 </div>
                               </div>
@@ -1131,10 +1144,10 @@ export default function TeamDetailPage() {
                                     <label className="text-sm font-medium">Posti totali:</label>
                                     <input
                                       type="number"
-                                      min={pos.occupati} // Non può essere meno dei posti già occupati
+                                      min={occupati} // Non può essere meno dei posti già occupati
                                       max="10"
                                       value={pos.numero}
-                                      onChange={(e) => updatePosition(index, 'numero', parseInt(e.target.value) || pos.occupati)}
+                                      onChange={(e) => updatePosition(index, 'numero', parseInt(e.target.value) || occupati)}
                                       className="w-16 border border-gray-300 rounded px-2 py-1 text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
                                     />
                                   </div>
@@ -1223,8 +1236,9 @@ export default function TeamDetailPage() {
                 {team.ruoliCercati && team.ruoliCercati.length > 0 ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {team.ruoliCercati.map((ruolo, index) => {
-                      const postiLiberi = ruolo.numero - ruolo.occupati;
-                      const percentualeOccupazione = (ruolo.occupati / ruolo.numero) * 100;
+                      const occupati = ruolo.occupati || 0;
+                      const postiLiberi = ruolo.numero - occupati;
+                      const percentualeOccupazione = (occupati / ruolo.numero) * 100;
                       const isCompleto = postiLiberi === 0;
                       
                       return (
@@ -1255,7 +1269,7 @@ export default function TeamDetailPage() {
                             ></div>
                           </div>
                           <p className="text-xs text-gray-600">
-                            {ruolo.occupati} / {ruolo.numero} posizioni occupate
+                            {occupati} / {ruolo.numero} posizioni occupate
                           </p>
                         </div>
                       );
@@ -1365,7 +1379,7 @@ export default function TeamDetailPage() {
         {/* Sezione Zona Operativa */}
         {team.coordinate && team.indirizzo && (
           <div className="bg-white rounded-xl shadow-sm mb-6 overflow-hidden">
-            <div className="px-8 py-6 border-b border-gray-200">
+            <div className="px-8 py-6 border-b border-gray-200 flex justify-between items-center">
               <h3 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
                 <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
@@ -1373,16 +1387,55 @@ export default function TeamDetailPage() {
                 </svg>
                 Zona Operativa
               </h3>
+              {isAdmin && editingField !== 'location' && (
+                <button
+                  onClick={() => startEditing('location', [])}
+                  className="px-4 py-2 text-sm bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 font-medium flex items-center gap-1"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                  </svg>
+                  Modifica
+                </button>
+              )}
+              {editingField === 'location' && (
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => saveField('location')}
+                    disabled={saving}
+                    className="px-4 py-2 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium disabled:bg-gray-400"
+                  >
+                    {saving ? 'Salvo...' : 'Salva'}
+                  </button>
+                  <button
+                    onClick={cancelEditing}
+                    className="px-4 py-2 text-sm bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-medium"
+                  >
+                    Annulla
+                  </button>
+                </div>
+              )}
             </div>
             <div className="p-6">
+              {editingField !== 'location' && (
+                <p className="text-gray-700 mb-3 flex items-center gap-2">
+                  <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                  </svg>
+                  {team.indirizzo}
+                  <span className="text-gray-400">•</span>
+                  <span className="text-sm text-gray-500">Raggio: {team.raggioKm || 10} km</span>
+                </p>
+              )}
               <div style={{ position: 'relative', zIndex: 1 }}>
                 <MapSelector
-                  coordinate={team.coordinate}
-                  raggioKm={team.raggioKm || 10}
-                  indirizzo={team.indirizzo}
-                  onCoordinateChange={() => {}}
-                  onIndirizzoChange={() => {}}
-                  onRaggioChange={() => {}}
+                  coordinate={editingField === 'location' ? editingLocation.coordinate : team.coordinate}
+                  raggioKm={editingField === 'location' ? editingLocation.raggioKm : (team.raggioKm || 10)}
+                  indirizzo={editingField === 'location' ? editingLocation.indirizzo : team.indirizzo}
+                  onCoordinateChange={(coord) => setEditingLocation(prev => ({ ...prev, coordinate: coord }))}
+                  onIndirizzoChange={(addr) => setEditingLocation(prev => ({ ...prev, indirizzo: addr }))}
+                  onRaggioChange={(raggio) => setEditingLocation(prev => ({ ...prev, raggioKm: raggio }))}
+                  readOnly={editingField !== 'location'}
                 />
               </div>
             </div>

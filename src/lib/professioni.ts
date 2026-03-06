@@ -29,7 +29,8 @@ export const CONFIGURAZIONI_PROFESSIONI: Record<string, ConfigurazioneProfession
       'Psicologia di comunità e prevenzione',
       'Psicologia giuridica',
       'Psicoeducazione',
-      'Mindfulness'
+      'Mindfulness',
+      'Psicosomatica'
     ],
     documentiRichiesti: [
       {
@@ -69,7 +70,8 @@ export const CONFIGURAZIONI_PROFESSIONI: Record<string, ConfigurazioneProfession
       'EMDR',
       'Schema Therapy',
       'ACT (Acceptance and Commitment Therapy)',
-      'Problemi della sfera sessuale'
+      'Problemi della sfera sessuale',
+      'Psicosomatica'
     ],
     documentiRichiesti: [
       {

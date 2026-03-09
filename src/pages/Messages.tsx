@@ -24,6 +24,20 @@ function formatRelativeDate(date: Date): string {
   return date.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' }) + ', ' + time;
 }
 
+function formatDateSeparator(date: Date): string {
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const target = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const diffDays = Math.floor((today.getTime() - target.getTime()) / (1000 * 60 * 60 * 24));
+  if (diffDays === 0) return 'Oggi';
+  if (diffDays === 1) return 'Ieri';
+  return date.toLocaleDateString('it-IT', { weekday: 'short', day: '2-digit', month: 'short' });
+}
+
+function getDateKey(date: Date): string {
+  return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
+}
+
 export default function MessagesPage() {
   const { user, userProfile } = useAuth();
   const navigate = useNavigate();
@@ -39,6 +53,7 @@ export default function MessagesPage() {
   const [sending, setSending] = useState(false);
   const [creatingConversation, setCreatingConversation] = useState(false);
   const [uploadingFiles, setUploadingFiles] = useState<File[]>([]);
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const [uploadProgress, setUploadProgress] = useState<{[key: string]: number}>({});
   const [pendingAttachments, setPendingAttachments] = useState<FileAttachment[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -682,13 +697,15 @@ export default function MessagesPage() {
   const otherUserName = otherUserId ? selectedConvData?.participantsData[otherUserId]?.name : '';
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Header />
+    <div className="min-h-screen bg-white md:bg-gray-50">
+      <div className={`${selectedConversation ? 'hidden md:block' : ''}`}><Header /></div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-0 pb-24 sm:py-8">
-        <h1 className="text-2xl sm:text-4xl font-bold text-gray-900 mb-3 sm:mb-8">Messaggi</h1>
+      <div className="max-w-7xl mx-auto md:px-6 pt-0 pb-0 md:pb-24 md:py-8">
+        {!selectedConversation && (
+          <h1 className="text-[28px] sm:text-4xl font-extrabold text-[#1B3A5C] px-5 pt-6 pb-4 sm:mb-8">Messaggi</h1>
+        )}
 
-        <div className="bg-white rounded-xl shadow-sm" style={{ height: '70vh', display: 'flex' }}>
+        <div className="bg-white md:rounded-xl md:shadow-sm" style={{ height: selectedConversation ? '100dvh' : 'calc(100dvh - 160px)', display: 'flex' }}>
           <div className="flex md:grid md:grid-cols-12 w-full h-full">
             {/* Lista conversazioni */}
             <div className={`${selectedConversation ? 'hidden' : 'flex-1'} md:flex md:flex-col md:col-span-4 border-r border-gray-200 overflow-y-auto h-full`}>
@@ -711,8 +728,8 @@ export default function MessagesPage() {
                   let photoURL = '';
                   
                   if (isTeamChat) {
-                    displayName = `Équipe: ${conv.teamName || 'Senza nome'}`;
-                    photoURL = ''; // Icona team
+                    displayName = conv.teamName || 'Senza nome';
+                    photoURL = conv.teamPhotoURL || '';
                   } else {
                     const otherId = conv.participants.find(id => id !== user?.uid);
                     displayName = otherId && conv.participantsData?.[otherId]?.name || 'Sconosciuto';
@@ -723,66 +740,80 @@ export default function MessagesPage() {
                     <div
                       key={conv.id}
                       onClick={() => setSelectedConversation(conv.id)}
-                      className={`p-4 cursor-pointer border-b border-gray-100 hover:bg-gray-50 transition ${
-                        isSelected ? 'bg-blue-50 border-l-4 border-l-blue-600' : ''
-                      } ${isTeamChat ? 'bg-gradient-to-r from-amber-50 to-orange-50 border-l-2 border-l-amber-400' : ''}`}
+                      className={`px-5 py-4 cursor-pointer border-b border-gray-100 hover:bg-gray-50 active:bg-gray-100 transition-colors ${
+                        isSelected ? 'bg-blue-50' : ''
+                      }`}
                     >
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-1">
-                            {isTeamChat ? (
-                              conv.teamPhotoURL ? (
-                                <img 
-                                  src={conv.teamPhotoURL} 
-                                  alt={displayName} 
-                                  className="w-10 h-10 rounded-full object-cover border-2 border-amber-300"
-                                />
-                              ) : (
-                                <div className="w-10 h-10 bg-gradient-to-br from-amber-500 to-orange-600 rounded-full flex items-center justify-center text-white font-bold">
-                                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 919.288 0M15 7a3 3 0 11-6 0 3 3 0 616 0zm6 3a2 2 0 11-4 0 2 2 0 414 0zM7 10a2 2 0 11-4 0 2 2 0 414 0z" />
-                                  </svg>
-                                </div>
-                              )
-                            ) : photoURL ? (
-                              <img 
-                                src={photoURL} 
-                                alt={displayName} 
-                                className="w-10 h-10 rounded-full object-cover border-2 border-gray-300"
-                              />
-                            ) : (
-                              <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center text-white font-bold">
-                                {displayName.charAt(0).toUpperCase()}
-                              </div>
+                      <div className="flex items-center gap-3">
+                        {/* Info conversazione */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <h3 className="font-bold text-[#1B3A5C] text-[15px] leading-tight">
+                              {displayName}
+                            </h3>
+                            {isTeamChat && (
+                              <span className="px-1.5 py-0.5 bg-amber-100 text-amber-700 text-[10px] font-semibold rounded-full uppercase tracking-wide">
+                                Équipe
+                              </span>
                             )}
-                            <div className="flex-1">
-                              <div className="flex items-center gap-2">
-                                <h3 className={`font-bold ${isTeamChat ? 'text-amber-900' : 'text-gray-900'}`}>
-                                  {displayName}
-                                </h3>
-                                {isTeamChat && (
-                                  <span className="px-2 py-1 bg-amber-100 text-amber-800 text-xs font-medium rounded-full">
-                                    ÉQUIPE
-                                  </span>
-                                )}
-                              </div>
-                              {conv.lastMessage && (
-                                <p className="text-sm text-gray-600 truncate">{conv.lastMessage}</p>
-                              )}
-                            </div>
                           </div>
+                          {conv.lastMessage && (
+                            <p className="text-sm text-[#1B3A5C] font-medium truncate mt-0.5 leading-tight">
+                              {conv.lastMessage}
+                            </p>
+                          )}
+                          {conv.lastMessageTime && (
+                            <p className="text-[13px] text-gray-400 mt-0.5">
+                              {formatRelativeDate(conv.lastMessageTime.toDate())}
+                            </p>
+                          )}
                         </div>
+
+                        {/* Unread badge */}
                         {unread > 0 && (
-                          <span className="px-2 py-1 bg-red-500 text-white text-xs font-bold rounded-full">
+                          <span className="w-5 h-5 flex items-center justify-center bg-[#0C8CE9] text-white text-[11px] font-bold rounded-full flex-shrink-0">
                             {unread}
                           </span>
                         )}
+
+                        {/* Avatar con bordo blu stile BlaBlaCar */}
+                        <div className="flex-shrink-0 relative">
+                          {isTeamChat ? (
+                            photoURL ? (
+                              <div className="w-12 h-12 rounded-full p-[2px] bg-gradient-to-br from-amber-400 to-orange-500">
+                                <img 
+                                  src={photoURL} 
+                                  alt={displayName} 
+                                  className="w-full h-full rounded-full object-cover border-2 border-white"
+                                />
+                              </div>
+                            ) : (
+                              <div className="w-12 h-12 bg-gradient-to-br from-amber-500 to-orange-600 rounded-full flex items-center justify-center text-white">
+                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                                </svg>
+                              </div>
+                            )
+                          ) : photoURL ? (
+                            <div className="w-12 h-12 rounded-full p-[2px] bg-[#0C8CE9]">
+                              <img 
+                                src={photoURL} 
+                                alt={displayName} 
+                                className="w-full h-full rounded-full object-cover border-2 border-white"
+                              />
+                            </div>
+                          ) : (
+                            <div className="w-12 h-12 bg-[#0C8CE9] rounded-full flex items-center justify-center text-white font-bold text-lg">
+                              {displayName.charAt(0).toUpperCase()}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Chevron */}
+                        <svg className="w-5 h-5 text-gray-300 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
                       </div>
-                      {conv.lastMessageTime && (
-                        <p className="text-xs text-gray-400 mt-1">
-                          {formatRelativeDate(conv.lastMessageTime.toDate())}
-                        </p>
-                      )}
                     </div>
                   );
                 })
@@ -803,39 +834,41 @@ export default function MessagesPage() {
                 </div>
               ) : (
                 <>
-                  {/* Header conversazione */}
-                  <div className="p-4 border-b border-gray-200 bg-gray-50">
+                  {/* Header conversazione - stile BlaBlaCar */}
+                  <div className="px-3 py-3 border-b border-gray-200 bg-white">
                     <div className="flex items-center gap-3">
-                      {/* Pulsante indietro per mobile */}
+                      {/* Pulsante indietro */}
                       <button
                         onClick={() => setSelectedConversation(null)}
-                        className="md:hidden p-2 hover:bg-gray-100 rounded-lg transition"
+                        className="md:hidden p-1 -ml-1 hover:bg-gray-100 rounded-full transition"
                       >
-                        <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                        <svg className="w-6 h-6 text-[#1B3A5C]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />
                         </svg>
                       </button>
                       
                       {selectedConvData?.type === 'team' ? (
                         <>
                           {selectedConvData.teamPhotoURL ? (
-                            <img 
-                              src={selectedConvData.teamPhotoURL} 
-                              alt={selectedConvData.teamName} 
-                              className="w-10 h-10 rounded-full object-cover border-2 border-amber-300"
-                            />
+                            <div className="w-10 h-10 rounded-full p-[2px] bg-gradient-to-br from-amber-400 to-orange-500 flex-shrink-0">
+                              <img 
+                                src={selectedConvData.teamPhotoURL} 
+                                alt={selectedConvData.teamName} 
+                                className="w-full h-full rounded-full object-cover border-[1.5px] border-white"
+                              />
+                            </div>
                           ) : (
-                            <div className="w-10 h-10 bg-gradient-to-br from-amber-500 to-orange-600 rounded-full flex items-center justify-center text-white">
-                              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <div className="w-10 h-10 bg-gradient-to-br from-amber-500 to-orange-600 rounded-full flex items-center justify-center text-white flex-shrink-0">
+                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 515.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 919.288 0M15 7a3 3 0 11-6 0 3 3 0 616 0zm6 3a2 2 0 11-4 0 2 2 0 414 0zM7 10a2 2 0 11-4 0 2 2 0 414 0z" />
                               </svg>
                             </div>
                           )}
-                          <div className="flex-1">
-                            <h2 className="text-xl font-bold text-amber-900">
-                              Équipe: {selectedConvData.teamName}
+                          <div className="flex-1 min-w-0">
+                            <h2 className="text-[16px] font-bold text-[#1B3A5C] truncate">
+                              {selectedConvData.teamName}
                             </h2>
-                            <p className="text-sm text-gray-600">
+                            <p className="text-[13px] text-gray-500">
                               {selectedConvData.participants.length} membri
                             </p>
                           </div>
@@ -843,117 +876,155 @@ export default function MessagesPage() {
                       ) : (
                         <>
                           {otherUserId && selectedConvData?.participantsData?.[otherUserId]?.photoURL ? (
-                            <img 
-                              src={selectedConvData.participantsData[otherUserId].photoURL} 
-                              alt={otherUserName} 
-                              className="w-10 h-10 rounded-full object-cover border-2 border-gray-300"
-                            />
+                            <div className="w-10 h-10 rounded-full p-[2px] bg-[#0C8CE9] flex-shrink-0">
+                              <img 
+                                src={selectedConvData.participantsData[otherUserId].photoURL} 
+                                alt={otherUserName} 
+                                className="w-full h-full rounded-full object-cover border-[1.5px] border-white"
+                              />
+                            </div>
                           ) : (
-                            <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center text-white font-bold">
+                            <div className="w-10 h-10 bg-[#0C8CE9] rounded-full flex items-center justify-center text-white font-bold flex-shrink-0">
                               {otherUserName?.charAt(0).toUpperCase()}
                             </div>
                           )}
-                          <h2 className="text-xl font-bold text-gray-900">{otherUserName}</h2>
+                          <div className="flex-1 min-w-0">
+                            <h2 className="text-[16px] font-bold text-[#1B3A5C] truncate">{otherUserName}</h2>
+                          </div>
                         </>
                       )}
+                      
+                      {/* Menu tre punti stile BlaBlaCar */}
+                      <button className="p-2 hover:bg-gray-100 rounded-full transition flex-shrink-0">
+                        <svg className="w-5 h-5 text-[#1B3A5C]" fill="currentColor" viewBox="0 0 24 24">
+                          <circle cx="12" cy="5" r="2" />
+                          <circle cx="12" cy="12" r="2" />
+                          <circle cx="12" cy="19" r="2" />
+                        </svg>
+                      </button>
                     </div>
                   </div>
 
-                  {/* Lista messaggi */}
-                  <div ref={messagesContainerRef} className="flex-1 overflow-y-auto p-6 space-y-4">
-                    {messages.map((msg) => {
-                      const isMine = msg.senderId === user?.uid;
-                      const isTeamChat = selectedConvData?.type === 'team';
-                      
-                      return (
-                        <div key={msg.id} className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}>
-                          <div className="flex items-end gap-2 max-w-[70%]">
-                            {!isMine && isTeamChat && (
-                              <div className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0">
-                                {msg.senderPhotoURL ? (
-                                  <img 
-                                    src={msg.senderPhotoURL} 
-                                    alt={msg.senderName} 
-                                    className="w-full h-full object-cover"
-                                  />
-                                ) : (
-                                  <div className="w-full h-full bg-gray-400 flex items-center justify-center text-white text-xs font-bold">
-                                    {msg.senderName.charAt(0).toUpperCase()}
-                                  </div>
-                                )}
+                  {/* Lista messaggi - stile BlaBlaCar */}
+                  <div ref={messagesContainerRef} className="flex-1 overflow-y-auto px-4 py-4 bg-white">
+                    {(() => {
+                      let lastDateKey = '';
+                      return messages.map((msg) => {
+                        const isMine = msg.senderId === user?.uid;
+                        const isTeamChat = selectedConvData?.type === 'team';
+                        const msgDate = msg.createdAt.toDate();
+                        const currentDateKey = getDateKey(msgDate);
+                        const showDateSeparator = currentDateKey !== lastDateKey;
+                        lastDateKey = currentDateKey;
+                        
+                        return (
+                          <div key={msg.id}>
+                            {/* Date separator */}
+                            {showDateSeparator && (
+                              <div className="flex justify-center my-4">
+                                <span className="text-[13px] text-gray-400 font-medium">
+                                  {formatDateSeparator(msgDate)}
+                                </span>
                               </div>
                             )}
-                            <div className={`${isMine ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-900'} rounded-2xl px-4 py-3`}>
-                              {!isMine && isTeamChat && (
-                                <p className="text-xs font-semibold mb-1 opacity-70">
-                                  {msg.senderName}
-                                </p>
-                              )}
-                              
-                              {/* Contenuto testuale */}
-                              {msg.content && (
-                                <p className="whitespace-pre-wrap break-words mb-2">{msg.content}</p>
-                              )}
-                              
-                              {/* Allegati */}
-                              {msg.attachments && msg.attachments.length > 0 && (
-                                <div className="space-y-2 mb-2">
-                                  {msg.attachments.map((attachment) => (
-                                    <div key={attachment.id} className={`border rounded-lg p-2 ${isMine ? 'border-blue-300 bg-blue-500' : 'border-gray-300 bg-white'}`}>
-                                      <div className="flex items-center gap-2">
-                                        <span className="text-lg">{getFileIcon(attachment.type)}</span>
-                                        <div className="flex-1 min-w-0">
-                                          <p className={`text-sm font-medium truncate ${isMine ? 'text-white' : 'text-gray-900'}`}>
-                                            {attachment.name}
-                                          </p>
-                                          <p className={`text-xs ${isMine ? 'text-blue-100' : 'text-gray-500'}`}>
-                                            {formatFileSize(attachment.size)}
-                                          </p>
-                                        </div>
-                                        <a
-                                          href={attachment.downloadURL}
-                                          target="_blank"
-                                          rel="noopener noreferrer"
-                                          className={`px-2 py-1 rounded text-xs font-medium transition ${
-                                            isMine 
-                                              ? 'bg-blue-700 text-white hover:bg-blue-800' 
-                                              : 'bg-blue-600 text-white hover:bg-blue-700'
-                                          }`}
-                                        >
-                                          {attachment.type.startsWith('image/') ? 'Visualizza' : 'Scarica'}
-                                        </a>
+                            <div className={`flex ${isMine ? 'justify-end' : 'justify-start'} mb-2`}>
+                              <div className="flex items-end gap-2 max-w-[80%]">
+                                {!isMine && isTeamChat && (
+                                  <div className="w-7 h-7 rounded-full overflow-hidden flex-shrink-0 mb-4">
+                                    {msg.senderPhotoURL ? (
+                                      <img 
+                                        src={msg.senderPhotoURL} 
+                                        alt={msg.senderName} 
+                                        className="w-full h-full object-cover"
+                                      />
+                                    ) : (
+                                      <div className="w-full h-full bg-gray-400 flex items-center justify-center text-white text-xs font-bold">
+                                        {msg.senderName.charAt(0).toUpperCase()}
                                       </div>
-                                      
-                                      {/* Preview per immagini */}
-                                      {attachment.type.startsWith('image/') && (
-                                        <div className="mt-2">
-                                          <img 
-                                            src={attachment.downloadURL} 
-                                            alt={attachment.name}
-                                            className="max-w-full h-auto rounded cursor-pointer"
-                                            style={{ maxHeight: '200px' }}
-                                            onClick={() => window.open(attachment.downloadURL, '_blank')}
-                                          />
-                                        </div>
-                                      )}
-                                    </div>
-                                  ))}
+                                    )}
+                                  </div>
+                                )}
+                                <div>
+                                  {!isMine && isTeamChat && (
+                                    <p className="text-[11px] font-semibold text-gray-500 mb-1 ml-1">
+                                      {msg.senderName}
+                                    </p>
+                                  )}
+                                  <div className={`${
+                                    isMine 
+                                      ? 'bg-[#1B3A5C] text-white rounded-2xl rounded-br-md' 
+                                      : 'bg-[#EDEFF1] text-[#1B3A5C] rounded-2xl rounded-bl-md'
+                                  } px-4 py-2.5`}>
+                                    {/* Contenuto testuale */}
+                                    {msg.content && (
+                                      <p className="whitespace-pre-wrap break-words text-[15px] leading-relaxed">{msg.content}</p>
+                                    )}
+                                    
+                                    {/* Allegati */}
+                                    {msg.attachments && msg.attachments.length > 0 && (
+                                      <div className="space-y-2 mt-1">
+                                        {msg.attachments.map((attachment) => (
+                                          attachment.type.startsWith('image/') ? (
+                                            /* Immagine: mostra solo la foto */
+                                            <div key={attachment.id} className="rounded-lg overflow-hidden cursor-pointer" onClick={() => setLightboxUrl(attachment.downloadURL)}>
+                                              <img 
+                                                src={attachment.downloadURL} 
+                                                alt={attachment.name}
+                                                className="max-w-full h-auto rounded-lg"
+                                                style={{ maxHeight: '250px' }}
+                                              />
+                                            </div>
+                                          ) : (
+                                            /* File non-immagine: mostra dettagli */
+                                            <div key={attachment.id} className={`border rounded-lg p-2 ${isMine ? 'border-[#2a5078] bg-[#1a3050]' : 'border-gray-300 bg-white'}`}>
+                                              <div className="flex items-center gap-2">
+                                                <span className="text-lg">{getFileIcon(attachment.type)}</span>
+                                                <div className="flex-1 min-w-0">
+                                                  <p className={`text-sm font-medium truncate ${isMine ? 'text-white' : 'text-gray-900'}`}>
+                                                    {attachment.name}
+                                                  </p>
+                                                  <p className={`text-xs ${isMine ? 'text-blue-200' : 'text-gray-500'}`}>
+                                                    {formatFileSize(attachment.size)}
+                                                  </p>
+                                                </div>
+                                                <a
+                                                  href={attachment.downloadURL}
+                                                  target="_blank"
+                                                  rel="noopener noreferrer"
+                                                  className="px-2 py-1 rounded text-xs font-medium transition bg-[#0C8CE9] text-white hover:bg-blue-600"
+                                                >
+                                                  Scarica
+                                                </a>
+                                              </div>
+                                            </div>
+                                          )
+                                        ))}
+                                      </div>
+                                    )}
+                                  </div>
+                                  {/* Timestamp + read receipts sotto la bolla */}
+                                  <div className={`flex items-center gap-1 mt-1 ${isMine ? 'justify-end mr-1' : 'ml-1'}`}>
+                                    <span className="text-[12px] text-gray-400">
+                                      {msg.createdAt.toDate().toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}
+                                    </span>
+                                    {isMine && (
+                                      <span className={`text-[12px] ${msg.read ? 'text-[#0C8CE9]' : 'text-gray-400'}`}>
+                                        ✓✓
+                                      </span>
+                                    )}
+                                  </div>
                                 </div>
-                              )}
-                              
-                              <p className={`text-xs mt-1 ${isMine ? 'text-blue-100' : 'text-gray-500'}`}>
-                                {msg.createdAt.toDate().toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}
-                              </p>
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      );
-                    })}
+                        );
+                      });
+                    })()}
                     <div ref={messagesEndRef} />
                   </div>
 
-                  {/* Form invio messaggio */}
-                  <form onSubmit={handleSendMessage} className="p-4 border-t border-gray-200 bg-gray-50">
+                  {/* Form invio messaggio - stile BlaBlaCar */}
+                  <form onSubmit={handleSendMessage} className="px-4 py-3 border-t border-gray-200 bg-white">
                     {/* Indicatore upload in corso */}
                     {uploadingFiles.length > 0 && (
                       <div className="mb-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
@@ -964,7 +1035,7 @@ export default function MessagesPage() {
                             <span className="text-sm flex-1">{file.name}</span>
                             <div className="w-20 bg-gray-200 rounded-full h-2">
                               <div 
-                                className="bg-blue-600 h-2 rounded-full transition-all" 
+                                className="bg-[#0C8CE9] h-2 rounded-full transition-all" 
                                 style={{ width: `${uploadProgress[file.name] || 0}%` }}
                               ></div>
                             </div>
@@ -1023,38 +1094,40 @@ export default function MessagesPage() {
                       </div>
                     )}
                     
-                    <div className="flex gap-3 items-end">
-                      <div className="flex-1">
-                        <input
-                          type="text"
-                          value={messageText}
-                          onChange={(e) => setMessageText(e.target.value)}
-                          placeholder="Scrivi un messaggio..."
-                          className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          disabled={sending || uploadingFiles.length > 0}
-                        />
-                      </div>
-                      
+                    <div className="flex gap-2 items-end">
                       {/* Pulsante allegati */}
                       <button
                         type="button"
                         onClick={() => fileInputRef.current?.click()}
                         disabled={sending || uploadingFiles.length > 0}
-                        className="p-3 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="p-2.5 text-gray-400 hover:text-[#0C8CE9] hover:bg-blue-50 rounded-full transition disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
                         title="Allega file"
                       >
-                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
                         </svg>
                       </button>
+
+                      <div className="flex-1 relative">
+                        <input
+                          type="text"
+                          value={messageText}
+                          onChange={(e) => setMessageText(e.target.value)}
+                          placeholder={`Il tuo messaggio per ${selectedConvData?.type === 'team' ? selectedConvData.teamName : otherUserName}`}
+                          className="w-full px-4 py-2.5 bg-[#F5F6F8] border-0 rounded-full text-[15px] text-[#1B3A5C] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#0C8CE9]/30"
+                          disabled={sending || uploadingFiles.length > 0}
+                        />
+                      </div>
                       
                       {/* Pulsante invia */}
                       <button
                         type="submit"
                         disabled={(!messageText.trim() && pendingAttachments.length === 0) || sending || uploadingFiles.length > 0}
-                        className="px-6 py-3 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition shadow-sm"
+                        className="p-2.5 bg-[#0C8CE9] text-white rounded-full hover:bg-[#0a7bd4] disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed transition flex-shrink-0"
                       >
-                        {sending ? 'Invio...' : 'Invia'}
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                        </svg>
                       </button>
                     </div>
                     
@@ -1074,7 +1147,32 @@ export default function MessagesPage() {
           </div>
         </div>
       </div>
-      <Footer />
+      <div className="hidden md:block">
+        <Footer />
+      </div>
+
+      {/* Lightbox immagine */}
+      {lightboxUrl && (
+        <div
+          className="fixed inset-0 z-[100] bg-black/90 flex items-center justify-center"
+          onClick={() => setLightboxUrl(null)}
+        >
+          <button
+            onClick={() => setLightboxUrl(null)}
+            className="absolute top-4 right-4 p-2 text-white/80 hover:text-white transition z-10"
+          >
+            <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+          <img
+            src={lightboxUrl}
+            alt=""
+            className="max-w-[95vw] max-h-[90vh] object-contain rounded-lg"
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+      )}
     </div>
   );
 }

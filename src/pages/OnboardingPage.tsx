@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { doc, setDoc, Timestamp } from 'firebase/firestore';
@@ -117,7 +117,7 @@ export default function OnboardingPage() {
           nome: user!.displayName || '',
           albo: '', // Campo deprecato
           specializzazioni: specializzazioni, // Per retrocompatibilità
-          professioniConDocumenti: formData.professioniConDocumenti, // NUOVO
+          professioniPending: formData.professioniConDocumenti, // Professioni in attesa di approvazione admin
           tematiche: tematicheAggregate, // Aggregate da professioni per retrocompatibilità
           esperienza: esperienzaAggregata, // Presa da professioni per retrocompatibilità
           location: {
@@ -183,7 +183,7 @@ export default function OnboardingPage() {
           <h2 className="text-2xl font-bold text-gray-900 mb-3">Resta sempre aggiornato</h2>
           <p className="text-gray-600 mb-6 leading-relaxed">
             Attiva le notifiche per ricevere avvisi istantanei quando qualcuno ti invia un messaggio, 
-            ti invita in un'équipe o ti invia una referral.
+            ti invita in un'equipé o ti invia una referral.
           </p>
 
           <div className="space-y-3">

@@ -1,4 +1,4 @@
-import { useAuth } from '@/contexts/AuthContext';
+﻿import { useAuth } from '@/contexts/AuthContext';
 import { useModal } from '@/contexts/ModalContext';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useEffect, useState, useRef } from 'react';
@@ -122,7 +122,7 @@ export default function TeamDetailPage() {
         setPendingRequests(requestsWithUserData);
       }
 
-      // Carica o crea chat di équipe
+      // Carica o crea chat di equipé
       await loadTeamChat();
     } catch (error) {
       console.error('Errore caricamento team:', error);
@@ -424,7 +424,7 @@ export default function TeamDetailPage() {
 
       // Ricarica i dati
       await loadTeamData();
-      showToast('Richiesta accettata! Il membro è stato aggiunto all\'équipe.', 'success');
+      showToast('Richiesta accettata! Il membro è stato aggiunto all\'equipé.', 'success');
     } catch (error) {
       console.error('Errore accettazione richiesta:', error);
       showToast('Errore durante l\'accettazione della richiesta', 'error');
@@ -1462,7 +1462,7 @@ export default function TeamDetailPage() {
           </div>
         )}
 
-        {/* Pulsante lascia équipe per membri non admin */}
+        {/* Pulsante lascia equipé per membri non admin */}
         {isMember && !isAdmin && (
           <div className="bg-white rounded-xl shadow-sm p-6">
             <button
@@ -1483,7 +1483,7 @@ export default function TeamDetailPage() {
             <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden" style={{ zIndex: 10000 }}>
               <div className="px-8 py-6 border-b border-gray-200">
                 <h3 className="text-2xl font-bold text-gray-900">Richiesta di Adesione</h3>
-                <p className="text-sm text-gray-600 mt-1">Invia una richiesta per entrare nell'équipe</p>
+                <p className="text-sm text-gray-600 mt-1">Invia una richiesta per entrare nell'equipé</p>
               </div>
               
               <div className="p-6">
@@ -1494,7 +1494,7 @@ export default function TeamDetailPage() {
                   <textarea
                     value={requestMessage}
                     onChange={(e) => setRequestMessage(e.target.value)}
-                    placeholder="Presentati brevemente e spiega perché vorresti far parte di questa équipe..."
+                    placeholder="Presentati brevemente e spiega perché vorresti far parte di questa equipé..."
                     className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-green-500"
                     rows={6}
                   />

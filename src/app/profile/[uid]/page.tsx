@@ -1,4 +1,4 @@
-import { useAuth } from '@/contexts/AuthContext';
+﻿import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { doc, getDoc, collection, query, where, getDocs, addDoc, Timestamp } from 'firebase/firestore';
@@ -117,7 +117,7 @@ export default function ProfilePage() {
 
   const handleSendInvite = async () => {
     if (!selectedTeamId) {
-      showToast('Seleziona un\'équipe', 'warning');
+      showToast('Seleziona un\'equipé', 'warning');
       return;
     }
     
@@ -138,14 +138,14 @@ export default function ProfilePage() {
       const existingInviteSnapshot = await getDocs(existingInviteQuery);
       
       if (!existingInviteSnapshot.empty) {
-        showToast('Esiste già un invito pendente per questo professionista in questa équipe', 'warning');
+        showToast('Esiste già un invito pendente per questo professionista in questa equipé', 'warning');
         return;
       }
       
       // Controlla se l'utente è già membro del team
       const selectedTeam = adminTeams.find(t => t.id === selectedTeamId);
       if (selectedTeam?.memberIds?.includes(profileUser.uid)) {
-        showToast('Questo professionista è già membro dell\'équipe selezionata', 'warning');
+        showToast('Questo professionista è già membro dell\'equipé selezionata', 'warning');
         return;
       }
       
@@ -166,7 +166,7 @@ export default function ProfilePage() {
         await notifyTeamInviteReceived(
           profileUser.uid,
           selectedTeamId,
-          selectedTeam.nome || selectedTeam.name || 'Équipe',
+          selectedTeam.nome || selectedTeam.name || 'Equipé',
           senderName,
           inviteRef.id
         );
@@ -356,7 +356,7 @@ export default function ProfilePage() {
 
             {/* Pulsanti azione */}
             <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 w-full lg:w-auto">
-              {/* Pulsante Invita in Équipe */}
+              {/* Pulsante Invita in Equipé */}
               {adminTeams.length > 0 && (
                 <button
                   onClick={() => setShowInviteModal(true)}
@@ -365,7 +365,7 @@ export default function ProfilePage() {
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                   </svg>
-                  Invita in Équipe
+                  Invita in Equipé
                 </button>
               )}
               
@@ -398,6 +398,14 @@ export default function ProfilePage() {
             ))}
           </div>
         </div>
+
+        {/* Chi sono (Bio) */}
+        {profileUser.profile.bio && (
+          <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+            <h2 className="text-xl font-bold text-gray-900 mb-4">Chi sono</h2>
+            <p className="text-gray-700 whitespace-pre-wrap">{profileUser.profile.bio}</p>
+          </div>
+        )}
 
         {/* Tematiche */}
         {profileUser.profile.tematiche && [...new Set(profileUser.profile.tematiche
@@ -459,14 +467,6 @@ export default function ProfilePage() {
           </div>
         )}
 
-        {/* Bio (se presente) */}
-        {profileUser.profile.bio && (
-          <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-            <h2 className="text-xl font-bold text-gray-900 mb-4">Bio</h2>
-            <p className="text-gray-700 whitespace-pre-wrap">{profileUser.profile.bio}</p>
-          </div>
-        )}
-
         {/* Link social (se presenti) */}
         {(profileUser.profile.linkedin || profileUser.profile.website) && (
           <div className="bg-white rounded-lg shadow-md p-6">
@@ -499,25 +499,25 @@ export default function ProfilePage() {
         )}
       </div>
       
-      {/* Modal Invito Équipe */}
+      {/* Modal Invito Equipé */}
       {showInviteModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full">
             <div className="px-6 py-4 border-b border-gray-200">
-              <h3 className="text-xl font-bold text-gray-900">Invita in Équipe</h3>
-              <p className="text-sm text-gray-600 mt-1">Seleziona l'équipe in cui invitare <strong>{profileUser?.profile.nome}</strong></p>
+              <h3 className="text-xl font-bold text-gray-900">Invita in Equipé</h3>
+              <p className="text-sm text-gray-600 mt-1">Seleziona l'equipé in cui invitare <strong>{profileUser?.profile.nome}</strong></p>
             </div>
             
             <div className="p-6 space-y-4">
               <div>
-                <label className="block text-sm font-semibold mb-2">Équipe di destinazione *</label>
+                <label className="block text-sm font-semibold mb-2">Equipé di destinazione *</label>
                 <select
                   value={selectedTeamId}
                   onChange={(e) => setSelectedTeamId(e.target.value)}
                   className="w-full border rounded-lg px-3 py-2"
                   required
                 >
-                  <option value="">Seleziona un'équipe...</option>
+                  <option value="">Seleziona un'equipé...</option>
                   {adminTeams.map((team) => (
                     <option key={team.id} value={team.id}>
                       {team.nome || team.name}

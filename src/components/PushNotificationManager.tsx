@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -122,7 +122,7 @@ export default function PushNotificationManager() {
         <div className="flex-1">
           <h3 className="font-bold text-gray-900 mb-2">Abilita le Notifiche Push</h3>
           <p className="text-sm text-gray-600 mb-4">
-            Ricevi notifiche istantanee per messaggi, inviti e richieste da équipe
+            Ricevi notifiche istantanee per messaggi, inviti e richieste da equipé
           </p>
           
           <div className="flex gap-2">

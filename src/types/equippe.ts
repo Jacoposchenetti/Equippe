@@ -1,4 +1,4 @@
-import { Timestamp } from 'firebase/firestore';
+﻿import { Timestamp } from 'firebase/firestore';
 
 // Verification Types
 export type VerificationStatus = 
@@ -33,6 +33,32 @@ export interface Studio {
   remoto: boolean;
   coordinate?: { lat: number; lng: number }; // Coordinate geografiche dello studio
   raggioKm?: number; // Raggio di copertura in km
+}
+
+// Esperienze professionali, formazione e certificazioni
+export interface EsperienzaProfessionale {
+  id: string;
+  titolo: string; // es. "Psicologa /Psicoterapeuta"
+  organizzazione: string; // es. "Studio Privato Dott.ssa D'Auria Graziella"
+  indirizzo?: string; // es. "Via Trieste 19 Villanova PE"
+  descrizione?: string;
+  dataInizio: string; // formato YYYY-MM
+  dataFine?: string; // formato YYYY-MM, vuoto se attuale
+  attuale: boolean;
+}
+
+export interface Formazione {
+  id: string;
+  titolo: string; // es. "LAUREA MAGISTRALE IN PSICOLOGIA"
+  istituzione: string; // es. "Università 'Gabriele d'Annunzio'"
+  annoConseguimento: string; // es. "2013"
+}
+
+export interface Certificazione {
+  id: string;
+  titolo: string; // es. "CORSO PROPEDEUTICO PER L'ABILITAZIONE ALL'USO DEL BIOFEEDBACK"
+  istituzione: string; // es. "CENTRO DI PSICOLOGIA CLINICA"
+  anno: string; // es. "2021"
 }
 
 // Documenti e informazioni di verifica per ogni professione
@@ -70,6 +96,9 @@ export interface UserProfile {
   website?: string;
   photoURL?: string;
   dataNascita?: string;
+  esperienze?: EsperienzaProfessionale[];
+  formazione?: Formazione[];
+  certificazioni?: Certificazione[];
 }
 
 export interface UserStats {
@@ -107,7 +136,7 @@ export interface TeamSettings {
   tematiche: string[];
 }
 
-// Ruolo cercato per l'équipe
+// Ruolo cercato per l'equipé
 export interface RoleCercato {
   specializzazione: string; // es: "Psichiatra", "Fisioterapista"
   numero: number; // quanti ne servono
@@ -123,7 +152,7 @@ export interface Team {
   nome: string;
   name?: string; // Alias per compatibilità
   description?: string;
-  photoURL?: string; // Foto dell'équipe
+  photoURL?: string; // Foto dell'equipé
   adminUid: string;
   createdBy?: string; // Alias per compatibilità
   members: TeamMember[];
@@ -262,10 +291,10 @@ export interface Conversation {
 
 // Notification Types
 export type NotificationType = 
-  | 'team_request'           // Richiesta adesione équipe
+  | 'team_request'           // Richiesta adesione equipé
   | 'message'                // Nuovo messaggio
   | 'team_request_accepted'  // Richiesta adesione accettata
-  | 'team_removed'           // Rimosso da équipe
+  | 'team_removed'           // Rimosso da equipé
   | 'team_admin'             // Promosso ad admin
   | 'team_invite_response'   // Invito accettato/rifiutato
   | 'team_invite_received'   // Invito ricevuto

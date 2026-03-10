@@ -1,4 +1,4 @@
-import * as functions from 'firebase-functions/v1';
+﻿import * as functions from 'firebase-functions/v1';
 import * as admin from 'firebase-admin';
 import { Resend } from 'resend';
 
@@ -409,6 +409,77 @@ async function createInternalNotification(params: {
     console.error('❌ Errore creazione notifica interna:', error);
   }
 }
+
+/**
+ * Cloud Function callable per inviare email di verifica indirizzo email via Resend
+ * Genera il link di verifica con Firebase Admin SDK e lo invia tramite Resend
+ */
+export const sendCustomVerificationEmail = functions
+  .region('europe-west1')
+  .https
+  .onCall(async (data, context) => {
+    // L'utente deve essere autenticato
+    if (!context.auth) {
+      throw new functions.https.HttpsError('unauthenticated', 'Utente non autenticato');
+    }
+
+    const uid = context.auth.uid;
+
+    try {
+      // Ottieni l'utente da Firebase Auth
+      const userRecord = await admin.auth().getUser(uid);
+
+      if (userRecord.emailVerified) {
+        return { success: true, alreadyVerified: true };
+      }
+
+      const email = userRecord.email;
+      if (!email) {
+        throw new functions.https.HttpsError('failed-precondition', 'Utente senza email');
+      }
+
+      // Genera il link di verifica email con Firebase Admin SDK
+      const verificationLink = await admin.auth().generateEmailVerificationLink(email, {
+        url: 'https://tuaequipe.it/login?verified=true',
+      });
+
+      const displayName = userRecord.displayName || 'Utente';
+
+      // Invia l'email tramite Resend
+      await getResend().emails.send({
+        from: EMAIL_FROM.noreply,
+        to: email,
+        subject: 'Verifica il tuo indirizzo email - Equipé',
+        html: wrapEmailTemplate(`
+          <h2 style="color: #0066cc;">Verifica il tuo indirizzo email</h2>
+          <p>Ciao ${displayName},</p>
+          <p>Grazie per esserti registrato su <strong>Equipé</strong>!</p>
+          <p>Per completare la registrazione e accedere alla piattaforma, clicca sul pulsante qui sotto:</p>
+          <p style="text-align: center; margin: 30px 0;">
+            <a href="${verificationLink}" 
+               style="background-color: #0066cc; color: white; padding: 14px 28px; 
+                      text-decoration: none; border-radius: 8px; display: inline-block;
+                      font-weight: bold; font-size: 16px;">
+              Verifica Email
+            </a>
+          </p>
+          <p style="color: #666; font-size: 13px;">
+            Se il pulsante non funziona, copia e incolla questo link nel tuo browser:<br>
+            <a href="${verificationLink}" style="color: #0066cc; word-break: break-all;">${verificationLink}</a>
+          </p>
+          <p style="color: #666; font-size: 13px;">Se non hai creato un account su Equipé, puoi ignorare questa email.</p>
+          <br>
+          <p>A presto,<br>Il team di Equipé</p>
+        `),
+      });
+
+      console.log(`✅ Email verifica custom inviata a ${email} per utente ${uid}`);
+      return { success: true };
+    } catch (error: any) {
+      console.error('❌ Errore invio email verifica custom:', error);
+      throw new functions.https.HttpsError('internal', 'Errore invio email di verifica');
+    }
+  });
 
 /**
  * 1. Email di benvenuto quando viene verificata l'email
@@ -845,7 +916,7 @@ export const sendTeamInviteEmail = functions
   });
 
 /**
- * 5b. Email risposta a invito équipe (accettato/rifiutato)
+ * 5b. Email risposta a invito equipé (accettato/rifiutato)
  * Trigger: onUpdate su teamInvites quando status cambia da pending
  */
 export const sendTeamInviteResponseEmail = functions
@@ -876,7 +947,7 @@ export const sendTeamInviteResponseEmail = functions
     const inviter = inviterDoc.data();
 
     const responderName = responder?.profile?.nome || responder?.displayName || 'Un professionista';
-    const teamName = team?.nome || team?.name || 'Équipe';
+    const teamName = team?.nome || team?.name || 'Equipé';
 
     // Email a chi ha inviato l'invito
     await sendEmail(
@@ -889,7 +960,7 @@ export const sendTeamInviteResponseEmail = functions
           <h2 style="color: ${isAccepted ? '#28a745' : '#dc3545'};">
             Invito ${isAccepted ? 'Accettato' : 'Rifiutato'} ${isAccepted ? '✅' : '❌'}
           </h2>
-          <p><strong>${responderName}</strong> ha ${isAccepted ? 'accettato' : 'rifiutato'} il tuo invito per l'équipe:</p>
+          <p><strong>${responderName}</strong> ha ${isAccepted ? 'accettato' : 'rifiutato'} il tuo invito per l'equipé:</p>
           <div style="background-color: #f5f5f5; padding: 20px; border-radius: 8px; margin: 20px 0;">
             <h3 style="margin: 0 0 10px 0; color: #333;">${teamName}</h3>
           </div>
@@ -901,7 +972,7 @@ export const sendTeamInviteResponseEmail = functions
             <a href="https://tuaequipe.it/teams/${after.teamId}" 
                style="background-color: #0066cc; color: white; padding: 12px 24px; 
                       text-decoration: none; border-radius: 5px; display: inline-block;">
-              Vai all'Équipe
+              Vai all'Equipé
             </a>
           </p>
           <br>

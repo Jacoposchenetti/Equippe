@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useAuth } from '@/contexts/AuthContext';
 import { useModal } from '@/contexts/ModalContext';
@@ -11,7 +11,8 @@ import { requestNotificationPermission, saveFCMToken } from '@/lib/notifications
 import Header from '@/components/Header';
 import LocationAutocomplete from '@/components/LocationAutocomplete';
 import DocumentiProfessioneForm from '@/components/DocumentiProfessioneForm';
-import { ProfessioneConDocumenti } from '@/types/equippe';
+import { CurriculumEditor } from '@/components/CurriculumSection';
+import { ProfessioneConDocumenti, EsperienzaProfessionale, Formazione, Certificazione } from '@/types/equippe';
 import { getConfigurazioneProfessione } from '@/lib/professioni';
 
 const SPECIALIZZAZIONI = [
@@ -54,6 +55,36 @@ function removeUndefined(obj: any): any {
   return obj;
 }
 
+function CollapsibleSection({ title, children, defaultOpen = false, subtitle }: {
+  title: string;
+  children: React.ReactNode;
+  defaultOpen?: boolean;
+  subtitle?: string;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        className="w-full flex items-center justify-between p-6 text-left hover:bg-gray-50 transition-colors"
+      >
+        <div>
+          <h2 className="text-2xl font-bold text-gray-900">{title}</h2>
+          {subtitle && !open && <p className="text-sm text-gray-500 mt-1">{subtitle}</p>}
+        </div>
+        <svg
+          className={`w-6 h-6 text-gray-400 transition-transform duration-200 flex-shrink-0 ${open ? 'rotate-180' : ''}`}
+          fill="none" stroke="currentColor" viewBox="0 0 24 24"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+      {open && <div className="px-6 pb-6">{children}</div>}
+    </div>
+  );
+}
+
 export default function EditProfilePage() {
   const { user, userProfile, refreshProfile, deleteCurrentUser } = useAuth();
   const { showToast, showConfirm } = useModal();
@@ -81,6 +112,11 @@ export default function EditProfilePage() {
   const [professioniPending, setProfessioniPending] = useState<ProfessioneConDocumenti[]>([]);
   const [selectedProfessione, setSelectedProfessione] = useState<string>('');
   const [showDocumentiForm, setShowDocumentiForm] = useState(false);
+
+  // Curriculum: esperienze, formazione, certificazioni
+  const [esperienze, setEsperienze] = useState<EsperienzaProfessionale[]>([]);
+  const [formazione, setFormazione] = useState<Formazione[]>([]);
+  const [certificazioni, setCertificazioni] = useState<Certificazione[]>([]);
 
   // Auto-save
   const [autoSaveStatus, setAutoSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
@@ -161,6 +197,11 @@ export default function EditProfilePage() {
       setPhotoPreview(userProfile.profile.photoURL || '');
       setDataNascita(userProfile.profile.dataNascita || '');
       
+      // Carica curriculum
+      setEsperienze(userProfile.profile.esperienze || []);
+      setFormazione(userProfile.profile.formazione || []);
+      setCertificazioni(userProfile.profile.certificazioni || []);
+      
       // Carica professioni approvate e pending
       if (userProfile.profile.professioniConDocumenti && userProfile.profile.professioniConDocumenti.length > 0) {
         setProfessioniApprovate(userProfile.profile.professioniConDocumenti);
@@ -177,13 +218,13 @@ export default function EditProfilePage() {
         const tematicheUnite = [...new Set([...normalizedTematiche, ...Array.from(tutteTematiche)])];
         setTematiche(tematicheUnite);
       } else if (normalizedSpecs.length > 0) {
-        // Migrazione: se ha solo specializzazioni vecchie, creale come professioni approvate senza documenti
+        // Migrazione: se ha solo specializzazioni vecchie, mettile come pending (non sono state verificate dall'admin)
         const professioniMigrate = normalizedSpecs.map(spec => ({
           professione: spec,
           documenti: [],
-          note: 'Migrato da sistema precedente'
+          note: 'Migrato da sistema precedente - in attesa di verifica'
         }));
-        setProfessioniApprovate(professioniMigrate);
+        setProfessioniPending(prev => [...prev, ...professioniMigrate]);
       }
       
       if (userProfile.profile.professioniPending && userProfile.profile.professioniPending.length > 0) {
@@ -484,6 +525,9 @@ export default function EditProfilePage() {
         'profile.location.lat': mainLocation.lat,
         'profile.location.lng': mainLocation.lng,
         'profile.studi': studiData,
+        'profile.esperienze': esperienze,
+        'profile.formazione': formazione,
+        'profile.certificazioni': certificazioni,
         updatedAt: new Date()
       };
 
@@ -593,9 +637,7 @@ export default function EditProfilePage() {
 
         <form className="space-y-6">
           {/* Informazioni base */}
-          <div className="bg-white rounded-xl shadow-sm p-6">
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">Informazioni Base</h2>
-            
+          <CollapsibleSection title="Informazioni Base" defaultOpen={true} subtitle={nome || 'Nome, data di nascita, foto...'}>
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -648,6 +690,20 @@ export default function EditProfilePage() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Bio
+                </label>
+                <textarea
+                  value={bio}
+                  onChange={(e) => setBio(e.target.value)}
+                  onBlur={triggerSave}
+                  rows={4}
+                  placeholder="Raccontaci di te, della tua esperienza e del tuo approccio professionale..."
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
                   Data di Nascita *
                 </label>
                 <input
@@ -688,13 +744,12 @@ export default function EditProfilePage() {
                 />
               </div>
             </div>
-          </div>
+          </CollapsibleSection>
 
           {/* Localizzazione - Studi */}
-          <div className="bg-white rounded-xl shadow-sm p-6">
+          <CollapsibleSection title="Studi e Sedi di Lavoro" subtitle={`${studi.length} studio/i configurato/i`}>
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
               <div className="flex-1">
-                <h2 className="text-2xl font-bold text-gray-900">Studi e Sedi di Lavoro</h2>
                 <p className="text-sm text-gray-600 mt-1">Aggiungi i luoghi dove ricevi pazienti o svolgi la tua attività</p>
               </div>
               <button
@@ -801,11 +856,10 @@ export default function EditProfilePage() {
                 </button>
               </div>
             )}
-          </div>
+          </CollapsibleSection>
 
           {/* Gestione Professioni */}
-          <div className="bg-white rounded-xl shadow-sm p-6">
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">Professioni</h2>
+          <CollapsibleSection title="Professioni" subtitle={`${professioniApprovate.length} approvata/e, ${professioniPending.length} in attesa`}>
             <p className="text-gray-600 mb-4">
               Aggiungi nuove professioni al tuo profilo. Ogni professione richiede documentazione che sarà verificata dall'amministratore.
             </p>
@@ -924,11 +978,10 @@ export default function EditProfilePage() {
                 onCancel={handleCancelDocumenti}
               />
             )}
-          </div>
+          </CollapsibleSection>
 
           {/* Tematiche per Professione */}
-          <div className="bg-white rounded-xl shadow-sm p-6">
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">Tematiche di Interesse</h2>
+          <CollapsibleSection title="Tematiche di Interesse" subtitle={`${[...professioniApprovate, ...professioniPending].reduce((acc, p) => acc + (p.tematiche?.length || 0), 0)} tematiche selezionate`}>
             <p className="text-gray-600 mb-6">
               Seleziona le tematiche specifiche per ogni tua professione.
             </p>
@@ -1040,24 +1093,44 @@ export default function EditProfilePage() {
                 <p>Aggiungi prima una professione per selezionare le tematiche di interesse.</p>
               </div>
             )}
-          </div>
+          </CollapsibleSection>
 
-          {/* Bio */}
-          <div className="bg-white rounded-xl shadow-sm p-6">
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">Bio</h2>
-            <textarea
-              value={bio}
-              onChange={(e) => setBio(e.target.value)}
-              onBlur={triggerSave}
-              rows={6}
-              placeholder="Raccontaci di te, della tua esperienza e del tuo approccio professionale..."
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-            />
-          </div>
+          {/* Curriculum: Esperienze, Formazione, Certificazioni */}
+          <CollapsibleSection title="Curriculum" subtitle={`${esperienze.length} esperienze, ${formazione.length} formazione, ${certificazioni.length} certificazioni`}>
+          <CurriculumEditor
+            esperienze={esperienze}
+            formazione={formazione}
+            certificazioni={certificazioni}
+            onChange={async (data) => {
+              console.log('💾 CurriculumEditor onChange:', { esperienze: data.esperienze.length, formazione: data.formazione.length, certificazioni: data.certificazioni.length });
+              setEsperienze(data.esperienze);
+              setFormazione(data.formazione);
+              setCertificazioni(data.certificazioni);
+              // Salvataggio diretto per evitare stale closure
+              if (user) {
+                try {
+                  setAutoSaveStatus('saving');
+                  const userRef = doc(db, 'users', user.uid);
+                  await updateDoc(userRef, {
+                    'profile.esperienze': removeUndefined(data.esperienze),
+                    'profile.formazione': removeUndefined(data.formazione),
+                    'profile.certificazioni': removeUndefined(data.certificazioni),
+                    updatedAt: new Date()
+                  });
+                  await refreshProfile();
+                  setAutoSaveStatus('saved');
+                  setTimeout(() => setAutoSaveStatus(s => s === 'saved' ? 'idle' : s), 3000);
+                } catch (err) {
+                  console.error('Errore salvataggio curriculum:', err);
+                  setAutoSaveStatus('error');
+                }
+              }
+            }}
+          />
+          </CollapsibleSection>
 
           {/* Link social */}
-          <div className="bg-white rounded-xl shadow-sm p-6">
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">Link Professionali</h2>
+          <CollapsibleSection title="Link Professionali" subtitle={[linkedin && 'LinkedIn', website && 'Sito Web'].filter(Boolean).join(', ') || 'Nessun link'}>
             
             <div className="space-y-4">
               <div>
@@ -1088,13 +1161,12 @@ export default function EditProfilePage() {
                 />
               </div>
             </div>
-          </div>
+          </CollapsibleSection>
 
           {/* Notifiche Push */}
-          <div className="bg-white rounded-xl shadow-sm p-6">
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">Notifiche Push</h2>
+          <CollapsibleSection title="Notifiche Push" subtitle={notificationEnabled ? 'Abilitate' : 'Disabilitate'}>
             <p className="text-gray-600 mb-6">
-              Ricevi notifiche istantanee per messaggi, inviti e richieste da équipe
+              Ricevi notifiche istantanee per messaggi, inviti e richieste da equipé
             </p>
             
             <div className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
@@ -1154,7 +1226,7 @@ export default function EditProfilePage() {
                 Aggiornamento in corso...
               </p>
             )}
-          </div>
+          </CollapsibleSection>
 
           {/* Eliminazione account */}
           <div className="bg-red-50 border border-red-200 rounded-xl p-6">

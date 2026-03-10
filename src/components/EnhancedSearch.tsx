@@ -20,15 +20,17 @@ export interface SearchFilters {
 interface EnhancedSearchProps {
   onSearch: (filters: SearchFilters) => void;
   availableSpecializations?: string[];
+  initialAddress?: string;
+  initialCoordinate?: { lat: number; lng: number } | null;
 }
 
-export default function EnhancedSearch({ onSearch, availableSpecializations = [] }: EnhancedSearchProps) {
+export default function EnhancedSearch({ onSearch, availableSpecializations = [], initialAddress, initialCoordinate }: EnhancedSearchProps) {
   const [searchType, setSearchType] = useState<SearchType>('professionista');
   const [specializzazione, setSpecializzazione] = useState<string>('');
   const [areaInteresse, setAreaInteresse] = useState<string>('');
-  const [coordinate, setCoordinate] = useState<{ lat: number; lng: number } | null>(null);
-  const [raggioKm, setRaggioKm] = useState<number>(10);
-  const [indirizzo, setIndirizzo] = useState<string>('');
+  const [coordinate, setCoordinate] = useState<{ lat: number; lng: number } | null>(initialCoordinate || null);
+  const [raggioKm, setRaggioKm] = useState<number>(5);
+  const [indirizzo, setIndirizzo] = useState<string>(initialAddress || '');
   const [remoto, setRemoto] = useState<boolean>(false);
   const [showMap, setShowMap] = useState<boolean>(false);
 

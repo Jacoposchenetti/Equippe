@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
@@ -270,15 +270,15 @@ export default function DashboardPage() {
       if (!hasSpecialization) return false;
     }
 
-    // Location - verifica distanza se ci sono coordinate del filtro E dell'équipe
+    // Location - verifica distanza se ci sono coordinate del filtro E dell'equipé
     if (currentFilters.coordinate && currentFilters.raggioKm) {
-      // Se l'équipe non ha coordinate, mostrala solo se è remota o se il filtro remoto è attivo
+      // Se l'equipé non ha coordinate, mostrala solo se è remota o se il filtro remoto è attivo
       if (!t.coordinate) {
         if (!t.remoto && currentFilters.remoto === false) {
           return false;
         }
       } else {
-        // L'équipe ha coordinate, calcola la distanza
+        // L'equipé ha coordinate, calcola la distanza
         const distance = calculateDistance(
           currentFilters.coordinate.lat,
           currentFilters.coordinate.lng,
@@ -286,9 +286,9 @@ export default function DashboardPage() {
           t.coordinate.lng
         );
 
-        // Se l'équipe non è nel raggio, escludi (a meno che non lavori anche da remoto)
+        // Se l'equipé non è nel raggio, escludi (a meno che non lavori anche da remoto)
         if (distance > currentFilters.raggioKm) {
-          // Se l'équipe non è remota o non è richiesto remoto, escludi
+          // Se l'equipé non è remota o non è richiesto remoto, escludi
           if (!t.remoto && !currentFilters.remoto) {
             return false;
           }
@@ -296,7 +296,7 @@ export default function DashboardPage() {
       }
     }
 
-    // Se il filtro remoto è attivo, mostra solo équipe remote
+    // Se il filtro remoto è attivo, mostra solo equipé remote
     if (currentFilters.remoto && !t.remoto) {
       return false;
     }
@@ -341,7 +341,11 @@ export default function DashboardPage() {
 
         {/* Enhanced Search */}
         <div className="mb-8">
-          <EnhancedSearch onSearch={handleSearch} />
+          <EnhancedSearch
+            onSearch={handleSearch}
+            initialAddress={userProfile?.profile?.studi?.[0]?.indirizzo || ''}
+            initialCoordinate={userProfile?.profile?.studi?.[0]?.coordinate || null}
+          />
         </div>
 
         {/* Risultati */}

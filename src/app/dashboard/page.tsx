@@ -1,4 +1,4 @@
-import { useAuth } from '@/contexts/AuthContext';
+﻿import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { collection, query, where, getDocs, getDoc, doc } from 'firebase/firestore';
@@ -259,15 +259,15 @@ export default function Dashboard() {
       if (!hasSpecialization) return false;
     }
 
-    // Location - verifica distanza se ci sono coordinate del filtro E dell'équipe
+    // Location - verifica distanza se ci sono coordinate del filtro E dell'equipé
     if (currentFilters.coordinate && currentFilters.raggioKm) {
-      // Se l'équipe non ha coordinate, mostrala solo se è remota o se il filtro remoto è attivo
+      // Se l'equipé non ha coordinate, mostrala solo se è remota o se il filtro remoto è attivo
       if (!t.coordinate) {
         if (!t.remoto && currentFilters.remoto === false) {
           return false;
         }
       } else {
-        // L'équipe ha coordinate, calcola la distanza
+        // L'equipé ha coordinate, calcola la distanza
         const distance = calculateDistance(
           currentFilters.coordinate.lat,
           currentFilters.coordinate.lng,
@@ -275,9 +275,9 @@ export default function Dashboard() {
           t.coordinate.lng
         );
         
-        // Se l'équipe non è nel raggio, escludi (a meno che non lavori anche da remoto)
+        // Se l'equipé non è nel raggio, escludi (a meno che non lavori anche da remoto)
         if (distance > currentFilters.raggioKm) {
-          // Se l'équipe non è remota o non è richiesto remoto, escludi
+          // Se l'equipé non è remota o non è richiesto remoto, escludi
           if (!t.remoto && !currentFilters.remoto) {
             return false;
           }
@@ -285,7 +285,7 @@ export default function Dashboard() {
       }
     }
 
-    // Se il filtro remoto è attivo, mostra solo équipe remote
+    // Se il filtro remoto è attivo, mostra solo equipé remote
     if (currentFilters.remoto && !t.remoto) {
       return false;
     }

@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Header from '@/components/Header';
-import { auth } from '@/lib/firebase';
-import { sendEmailVerification, signOut } from 'firebase/auth';
+import { auth, functions } from '@/lib/firebase';
+import { signOut } from 'firebase/auth';
+import { httpsCallable } from 'firebase/functions';
 import { useAuth } from '@/contexts/AuthContext';
 
 export default function VerifyEmailPage() {
@@ -31,7 +32,8 @@ export default function VerifyEmailPage() {
     setLoading(true);
     setError('');
     try {
-      await sendEmailVerification(auth.currentUser);
+      const sendVerification = httpsCallable(functions, 'sendCustomVerificationEmail');
+      await sendVerification();
       setSent(true);
       setCooldown(60); // 60 secondi di cooldown
       setTimeout(() => setSent(false), 5000);

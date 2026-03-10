@@ -1,10 +1,11 @@
-import { useAuth } from '@/contexts/AuthContext';
+﻿import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { doc, getDoc, collection, query, where, getDocs, addDoc, Timestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { User, Conversation, Team } from '@/types/equippe';
 import Header from '@/components/Header';
+import { CurriculumDisplay } from '@/components/CurriculumSection';
 import { notifyTeamInviteReceived } from '@/lib/notifications';
 import { useCanInteract } from '@/hooks/useCanInteract';
 import { useModal } from '@/contexts/ModalContext';
@@ -119,7 +120,7 @@ export default function ProfilePage() {
 
   const handleSendInvite = async () => {
     if (!selectedTeamId) {
-      showToast('Seleziona un\'équipe', 'warning');
+      showToast('Seleziona un\'equipé', 'warning');
       return;
     }
 
@@ -139,14 +140,14 @@ export default function ProfilePage() {
 
       const existingInviteSnapshot = await getDocs(existingInviteQuery);
       if (!existingInviteSnapshot.empty) {
-        showToast('Esiste già un invito pendente per questo professionista in questa équipe', 'warning');
+        showToast('Esiste già un invito pendente per questo professionista in questa equipé', 'warning');
         return;
       }
 
       // Controlla se l'utente è già membro del team
       const selectedTeam = adminTeams.find(t => t.id === selectedTeamId);
       if (selectedTeam?.memberIds?.includes(profileUser.uid)) {
-        showToast('Questo professionista è già membro dell\'équipe selezionata', 'warning');
+        showToast('Questo professionista è già membro dell\'equipé selezionata', 'warning');
         return;
       }
 
@@ -167,7 +168,7 @@ export default function ProfilePage() {
         await notifyTeamInviteReceived(
           profileUser.uid,
           selectedTeamId,
-          selectedTeam.nome || selectedTeam.name || 'Équipe',
+          selectedTeam.nome || selectedTeam.name || 'Equipé',
           senderName,
           inviteRef.id
         );
@@ -314,78 +315,41 @@ export default function ProfilePage() {
               <div className="flex-1 min-w-0">
                 <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 break-words">{profileUser.profile.nome}</h1>
                 
-                {/* Studi multipli */}
-                <div className="mt-2 space-y-1">
-                  {profileUser.profile.studi && profileUser.profile.studi.length > 0 ? (
-                    <>
-                      <div className="text-sm font-medium text-gray-700 mb-2 flex items-center gap-1">
-                        <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                        </svg>
-                        {profileUser.profile.studi.length === 1 ? 'Studio' : 'Studi'} di Lavoro:
-                      </div>
-                      {profileUser.profile.studi.map((studio, index) => (
-                        <div key={index} className="flex items-start gap-2 text-gray-600">
-                          <svg className="w-4 h-4 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                          </svg>
-                          <div className="flex-1">
-                            <span>{studio.indirizzo}</span>
-                            {studio.remoto && (
-                              <span className="ml-2 text-green-600 text-sm font-medium">• Remoto</span>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                    </>
+                {/* Specializzazioni sotto il nome */}
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {profileUser.profile.professioniConDocumenti && profileUser.profile.professioniConDocumenti.length > 0 ? (
+                    profileUser.profile.professioniConDocumenti.map((prof, index) => (
+                      <span
+                        key={index}
+                        className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm"
+                      >
+                        {prof.professione}
+                      </span>
+                    ))
                   ) : (
-                    // Fallback per compatibilità con il vecchio formato location
-                    <>
-                      {profileUser.profile.location.indirizzo && (
-                        <p className="text-gray-600 flex items-center gap-1">
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                          </svg>
-                          {profileUser.profile.location.indirizzo}
-                        </p>
-                      )}
-                      {profileUser.profile.location.zonaRoma && (
-                        <p className="text-gray-600 text-sm flex items-center gap-1">
-                          <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                          </svg>
-                          {profileUser.profile.location.zonaRoma}
-                        </p>
-                      )}
-                      {!profileUser.profile.location.indirizzo && (
-                        <p className="text-gray-600">
-                          {profileUser.profile.location.città}, {profileUser.profile.location.provincia}
-                        </p>
-                      )}
-                    </>
+                    [...new Set(profileUser.profile.specializzazioni.map(spec => normalizeSpecialization(spec)))].map((spec, index) => (
+                      <span
+                        key={index}
+                        className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm"
+                      >
+                        {spec}
+                      </span>
+                    ))
                   )}
                 </div>
-
-                {profileUser.email && (
-                  <p className="text-gray-500 text-sm mt-1">{profileUser.email}</p>
-                )}
               </div>
             </div>
 
             {/* Pulsanti azione */}
             <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 w-full lg:w-auto">
-              {/* Pulsante Invita in Équipe */}
+              {/* Pulsante Invita in Equipé */}
               {adminTeams.length > 0 && (
                 (canInteract && profileUser.profile.verificationInfo?.status === 'approved') ? (
                   <button
                     onClick={() => setShowInviteModal(true)}
                     className="px-4 sm:px-6 py-2 sm:py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors flex items-center justify-center gap-2 text-sm sm:text-base whitespace-nowrap"
                   >
-                    Invita in Équipe
+                    Invita in Equipé
                   </button>
                 ) : (
                   <div className="relative group">
@@ -396,7 +360,7 @@ export default function ProfilePage() {
                         ? 'Questo professionista non è ancora stato approvato' 
                         : (canInteractMessage || 'Funzionalità non disponibile')}
                     >
-                      Invita in Équipe
+                      Invita in Equipé
                     </button>
                     <div className="hidden group-hover:block absolute z-10 w-64 p-2 mt-2 text-sm bg-gray-800 text-white rounded-lg shadow-lg left-0">
                       {profileUser.profile.verificationInfo?.status !== 'approved' 
@@ -438,33 +402,13 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        {/* Specializzazioni */}
-        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-          <h2 className="text-xl font-bold text-gray-900 mb-4">Specializzazioni</h2>
-          <div className="flex flex-wrap gap-2">
-            {/* Mostra solo professioni approvate se disponibili */}
-            {profileUser.profile.professioniConDocumenti && profileUser.profile.professioniConDocumenti.length > 0 ? (
-              profileUser.profile.professioniConDocumenti.map((prof, index) => (
-                <span
-                  key={index}
-                  className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm"
-                >
-                  {prof.professione}
-                </span>
-              ))
-            ) : (
-              // Fallback per vecchi dati
-              [...new Set(profileUser.profile.specializzazioni.map(spec => normalizeSpecialization(spec)))].map((spec, index) => (
-                <span
-                  key={index}
-                  className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm"
-                >
-                  {spec}
-                </span>
-              ))
-            )}
+        {/* Chi sono (Bio) */}
+        {profileUser.profile.bio && (
+          <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+            <h2 className="text-xl font-bold text-gray-900 mb-4">Chi sono</h2>
+            <p className="text-gray-700 whitespace-pre-wrap">{profileUser.profile.bio}</p>
           </div>
-        </div>
+        )}
 
         {/* Tematiche */}
         {profileUser.profile.tematiche && [...new Set(profileUser.profile.tematiche
@@ -526,13 +470,12 @@ export default function ProfilePage() {
           </div>
         )}
 
-        {/* Bio (se presente) */}
-        {profileUser.profile.bio && (
-          <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-            <h2 className="text-xl font-bold text-gray-900 mb-4">Bio</h2>
-            <p className="text-gray-700 whitespace-pre-wrap">{profileUser.profile.bio}</p>
-          </div>
-        )}
+        {/* Curriculum: Esperienze, Formazione, Certificazioni */}
+        <CurriculumDisplay
+          esperienze={profileUser.profile.esperienze}
+          formazione={profileUser.profile.formazione}
+          certificazioni={profileUser.profile.certificazioni}
+        />
 
         {/* Link social (se presenti) */}
         {(profileUser.profile.linkedin || profileUser.profile.website) && (
@@ -566,25 +509,25 @@ export default function ProfilePage() {
         )}
       </div>
 
-      {/* Modal Invito Équipe */}
+      {/* Modal Invito Equipé */}
       {showInviteModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full">
             <div className="px-6 py-4 border-b border-gray-200">
-              <h3 className="text-xl font-bold text-gray-900">Invita in Équipe</h3>
-              <p className="text-sm text-gray-600 mt-1">Seleziona l'équipe in cui invitare <strong>{profileUser?.profile.nome}</strong></p>
+              <h3 className="text-xl font-bold text-gray-900">Invita in Equipé</h3>
+              <p className="text-sm text-gray-600 mt-1">Seleziona l'equipé in cui invitare <strong>{profileUser?.profile.nome}</strong></p>
             </div>
 
             <div className="p-6 space-y-4">
               <div>
-                <label className="block text-sm font-semibold mb-2">Équipe di destinazione *</label>
+                <label className="block text-sm font-semibold mb-2">Equipé di destinazione *</label>
                 <select
                   value={selectedTeamId}
                   onChange={(e) => setSelectedTeamId(e.target.value)}
                   className="w-full border rounded-lg px-3 py-2"
                   required
                 >
-                  <option value="">Seleziona un'équipe...</option>
+                  <option value="">Seleziona un'equipé...</option>
                   {adminTeams.map((team) => (
                     <option key={team.id} value={team.id}>
                       {team.nome || team.name}

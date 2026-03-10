@@ -1,4 +1,4 @@
-import { collection, addDoc, Timestamp } from 'firebase/firestore';
+﻿import { collection, addDoc, Timestamp } from 'firebase/firestore';
 import { db } from './firebase';
 import { NotificationType } from '@/types/equippe';
 import { getMessaging, getToken, onMessage, Messaging } from 'firebase/messaging';
@@ -47,7 +47,7 @@ export async function createNotification(params: CreateNotificationParams) {
 
 export async function notifyTeamRequest(teamId: string, teamName: string, adminIds: string[], requesterId: string, requesterName: string, requesterPhotoURL?: string) {
   try {
-    // Notifica tutti gli admin dell'équipe
+    // Notifica tutti gli admin dell'equipé
     await Promise.all(
       adminIds.map(adminId =>
         createNotification({
@@ -114,7 +114,7 @@ export async function notifyTeamRemoval(userId: string, teamId: string, teamName
     await createNotification({
       userId,
       type: 'team_removed',
-      title: 'Rimosso da équipe',
+      title: 'Rimosso da equipé',
       message: `Sei stato rimosso da "${teamName}"`,
       teamId,
       teamName
@@ -194,13 +194,13 @@ export async function notifyReferralAccepted(senderId: string, recipientId: stri
 
 export async function notifyTeamMemberLeft(adminIds: string[], memberName: string, teamId: string, teamName: string, memberId?: string) {
   try {
-    // Notifica tutti gli admin dell'équipe
+    // Notifica tutti gli admin dell'equipé
     await Promise.all(
       adminIds.map(adminId =>
         createNotification({
           userId: adminId,
           type: 'team_removed',
-          title: 'Membro uscito dall\'équipe',
+          title: 'Membro uscito dall\'equipé',
           message: `${memberName} ha lasciato "${teamName}"`,
           teamId,
           teamName,
@@ -219,7 +219,7 @@ export async function notifyTeamInviteReceived(recipientId: string, teamId: stri
     await createNotification({
       userId: recipientId,
       type: 'team_invite_received',
-      title: 'Invito a équipe',
+      title: 'Invito a equipé',
       message: `${senderName} ti ha invitato a unirti a "${teamName}"`,
       teamId,
       teamName,

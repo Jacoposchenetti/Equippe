@@ -1,4 +1,4 @@
-import { useAuth } from '@/contexts/AuthContext';
+﻿import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { collection, addDoc, getDocs, query, where, Timestamp, getDoc, doc } from 'firebase/firestore';
@@ -221,15 +221,15 @@ export default function CreatePazientePage() {
               </select>
             </div>
 
-            {/* Filtro Équipe */}
+            {/* Filtro Equipé */}
             <div>
-              <label className="block text-sm font-semibold mb-2 text-blue-800">Équipe di Provenienza</label>
+              <label className="block text-sm font-semibold mb-2 text-blue-800">Equipé di Provenienza</label>
               <select
                 value={filters.teamId}
                 onChange={(e) => setFilters({ ...filters, teamId: e.target.value })}
                 className="w-full border rounded px-3 py-2"
               >
-                <option value="">Tutte le équipe</option>
+                <option value="">Tutte le equipé</option>
                 {teams.map((team) => (
                   <option key={team.id} value={team.id}>
                     {team.nome || team.name}

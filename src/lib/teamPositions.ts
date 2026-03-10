@@ -1,9 +1,9 @@
-import { doc, updateDoc, getDoc } from 'firebase/firestore';
+﻿import { doc, updateDoc, getDoc } from 'firebase/firestore';
 import { db } from './firebase';
 import { Team, User, RoleCercato } from '@/types/equippe';
 
 /**
- * Aggiorna le posizioni occupate quando un membro entra nell'équipe
+ * Aggiorna le posizioni occupate quando un membro entra nell'equipé
  * Se ha più specializzazioni richieste, occupa tutte le posizioni corrispondenti
  */
 export async function occupyPositions(teamId: string, userId: string): Promise<void> {
@@ -61,7 +61,7 @@ export async function occupyPositions(teamId: string, userId: string): Promise<v
 }
 
 /**
- * Libera le posizioni quando un membro lascia l'équipe
+ * Libera le posizioni quando un membro lascia l'equipé
  */
 export async function freePositions(teamId: string, userId: string): Promise<void> {
   try {

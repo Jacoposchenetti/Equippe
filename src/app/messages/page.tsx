@@ -1,4 +1,4 @@
-import { useAuth } from '@/contexts/AuthContext';
+﻿import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useEffect, useState, useRef } from 'react';
 import { collection, query, where, orderBy, onSnapshot, addDoc, updateDoc, doc, getDoc, getDocs, Timestamp } from 'firebase/firestore';
@@ -582,7 +582,7 @@ export default function MessagesPage() {
                   let photoURL = '';
                   
                   if (isTeamChat) {
-                    displayName = `Équipe: ${conv.teamName || 'Senza nome'}`;
+                    displayName = `Equipé: ${conv.teamName || 'Senza nome'}`;
                     photoURL = ''; // Icona team
                   } else {
                     const otherId = conv.participants.find((id: string) => id !== user?.uid);
@@ -633,7 +633,7 @@ export default function MessagesPage() {
                                 </h3>
                                 {isTeamChat && (
                                   <span className="px-2 py-1 bg-amber-100 text-amber-800 text-xs font-medium rounded-full">
-                                    ÉQUIPE
+                                    EQUIPÉ
                                   </span>
                                 )}
                               </div>
@@ -704,7 +704,7 @@ export default function MessagesPage() {
                           )}
                           <div className="flex-1">
                             <h2 className="text-xl font-bold text-amber-900">
-                              Équipe: {selectedConvData.teamName}
+                              Equipé: {selectedConvData.teamName}
                             </h2>
                             <p className="text-sm text-gray-600">
                               {selectedConvData.participants.length} membri

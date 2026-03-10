@@ -1,4 +1,4 @@
-import { useModal } from '@/contexts/ModalContext';
+﻿import { useModal } from '@/contexts/ModalContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useEffect, useState, useRef } from 'react';
@@ -121,7 +121,7 @@ export default function TeamDetailPage() {
         setPendingRequests(requestsWithUserData);
       }
 
-      // Carica o crea chat di équipe
+      // Carica o crea chat di equipé
       await loadTeamChat();
     } catch (error) {
       console.error('Errore caricamento team:', error);
@@ -406,7 +406,7 @@ export default function TeamDetailPage() {
 
       // Ricarica i dati
       await loadTeamData();
-      showToast('Richiesta accettata! Il membro è stato aggiunto all\'équipe.', 'success');
+      showToast('Richiesta accettata! Il membro è stato aggiunto all\'equipé.', 'success');
     } catch (error) {
       console.error('Errore accettazione richiesta:', error);
       showToast('Errore durante l\'accettazione della richiesta', 'error');
@@ -961,7 +961,7 @@ export default function TeamDetailPage() {
                 </svg>
                 Invita Membri
               </h3>
-              <p className="text-sm text-gray-600 mt-1">Cerca i professionisti da invitare nella tua équipe</p>
+              <p className="text-sm text-gray-600 mt-1">Cerca i professionisti da invitare nella tua equipé</p>
             </div>
             <div className="p-4 sm:p-6">
               {/* Utenti selezionati (pills) */}
@@ -971,7 +971,7 @@ export default function TeamDetailPage() {
                     const usr = availableUsers.find(u => u.uid === uid);
                     return (
                       <span key={uid} className="inline-flex items-center gap-1 bg-blue-100 text-blue-800 text-sm px-3 py-1 rounded-full">
-                        {usr?.profile?.nome || usr?.email || uid}
+                        {usr?.profile?.nome || uid}
                         <button
                           type="button"
                           onClick={() => toggleUserSelection(uid)}
@@ -1018,7 +1018,6 @@ export default function TeamDetailPage() {
                         />
                         <div className="flex-1">
                           <div className="font-semibold text-gray-900">{usr.profile?.nome || 'Nome non disponibile'}</div>
-                          <div className="text-sm text-gray-600">{usr.email}</div>
                           {usr.profile?.specializzazioni && usr.profile.specializzazioni.length > 0 && (
                             <div className="text-xs text-gray-500 mt-1">
                               {usr.profile.specializzazioni.join(', ')}
@@ -1475,7 +1474,7 @@ export default function TeamDetailPage() {
           </div>
         )}
 
-        {/* Pulsante lascia équipe per membri non admin */}
+        {/* Pulsante lascia equipé per membri non admin */}
         {isMember && !isAdmin && (
           <div className="bg-white rounded-xl shadow-sm p-6">
             <button
@@ -1496,7 +1495,7 @@ export default function TeamDetailPage() {
             <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden" style={{ zIndex: 10000 }}>
               <div className="px-8 py-6 border-b border-gray-200">
                 <h3 className="text-2xl font-bold text-gray-900">Richiesta di Adesione</h3>
-                <p className="text-sm text-gray-600 mt-1">Invia una richiesta per entrare nell'équipe</p>
+                <p className="text-sm text-gray-600 mt-1">Invia una richiesta per entrare nell'equipé</p>
               </div>
               
               <div className="p-6">
@@ -1507,7 +1506,7 @@ export default function TeamDetailPage() {
                   <textarea
                     value={requestMessage}
                     onChange={(e) => setRequestMessage(e.target.value)}
-                    placeholder="Presentati brevemente e spiega perché vorresti far parte di questa équipe..."
+                    placeholder="Presentati brevemente e spiega perché vorresti far parte di questa equipé..."
                     className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-green-500"
                     rows={6}
                   />

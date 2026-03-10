@@ -1,4 +1,4 @@
-rules_version = '2';
+﻿rules_version = '2';
 
 service firebase.storage {
   match /b/{bucket}/o {
@@ -13,24 +13,24 @@ service firebase.storage {
                    && request.resource.contentType.matches('image/.*');  // Solo immagini
     }
     
-    // Regole per le foto équipe
+    // Regole per le foto equipé
     match /team-photos/{teamId}/{fileName} {
-      // Lettura: tutti gli utenti autenticati possono vedere le foto équipe
+      // Lettura: tutti gli utenti autenticati possono vedere le foto equipé
       allow read: if request.auth != null;
       
-      // Scrittura: utenti autenticati possono caricare foto équipe
+      // Scrittura: utenti autenticati possono caricare foto equipé
       // TODO: Aggiungere controllo che l'utente sia admin del team
       allow write: if request.auth != null 
                    && request.resource.size < 5 * 1024 * 1024  // Max 5MB
                    && request.resource.contentType.matches('image/.*');  // Solo immagini
     }
     
-    // Regole per le foto équipe
+    // Regole per le foto equipé
     match /team-photos/{teamId}/{fileName} {
-      // Lettura: tutti gli utenti autenticati possono vedere le foto équipe
+      // Lettura: tutti gli utenti autenticati possono vedere le foto equipé
       allow read: if request.auth != null;
       
-      // Scrittura: solo membri dell'équipe possono caricare/modificare foto
+      // Scrittura: solo membri dell'equipé possono caricare/modificare foto
       // TODO: In futuro potremmo aggiungere controllo membership
       allow write: if request.auth != null 
                    && request.resource.size < 5 * 1024 * 1024  // Max 5MB

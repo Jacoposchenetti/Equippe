@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+﻿import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import Header from '@/components/Header';
@@ -169,7 +169,7 @@ export default function TeamCreatePage() {
     setError('');
 
     if (!formData.name.trim()) {
-      setError('Inserisci il nome dell\'équipe');
+      setError('Inserisci il nome dell\'equipé');
       return;
     }
 
@@ -295,7 +295,7 @@ export default function TeamCreatePage() {
             <svg className="mx-auto h-16 w-16 text-gray-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
             </svg>
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">Creazione équipe non disponibile</h2>
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">Creazione equipé non disponibile</h2>
             <p className="text-gray-600 mb-4">{message}</p>
             <p className="text-sm text-blue-600">
               La tua documentazione verrà verificata entro 48 ore. Riceverai una notifica appena sarai abilitato.
@@ -321,11 +321,11 @@ export default function TeamCreatePage() {
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
           </svg>
-          Torna alle Équipe
+          Torna alle Equipé
         </Link>
 
         <h1 className="text-2xl sm:text-4xl font-bold text-gray-900 mb-3 sm:mb-8">
-          Crea Nuova Équipe
+          Crea Nuova Equipé
         </h1>
 
         {error && (
@@ -338,17 +338,17 @@ export default function TeamCreatePage() {
         )}
 
         <form onSubmit={handleSubmit} className="bg-white rounded-xl shadow-sm p-8 space-y-6">
-          {/* Foto Équipe */}
+          {/* Foto Equipé */}
           <div>
             <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
               <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
               </svg>
-              Foto Équipe
+              Foto Equipé
             </h3>
             <p className="text-sm text-gray-600 mb-4">
-              Aggiungi una foto che rappresenti la tua équipe (opzionale)
+              Aggiungi una foto che rappresenti la tua equipé (opzionale)
             </p>
 
             <div className="flex items-start gap-6">
@@ -357,7 +357,7 @@ export default function TeamCreatePage() {
                 {photoPreview ? (
                   <img 
                     src={photoPreview} 
-                    alt="Preview foto équipe" 
+                    alt="Preview foto equipé" 
                     className="w-full h-full object-cover"
                   />
                 ) : (
@@ -428,13 +428,13 @@ export default function TeamCreatePage() {
 
           {/* Nome */}
           <div className="border-t pt-6">
-            <label className="block text-sm font-semibold mb-2">Nome Équipe *</label>
+            <label className="block text-sm font-semibold mb-2">Nome Equipé *</label>
             <input
               type="text"
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
               className="w-full border rounded-lg px-4 py-2"
-              placeholder="es. Équipe Salute Mentale Roma"
+              placeholder="es. Equipé Salute Mentale Roma"
               required
             />
           </div>
@@ -447,7 +447,7 @@ export default function TeamCreatePage() {
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               className="w-full border rounded-lg px-4 py-2"
               rows={4}
-              placeholder="Descrivi gli obiettivi e le modalità di collaborazione dell'équipe..."
+              placeholder="Descrivi gli obiettivi e le modalità di collaborazione dell'equipé..."
             />
           </div>
 
@@ -461,7 +461,7 @@ export default function TeamCreatePage() {
               Zona Operativa *
             </h3>
             <p className="text-sm text-gray-600 mb-4">
-              Cerca il tuo studio o la zona dove opera l'équipe e definisci il raggio di copertura
+              Cerca il tuo studio o la zona dove opera l'equipé e definisci il raggio di copertura
             </p>
 
             <div className="mb-4">
@@ -507,13 +507,13 @@ export default function TeamCreatePage() {
                 onChange={(e) => setFormData({ ...formData, remoto: e.target.checked })}
                 className="mr-2 w-4 h-4"
               />
-              <span>L'équipe opera anche da remoto</span>
+              <span>L'equipé opera anche da remoto</span>
             </label>
           </div>
 
           {/* Ruoli Cercati */}
           <div className="border-t pt-6">
-            <h3 className="text-lg font-semibold mb-2">Figure Cercate per l'Équipe</h3>
+            <h3 className="text-lg font-semibold mb-2">Figure Cercate per l'Equipé</h3>
             <p className="text-sm text-gray-600 mb-4">
               Specifica quali figure professionali stai cercando e quante
             </p>
@@ -601,7 +601,7 @@ export default function TeamCreatePage() {
           <div className="border-t pt-6">
             <h3 className="text-lg font-semibold mb-2">Invita Membri (opzionale)</h3>
             <p className="text-sm text-gray-600 mb-3">
-              Cerca i professionisti che vuoi invitare nella tua équipe
+              Cerca i professionisti che vuoi invitare nella tua equipé
             </p>
 
             {/* Membri selezionati */}
@@ -677,7 +677,7 @@ export default function TeamCreatePage() {
               disabled={loading}
               className="flex-1 bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 disabled:bg-gray-400 font-semibold text-base"
             >
-              {loading ? 'Creazione in corso...' : 'Crea Équipe'}
+              {loading ? 'Creazione in corso...' : 'Crea Equipé'}
             </button>
             <Link
               to="/teams"

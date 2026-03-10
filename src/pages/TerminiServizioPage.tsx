@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 export default function TerminiServizio() {
   return (
@@ -16,7 +16,7 @@ export default function TerminiServizio() {
               <h2 className="text-2xl font-semibold text-gray-900 mb-4">1. Oggetto del Servizio</h2>
               <p className="mb-4">
                 Equipé è una piattaforma digitale che facilita la connessione e collaborazione tra professionisti 
-                sociosanitari per la formazione di équipe multidisciplinari. Il servizio NON include il trattamento 
+                sociosanitari per la formazione di equipé multidisciplinari. Il servizio NON include il trattamento 
                 diretto di pazienti attraverso la piattaforma.
               </p>
             </section>
@@ -26,7 +26,7 @@ export default function TerminiServizio() {
               <ul className="list-disc list-inside space-y-2">
                 <li><strong>Piattaforma:</strong> Il sito web e l'applicazione Equipé</li>
                 <li><strong>Utente:</strong> Professionista sociosanitario registrato</li>
-                <li><strong>Équipe:</strong> Gruppo di professionisti collaboranti</li>
+                <li><strong>Equipé:</strong> Gruppo di professionisti collaboranti</li>
                 <li><strong>Referral:</strong> Segnalazione professionale tra utenti</li>
               </ul>
             </section>

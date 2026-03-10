@@ -141,7 +141,7 @@ export default function Header() {
                     pathname === '/admin/verifications' ? 'text-yellow-400' : 'text-gray-300'
                   }`}
                 >
-                  ⚙️ Admin
+                  Admin
                 </Link>
               )}
             </nav>
@@ -245,7 +245,7 @@ export default function Header() {
                           onClick={() => setShowMobileProfileMenu(false)}
                           className="flex items-center gap-2 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition"
                         >
-                          ⚙️ Admin
+                          Admin
                         </Link>
                       )}
                       <button

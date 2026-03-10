@@ -1,4 +1,4 @@
-import { useAuth } from '@/contexts/AuthContext';
+﻿import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { useState, useEffect, useRef } from 'react';
 import { collection, addDoc, Timestamp, getDocs } from 'firebase/firestore';
@@ -326,7 +326,7 @@ export default function CreateTeamPage() {
                 {photoPreview ? (
                   <img 
                     src={photoPreview} 
-                    alt="Preview foto équipe" 
+                    alt="Preview foto equipé" 
                     className="w-full h-full object-cover"
                   />
                 ) : (

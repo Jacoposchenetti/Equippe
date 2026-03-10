@@ -1,0 +1,34 @@
+{"users": [
+{
+  "localId": "0ktpbfTmAXeoNulm3Viu7MHg3W52",
+  "email": "martinamaccarana@icloud.com",
+  "emailVerified": true,
+  "passwordHash": "qpzw+NMMaNT+rXcNTHcJ8kvU7LHTfDd5yiyGyH8BswRrpUa68r+aO0/90ldbS2BE1mWe7I9MjZf5KsiAw0lvuQ==",
+  "salt": "Wl8IBblTIpA86w==",
+  "displayName": "Martina Maccarana",
+  "lastSignedInAt": "1773072374940",
+  "createdAt": "1768069813442",
+  "providerUserInfo": []
+},
+{
+  "localId": "85g3YbGY2gPKN3mJRxyZFOlIBBg2",
+  "email": "jschenetti@gmail.com",
+  "emailVerified": true,
+  "passwordHash": "fUhz8snk5+N8H5jTGicrmUSg/bhyf9H+hPy57MAzYny5VPSW4Hh09S5Buizr7JVIaIGPoC2ZTNtm258ynnxKXg==",
+  "salt": "gu5nP6BO2fmyCw==",
+  "displayName": "Jacopo Schenetti",
+  "lastSignedInAt": "1773130509121",
+  "createdAt": "1768068148394",
+  "providerUserInfo": []
+},
+{
+  "localId": "8OowgjatsRgVQ8Ms87Mn1G4MsIy1",
+  "email": "udemyteam2025@gmail.com",
+  "emailVerified": true,
+  "passwordHash": "gDuSCv8A22vneZJ44j68UA2B1HSp8Xrefxg1ud88bXcVmXjEt3CRCcRtVXbJgJ/R+QGVcd4EuaqmapJ8wW6Usw==",
+  "salt": "sWAypWmuwiieRQ==",
+  "displayName": "fawef",
+  "lastSignedInAt": "1773143472722",
+  "createdAt": "1773143166720",
+  "providerUserInfo": []
+}]}

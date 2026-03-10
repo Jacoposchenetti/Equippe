@@ -114,7 +114,7 @@ export default function OnboardingPage() {
           nome: user!.displayName || '',
           albo: '', // Campo deprecato
           specializzazioni: specializzazioni, // Per retrocompatibilità
-          professioniConDocumenti: formData.professioniConDocumenti, // NUOVO
+          professioniPending: formData.professioniConDocumenti, // Professioni in attesa di approvazione admin
           tematiche: tematicheAggregate, // Aggregate da professioni per retrocompatibilità
           esperienza: esperienzaAggregata, // Presa da professioni per retrocompatibilità
           location: { 

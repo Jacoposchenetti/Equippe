@@ -1,4 +1,4 @@
-import { useAuth } from '@/contexts/AuthContext';
+﻿import { useAuth } from '@/contexts/AuthContext';
 import { useModal } from '@/contexts/ModalContext';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useEffect, useState } from 'react';
@@ -46,7 +46,7 @@ export default function EditTeamPage() {
     descrizione: '',
   });
   
-  // Stati per la gestione della foto équipe
+  // Stati per la gestione della foto equipé
   const [teamPhoto, setTeamPhoto] = useState<File | null>(null);
   const [teamPhotoPreview, setTeamPhotoPreview] = useState<string>('');
   const [teamPhotoURL, setTeamPhotoURL] = useState<string>('');
@@ -136,7 +136,7 @@ export default function EditTeamPage() {
     }));
   };
 
-  // Funzioni per gestire la foto équipe
+  // Funzioni per gestire la foto equipé
   const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -323,7 +323,7 @@ export default function EditTeamPage() {
                 <div className="relative inline-block">
                   <img
                     src={teamPhotoPreview}
-                    alt="Anteprima foto équipe"
+                    alt="Anteprima foto equipé"
                     className="w-32 h-32 object-cover rounded-lg border border-gray-300"
                   />
                   <button

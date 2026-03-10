@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { Link } from 'react-router-dom';
 
@@ -15,7 +15,7 @@ export default function Footer() {
             </p>
             <p className="text-gray-400 text-xs">
               Networking professionale<br />
-              Formazione équipe multidisciplinari<br />
+              Formazione equipé multidisciplinari<br />
               Collaborazione sicura
             </p>
           </div>
@@ -25,7 +25,7 @@ export default function Footer() {
             <h4 className="font-semibold mb-4">Servizi</h4>
             <ul className="space-y-3 text-sm">
               <li><Link to="/dashboard" className="text-gray-400 hover:text-white transition">Cerca Professionisti</Link></li>
-              <li><Link to="/teams" className="text-gray-400 hover:text-white transition">Le Mie Équipe</Link></li>
+              <li><Link to="/teams" className="text-gray-400 hover:text-white transition">Le Mie Equipé</Link></li>
               <li><Link to="/messages" className="text-gray-400 hover:text-white transition">Messaggi</Link></li>
               <li><Link to="/referrals" className="text-gray-400 hover:text-white transition">Pazienti</Link></li>
               <li><Link to="/invites" className="text-gray-400 hover:text-white transition">Inviti</Link></li>

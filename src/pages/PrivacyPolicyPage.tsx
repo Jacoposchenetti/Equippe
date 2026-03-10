@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 export default function PrivacyPolicy() {
   return (
@@ -37,7 +37,7 @@ export default function PrivacyPolicy() {
               <h3 className="text-lg font-semibold mb-3">2.2 Dati di Utilizzo</h3>
               <ul className="list-disc list-inside space-y-2 mb-4">
                 <li>Messaggi scambiati tra professionisti</li>
-                <li>Partecipazione a équipe</li>
+                <li>Partecipazione a equipé</li>
                 <li>File condivisi (solo tra professionisti)</li>
                 <li>Log di accesso e utilizzo della piattaforma</li>
               </ul>
@@ -61,7 +61,7 @@ export default function PrivacyPolicy() {
               <h3 className="text-lg font-semibold mb-3">3.2 Interesse Legittimo (Art. 6.1.f GDPR)</h3>
               <ul className="list-disc list-inside space-y-2 mb-4">
                 <li>Networking tra professionisti qualificati</li>
-                <li>Formazione di équipe multidisciplinari</li>
+                <li>Formazione di equipé multidisciplinari</li>
                 <li>Miglioramento del servizio e sicurezza</li>
                 <li>Prevenzione frodi e abusi</li>
               </ul>
@@ -88,7 +88,7 @@ export default function PrivacyPolicy() {
               <h3 className="text-lg font-semibold mb-3">5.1 Altri Professionisti</h3>
               <p className="mb-4">
                 I dati del profilo sono visibili agli altri utenti registrati per facilitare 
-                la formazione di équipe e la collaborazione professionale.
+                la formazione di equipé e la collaborazione professionale.
               </p>
 
               <h3 className="text-lg font-semibold mb-3">5.2 Fornitori di Servizi</h3>

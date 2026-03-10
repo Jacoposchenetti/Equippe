@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useAuth } from '@/contexts/AuthContext';
 import { useModal } from '@/contexts/ModalContext';
@@ -719,7 +719,7 @@ export default function EditProfilePage() {
           <div className="bg-white rounded-xl shadow-sm p-6">
             <h2 className="text-2xl font-bold text-gray-900 mb-4">Notifiche Push</h2>
             <p className="text-gray-600 mb-6">
-              Ricevi notifiche istantanee per messaggi, inviti e richieste da équipe
+              Ricevi notifiche istantanee per messaggi, inviti e richieste da equipé
             </p>
             
             <div className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">

@@ -1,4 +1,4 @@
-# Setup Notifiche Push Firebase Cloud Messaging
+﻿# Setup Notifiche Push Firebase Cloud Messaging
 
 ## Stato Implementazione
 ✅ Service Worker creato (`public/firebase-messaging-sw.js`)
@@ -52,7 +52,7 @@ Questo deploierà:
 4. Il token FCM verrà salvato nel tuo profilo Firestore
 
 Per testare:
-- Fai una richiesta di adesione a un'équipe
+- Fai una richiesta di adesione a un'equipé
 - Invia un messaggio
 - Crea un invito
 
@@ -83,12 +83,12 @@ Per testare:
 
 Tutte le notifiche esistenti invieranno automaticamente push:
 
-1. `team_request` - Richiesta di adesione équipe
+1. `team_request` - Richiesta di adesione equipé
 2. `team_request_accepted` - Richiesta accettata
-3. `team_removal` - Rimozione da équipe
+3. `team_removal` - Rimozione da equipé
 4. `team_admin_promotion` - Promosso ad admin
 5. `team_member_left` - Membro ha lasciato
-6. `team_invite_response` - Invito a équipe
+6. `team_invite_response` - Invito a equipé
 7. `new_message` - Nuovo messaggio
 8. `referral_received` - Referral ricevuto
 9. `referral_accepted` - Referral accettato

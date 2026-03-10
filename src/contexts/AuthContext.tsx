@@ -7,9 +7,13 @@ import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   signOut as firebaseSignOut,
-  sendEmailVerification,
   updateProfile,
-  deleteUser as firebaseDeleteUser
+  deleteUser as firebaseDeleteUser,
+  GoogleAuthProvider,
+  signInWithPopup,
+  linkWithCredential,
+  EmailAuthProvider,
+  fetchSignInMethodsForEmail
 } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
@@ -21,6 +25,7 @@ interface AuthContextType {
   loading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string, displayName: string) => Promise<FirebaseUser>;
+  signInWithGoogle: () => Promise<{ user: FirebaseUser; isNewUser: boolean }>;
   signOut: () => Promise<void>;
   deleteCurrentUser: () => Promise<void>;
   refreshUserProfile: () => Promise<void>;
@@ -56,7 +61,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
-        // Aspetta che il token sia sincronizzato prima di impostare l'utente
+        // Rimetti loading a true per evitare che ProtectedRoute
+        // veda utente senza profilo durante il caricamento
+        setLoading(true);
         try {
           await firebaseUser.getIdToken();
           setUser(firebaseUser);
@@ -83,8 +90,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signUp = async (email: string, password: string, displayName: string): Promise<FirebaseUser> => {
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     await updateProfile(userCredential.user, { displayName });
-    await sendEmailVerification(userCredential.user);
+    // Email di verifica inviata successivamente tramite Cloud Function Resend
     return userCredential.user;
+  };
+
+  const signInWithGoogle = async (): Promise<{ user: FirebaseUser; isNewUser: boolean }> => {
+    const provider = new GoogleAuthProvider();
+    const result = await signInWithPopup(auth, provider);
+    // Verifica se esiste già un profilo Firestore
+    const userDoc = await getDoc(doc(db, 'users', result.user.uid));
+    const isNewUser = !userDoc.exists();
+    if (!isNewUser) {
+      setUserProfile(userDoc.data() as User);
+    }
+    return { user: result.user, isNewUser };
   };
 
   const signOut = async () => {
@@ -110,6 +129,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     loading,
     signIn,
     signUp,
+    signInWithGoogle,
     signOut,
     deleteCurrentUser,
     refreshUserProfile,

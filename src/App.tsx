@@ -51,6 +51,11 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
     return <Navigate to="/login" replace />
   }
 
+  // Se l'utente non ha un profilo Firestore, deve completare la registrazione
+  if (!userProfile) {
+    return <Navigate to="/register?provider=google" replace />
+  }
+
   // Se l'utente ha un profilo Firestore con status approved, lascialo passare
   // (backward compatibility con utenti creati prima del sistema di verifica email)
   if (userProfile?.profile?.verificationInfo?.status === 'approved') {
@@ -67,7 +72,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
 // Public Route Component (redirect to dashboard if authenticated)
 function PublicRoute({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useAuth()
+  const { user, userProfile, loading } = useAuth()
   const location = useLocation();
   
   if (loading) {
@@ -80,6 +85,11 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
   
   // Allow authenticated users to access the verify page
   if (user && location.pathname !== '/verify-email') {
+    // Se l'utente non ha un profilo Firestore (es. registrazione Google incompleta),
+    // lascialo accedere alla pagina di login normalmente
+    if (!userProfile) {
+      return <>{children}</>
+    }
     return <Navigate to="/dashboard" replace />
   }
   
@@ -99,11 +109,7 @@ function App() {
           </PublicRoute>
         } />
         <Route path="/verify-email" element={<VerifyEmailPage />} />
-        <Route path="/register" element={
-          <PublicRoute>
-            <RegisterPage />
-          </PublicRoute>
-        } />
+        <Route path="/register" element={<RegisterPage />} />
         
         {/* Legal Pages (accessible to everyone) */}
         <Route path="/legal/privacy" element={<PrivacyPolicyPage />} />

@@ -599,7 +599,6 @@ const PROFESSIONI_BLOCCATE_MVP = new Set([
   'Dietista',
   'Assistente Sociale',
   'Educatore Professionale',
-  'Fisioterapista',
   'Terapista Occupazionale',
   'Infermiere',
   'Medico di Base',

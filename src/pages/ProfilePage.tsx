@@ -1,4 +1,4 @@
-﻿import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { doc, getDoc, collection, query, where, getDocs, addDoc, Timestamp } from 'firebase/firestore';
@@ -120,7 +120,7 @@ export default function ProfilePage() {
 
   const handleSendInvite = async () => {
     if (!selectedTeamId) {
-      showToast('Seleziona un\'equipé', 'warning');
+      showToast('Seleziona un\'equipe', 'warning');
       return;
     }
 
@@ -140,14 +140,14 @@ export default function ProfilePage() {
 
       const existingInviteSnapshot = await getDocs(existingInviteQuery);
       if (!existingInviteSnapshot.empty) {
-        showToast('Esiste già un invito pendente per questo professionista in questa equipé', 'warning');
+        showToast('Esiste già un invito pendente per questo professionista in questa equipe', 'warning');
         return;
       }
 
       // Controlla se l'utente è già membro del team
       const selectedTeam = adminTeams.find(t => t.id === selectedTeamId);
       if (selectedTeam?.memberIds?.includes(profileUser.uid)) {
-        showToast('Questo professionista è già membro dell\'equipé selezionata', 'warning');
+        showToast('Questo professionista è già membro dell\'equipe selezionata', 'warning');
         return;
       }
 
@@ -168,7 +168,7 @@ export default function ProfilePage() {
         await notifyTeamInviteReceived(
           profileUser.uid,
           selectedTeamId,
-          selectedTeam.nome || selectedTeam.name || 'Equipé',
+          selectedTeam.nome || selectedTeam.name || 'equipe',
           senderName,
           inviteRef.id
         );
@@ -342,14 +342,14 @@ export default function ProfilePage() {
 
             {/* Pulsanti azione */}
             <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 w-full lg:w-auto">
-              {/* Pulsante Invita in Equipé */}
+              {/* Pulsante Invita in equipe */}
               {adminTeams.length > 0 && (
                 (canInteract && profileUser.profile.verificationInfo?.status === 'approved') ? (
                   <button
                     onClick={() => setShowInviteModal(true)}
                     className="px-4 sm:px-6 py-2 sm:py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors flex items-center justify-center gap-2 text-sm sm:text-base whitespace-nowrap"
                   >
-                    Invita in Equipé
+                    Invita in equipe
                   </button>
                 ) : (
                   <div className="relative group">
@@ -360,7 +360,7 @@ export default function ProfilePage() {
                         ? 'Questo professionista non è ancora stato approvato' 
                         : (canInteractMessage || 'Funzionalità non disponibile')}
                     >
-                      Invita in Equipé
+                      Invita in equipe
                     </button>
                     <div className="hidden group-hover:block absolute z-10 w-64 p-2 mt-2 text-sm bg-gray-800 text-white rounded-lg shadow-lg left-0">
                       {profileUser.profile.verificationInfo?.status !== 'approved' 
@@ -509,25 +509,25 @@ export default function ProfilePage() {
         )}
       </div>
 
-      {/* Modal Invito Equipé */}
+      {/* Modal Invito equipe */}
       {showInviteModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full">
             <div className="px-6 py-4 border-b border-gray-200">
-              <h3 className="text-xl font-bold text-gray-900">Invita in Equipé</h3>
-              <p className="text-sm text-gray-600 mt-1">Seleziona l'equipé in cui invitare <strong>{profileUser?.profile.nome}</strong></p>
+              <h3 className="text-xl font-bold text-gray-900">Invita in equipe</h3>
+              <p className="text-sm text-gray-600 mt-1">Seleziona l'equipe in cui invitare <strong>{profileUser?.profile.nome}</strong></p>
             </div>
 
             <div className="p-6 space-y-4">
               <div>
-                <label className="block text-sm font-semibold mb-2">Equipé di destinazione *</label>
+                <label className="block text-sm font-semibold mb-2">equipe di destinazione *</label>
                 <select
                   value={selectedTeamId}
                   onChange={(e) => setSelectedTeamId(e.target.value)}
                   className="w-full border rounded-lg px-3 py-2"
                   required
                 >
-                  <option value="">Seleziona un'equipé...</option>
+                  <option value="">Seleziona un'equipe...</option>
                   {adminTeams.map((team) => (
                     <option key={team.id} value={team.id}>
                       {team.nome || team.name}

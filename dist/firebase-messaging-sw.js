@@ -1,5 +1,6 @@
 // Service Worker per Firebase Cloud Messaging
 // Gestisce le notifiche push in background
+// v2 - force update cache
 
 importScripts('https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging-compat.js');
@@ -20,7 +21,7 @@ const messaging = firebase.messaging();
 messaging.onBackgroundMessage((payload) => {
   console.log('[firebase-messaging-sw.js] Background message received:', payload);
 
-  const notificationTitle = payload.notification?.title || 'Equipé';
+  const notificationTitle = payload.notification?.title || 'tuaequipe.it';
   const notificationOptions = {
     body: payload.notification?.body || 'Hai una nuova notifica',
     icon: '/icon-192x192.png',

@@ -7,8 +7,8 @@ import 'leaflet/dist/leaflet.css';
 
 /*
 export const metadata: Metadata = {
-  title: 'Equipé - Piattaforma per professionisti sociosanitari',
-  description: 'Trova colleghi, forma equipé multidisciplinari e collabora',
+  title: 'equipe - Piattaforma per professionisti sanitari',
+  description: 'Trova colleghi, forma equipe multidisciplinari e collabora',
 };
 
 export const viewport: Viewport = {

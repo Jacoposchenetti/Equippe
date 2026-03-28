@@ -1,4 +1,4 @@
-﻿import { Timestamp } from 'firebase/firestore';
+import { Timestamp } from 'firebase/firestore';
 
 // Verification Types
 export type VerificationStatus = 
@@ -136,7 +136,7 @@ export interface TeamSettings {
   tematiche: string[];
 }
 
-// Ruolo cercato per l'equipé
+// Ruolo cercato per l'equipe
 export interface RoleCercato {
   specializzazione: string; // es: "Psichiatra", "Fisioterapista"
   numero: number; // quanti ne servono
@@ -152,7 +152,7 @@ export interface Team {
   nome: string;
   name?: string; // Alias per compatibilità
   description?: string;
-  photoURL?: string; // Foto dell'equipé
+  photoURL?: string; // Foto dell'equipe
   adminUid: string;
   createdBy?: string; // Alias per compatibilità
   members: TeamMember[];
@@ -163,14 +163,14 @@ export interface Team {
   specializations?: string[];
   ruoliCercati?: RoleCercato[]; // Nuovi ruoli che si stanno cercando
   completato?: boolean; // true se tutti i ruoli sono occupati
-  città?: string; // Città dove opera l'equipé
+  città?: string; // Città dove opera l'equipe
   provincia?: string; // Provincia
   zona?: string; // Zona specifica (quartiere, municipio)
   locationMode?: 'zone' | 'address' | 'map'; // Modalità di definizione area
   indirizzo?: string; // Indirizzo sede principale (per modalità address)
   coordinate?: { lat: number; lng: number }; // Coordinate centro area
   raggioKm?: number; // Raggio di copertura in km
-  remoto?: boolean; // Se l'equipé lavora anche da remoto
+  remoto?: boolean; // Se l'equipe lavora anche da remoto
   createdAt: Timestamp;
   updatedAt: Timestamp;
 }
@@ -291,10 +291,10 @@ export interface Conversation {
 
 // Notification Types
 export type NotificationType = 
-  | 'team_request'           // Richiesta adesione equipé
+  | 'team_request'           // Richiesta adesione equipe
   | 'message'                // Nuovo messaggio
   | 'team_request_accepted'  // Richiesta adesione accettata
-  | 'team_removed'           // Rimosso da equipé
+  | 'team_removed'           // Rimosso da equipe
   | 'team_admin'             // Promosso ad admin
   | 'team_invite_response'   // Invito accettato/rifiutato
   | 'team_invite_received'   // Invito ricevuto

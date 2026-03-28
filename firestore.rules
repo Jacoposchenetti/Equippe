@@ -89,5 +89,39 @@ service cloud.firestore {
       allow create: if canWrite();
       allow update, delete: if canInteract();
     }
+
+    // ECM Events: lettura per utenti autenticati, scrittura solo server (admin SDK)
+    match /ecmEvents/{eventId} {
+      allow read: if isAuthenticated();
+    }
+    match /ecmSyncStatus/{profId} {
+      allow read: if isAuthenticated();
+    }
+
+    // Counter document aggiornato dalle Cloud Functions (admin SDK)
+    match /config/{docId} {
+      allow read: if true;
+      allow write: if false; // solo admin SDK via Cloud Functions
+    }
+
+    // Rate limits gestiti solo server-side (admin SDK via Cloud Functions)
+    match /rateLimits/{docId} {
+      allow read, write: if false;
+    }
+
+    match /waitlist/{docId} {
+      // Chiunque può iscriversi (anche non autenticato), ma solo creare se il doc non esiste
+      allow create: if request.resource.data.keys().hasAll(['nome', 'cognome', 'email', 'professione', 'citta', 'gdprConsent', 'createdAt'])
+                    && request.resource.data.nome is string
+                    && request.resource.data.cognome is string
+                    && request.resource.data.email is string
+                    && request.resource.data.email.size() > 0
+                    && request.resource.data.gdprConsent == true;
+      // Lettura solo per admin (il check duplicati usa il docId = email sanitizzata,
+      // quindi setDoc sovrascriverà se esiste, evitando il bisogno di get pubblica)
+      allow get: if isAuthenticated() && isAdmin();
+      allow list: if isAuthenticated() && isAdmin();
+      allow update, delete: if isAuthenticated() && isAdmin();
+    }
   }
 }

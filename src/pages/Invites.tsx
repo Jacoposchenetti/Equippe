@@ -163,7 +163,7 @@ export default function InvitesPage() {
         await occupyPositions(invite.teamId, user.uid);
       }
 
-      showToast('Invito accettato! Ora fai parte dell\'Equipé', 'success');
+      showToast('Invito accettato! Ora fai parte dell\'equipe', 'success');
       await loadInvites();
     } catch (error) {
       console.error('Errore accettazione invito:', error);
@@ -250,7 +250,7 @@ export default function InvitesPage() {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-0 pb-24 sm:py-8">
         <div className="flex items-center gap-3 mb-8">
-          <h1 className="text-4xl font-bold text-gray-900">Inviti Equipé</h1>
+          <h1 className="text-4xl font-bold text-gray-900">Inviti equipe</h1>
           {receivedInvites.length > 0 && (
             <span className="px-3 py-1 bg-red-500 text-white text-sm font-bold rounded-full">
               {receivedInvites.length}
@@ -304,7 +304,7 @@ export default function InvitesPage() {
               </h3>
               <p className="text-gray-600">
                 {tab === 'received'
-                  ? 'Quando riceverai inviti a unirsi a un\'Equipé, appariranno qui'
+                  ? 'Quando riceverai inviti a unirsi a un\'equipe, appariranno qui'
                   : 'Gli inviti che invii ai professionisti appariranno qui'}
               </p>
             </div>

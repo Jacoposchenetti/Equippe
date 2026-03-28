@@ -1,6 +1,6 @@
 {
-  "name": "Equipe",
-  "short_name": "Equipe",
+  "name": "tuaequipe.it",
+  "short_name": "tuaequipe.it",
   "description": "Piattaforma per la collaborazione tra professionisti sanitari",
   "start_url": "/",
   "display": "standalone",

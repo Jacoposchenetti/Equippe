@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useAuth } from '@/contexts/AuthContext';
 import { useModal } from '@/contexts/ModalContext';
@@ -1166,7 +1166,7 @@ export default function EditProfilePage() {
           {/* Notifiche Push */}
           <CollapsibleSection title="Notifiche Push" subtitle={notificationEnabled ? 'Abilitate' : 'Disabilitate'}>
             <p className="text-gray-600 mb-6">
-              Ricevi notifiche istantanee per messaggi, inviti e richieste da equipé
+              Ricevi notifiche istantanee per messaggi, inviti e richieste da equipe
             </p>
             
             <div className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">

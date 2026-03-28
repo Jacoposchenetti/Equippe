@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -753,7 +753,7 @@ export default function MessagesPage() {
                             </h3>
                             {isTeamChat && (
                               <span className="px-1.5 py-0.5 bg-amber-100 text-amber-700 text-[10px] font-semibold rounded-full uppercase tracking-wide">
-                                Equipé
+                                equipe
                               </span>
                             )}
                           </div>

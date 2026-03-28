@@ -3,6 +3,9 @@ import { useEffect } from 'react'
 import { useAuth } from './contexts/AuthContext'
 import VerifyEmailPage from './pages/VerifyEmailPage'
 import PWAInstallPrompt from './components/PWAInstallPrompt'
+import WaitlistPage from './pages/WaitlistPage'
+
+const WAITLIST_MODE = import.meta.env.VITE_WAITLIST_MODE === 'true'
 
 // Scroll to top on route change
 function ScrollToTop() {
@@ -34,6 +37,9 @@ import PrivacyPolicyPage from './pages/PrivacyPolicyPage'
 import TerminiServizioPage from './pages/TerminiServizioPage'
 import CookiePolicyPage from './pages/CookiePolicyPage'
 import AdminVerificationsPage from './pages/AdminVerificationsPage'
+import AdminMailingListPage from './pages/AdminMailingListPage'
+import AdminWaitlistEmailPage from './pages/AdminWaitlistEmailPage'
+import ECMSearchPage from './pages/ECMSearchPage'
 
 // Protected Route Component
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -183,18 +189,40 @@ function App() {
           </ProtectedRoute>
         } />
         
+        {/* ECM Route */}
+        <Route path="/ecm" element={
+          <ProtectedRoute>
+            <ECMSearchPage />
+          </ProtectedRoute>
+        } />
+        
         {/* Admin Routes */}
         <Route path="/admin/verifications" element={
           <ProtectedRoute>
             <AdminVerificationsPage />
           </ProtectedRoute>
         } />
+        <Route path="/admin/mailing-list" element={
+          <ProtectedRoute>
+            <AdminMailingListPage />
+          </ProtectedRoute>
+        } />
+        <Route path="/admin/waitlist-email" element={
+          <ProtectedRoute>
+            <AdminWaitlistEmailPage />
+          </ProtectedRoute>
+        } />
         
-        {/* Default redirect */}
-        <Route path="/" element={<Navigate to="/dashboard" replace />} />
+        {/* Waitlist / Default redirect */}
+        <Route path="/" element={
+          WAITLIST_MODE ? <WaitlistPage /> : <Navigate to="/dashboard" replace />
+        } />
+        <Route path="/waitlist" element={<WaitlistPage />} />
         
         {/* 404 fallback */}
-        <Route path="*" element={<Navigate to="/dashboard" replace />} />
+        <Route path="*" element={
+          WAITLIST_MODE ? <Navigate to="/" replace /> : <Navigate to="/dashboard" replace />
+        } />
       </Routes>
     </div>
   )

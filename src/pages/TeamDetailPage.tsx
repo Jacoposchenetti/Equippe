@@ -1,4 +1,4 @@
-﻿import { useModal } from '@/contexts/ModalContext';
+import { useModal } from '@/contexts/ModalContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useEffect, useState, useRef } from 'react';
@@ -121,7 +121,7 @@ export default function TeamDetailPage() {
         setPendingRequests(requestsWithUserData);
       }
 
-      // Carica o crea chat di equipé
+      // Carica o crea chat di equipe
       await loadTeamChat();
     } catch (error) {
       console.error('Errore caricamento team:', error);
@@ -161,7 +161,7 @@ export default function TeamDetailPage() {
   const handleLeaveTeam = async () => {
     if (!isAdmin) {
       // Utente normale lascia il team
-      const confirmed = await showConfirm({ title: 'Lascia Equipé', message: 'Sei sicuro di voler lasciare questa Equipé?', variant: 'warning', confirmText: 'Lascia' }); if (!confirmed) return;
+      const confirmed = await showConfirm({ title: 'Lascia equipe', message: 'Sei sicuro di voler lasciare questa equipe?', variant: 'warning', confirmText: 'Lascia' }); if (!confirmed) return;
 
       try {
         const teamRef = doc(db, 'teams', teamId);
@@ -198,7 +198,7 @@ export default function TeamDetailPage() {
       }
     } else {
       // Admin lascia il team - passa admin al secondo membro
-      const confirmed = await showConfirm({ title: 'Lascia Equipé', message: 'Sei sicuro di voler lasciare questa Equipé? Il ruolo di admin passerà al prossimo membro.', variant: 'warning', confirmText: 'Lascia' }); if (!confirmed) return;
+      const confirmed = await showConfirm({ title: 'Lascia equipe', message: 'Sei sicuro di voler lasciare questa equipe? Il ruolo di admin passerà al prossimo membro.', variant: 'warning', confirmText: 'Lascia' }); if (!confirmed) return;
 
       try {
         const teamRef = doc(db, 'teams', teamId);
@@ -230,7 +230,7 @@ export default function TeamDetailPage() {
               await freePositions(teamId, user.uid);
             }
 
-            showToast(`${otherMembers[0].userId} è ora l'admin dell'Equipé`, 'info');
+            showToast(`${otherMembers[0].userId} è ora l'admin dell'equipe`, 'info');
           }
         } else {
           // Se è l'unico membro, elimina il team
@@ -246,7 +246,7 @@ export default function TeamDetailPage() {
   };
 
   const handleDeleteTeam = async () => {
-    const confirmed1 = await showConfirm({ title: 'Elimina Equipé', message: 'ATTENZIONE: Sei sicuro di voler eliminare definitivamente questa Equipé? Questa azione non può essere annullata.', variant: 'danger', confirmText: 'Elimina' }); if (!confirmed1) return;
+    const confirmed1 = await showConfirm({ title: 'Elimina equipe', message: 'ATTENZIONE: Sei sicuro di voler eliminare definitivamente questa equipe? Questa azione non può essere annullata.', variant: 'danger', confirmText: 'Elimina' }); if (!confirmed1) return;
     
     // Doppia conferma per sicurezza
     const confirmed2 = await showConfirm({ title: 'Conferma eliminazione', message: 'Confermi l\'eliminazione? Tutti i dati del team saranno persi.', variant: 'danger', confirmText: 'Conferma eliminazione' }); if (!confirmed2) return;
@@ -279,7 +279,7 @@ export default function TeamDetailPage() {
       // Elimina il team
       await deleteDoc(doc(db, 'teams', teamId));
 
-      showToast('Equipé eliminata con successo', 'success');
+      showToast('equipe eliminata con successo', 'success');
       navigate('/teams');
     } catch (error) {
       console.error('Errore eliminazione team:', error);
@@ -406,7 +406,7 @@ export default function TeamDetailPage() {
 
       // Ricarica i dati
       await loadTeamData();
-      showToast('Richiesta accettata! Il membro è stato aggiunto all\'equipé.', 'success');
+      showToast('Richiesta accettata! Il membro è stato aggiunto all\'equipe.', 'success');
     } catch (error) {
       console.error('Errore accettazione richiesta:', error);
       showToast('Errore durante l\'accettazione della richiesta', 'error');
@@ -696,7 +696,7 @@ export default function TeamDetailPage() {
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
           </svg>
-          Torna alle Equipé
+          Torna alle equipe
         </Link>
 
         <div className="bg-white rounded-xl shadow-sm mb-6 overflow-hidden">
@@ -863,12 +863,12 @@ export default function TeamDetailPage() {
           </div>
         </div>
 
-        {/* Sezione Composizione Equipé */}
+        {/* Sezione Composizione equipe */}
         <div className="bg-white rounded-xl shadow-sm mb-6 overflow-hidden">
           <div className="px-4 sm:px-6 lg:px-8 py-4 sm:py-6 border-b border-gray-200">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
               <div className="flex-1 min-w-0">
-                <h3 className="text-xl sm:text-2xl font-bold text-gray-900">Composizione Equipé</h3>
+                <h3 className="text-xl sm:text-2xl font-bold text-gray-900">Composizione equipe</h3>
                 <p className="text-xs sm:text-sm text-gray-600 mt-1">Membri attuali del team</p>
               </div>
               {isMember && (
@@ -961,7 +961,7 @@ export default function TeamDetailPage() {
                 </svg>
                 Invita Membri
               </h3>
-              <p className="text-sm text-gray-600 mt-1">Cerca i professionisti da invitare nella tua equipé</p>
+              <p className="text-sm text-gray-600 mt-1">Cerca i professionisti da invitare nella tua equipe</p>
             </div>
             <div className="p-4 sm:p-6">
               {/* Utenti selezionati (pills) */}
@@ -1287,7 +1287,7 @@ export default function TeamDetailPage() {
           </div>
         </div>
 
-        {/* Badge equipé completa */}
+        {/* Badge equipe completa */}
         {team.ruoliCercati && team.ruoliCercati.every(r => r.occupati >= r.numero) && team.ruoliCercati.length > 0 && (
           <div className="bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-300 rounded-xl shadow-sm mb-6 overflow-hidden">
             <div className="p-6 text-center">
@@ -1296,7 +1296,7 @@ export default function TeamDetailPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
               </div>
-              <h3 className="text-2xl font-bold text-green-900 mb-2">Equipé al Completo!</h3>
+              <h3 className="text-2xl font-bold text-green-900 mb-2">equipe al Completo!</h3>
               <p className="text-green-700">Tutte le posizioni sono state ricoperte</p>
             </div>
           </div>
@@ -1474,7 +1474,7 @@ export default function TeamDetailPage() {
           </div>
         )}
 
-        {/* Pulsante lascia equipé per membri non admin */}
+        {/* Pulsante lascia equipe per membri non admin */}
         {isMember && !isAdmin && (
           <div className="bg-white rounded-xl shadow-sm p-6">
             <button
@@ -1484,7 +1484,7 @@ export default function TeamDetailPage() {
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
               </svg>
-              Lascia Equipé
+              Lascia equipe
             </button>
           </div>
         )}
@@ -1495,7 +1495,7 @@ export default function TeamDetailPage() {
             <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden" style={{ zIndex: 10000 }}>
               <div className="px-8 py-6 border-b border-gray-200">
                 <h3 className="text-2xl font-bold text-gray-900">Richiesta di Adesione</h3>
-                <p className="text-sm text-gray-600 mt-1">Invia una richiesta per entrare nell'equipé</p>
+                <p className="text-sm text-gray-600 mt-1">Invia una richiesta per entrare nell'equipe</p>
               </div>
               
               <div className="p-6">
@@ -1506,7 +1506,7 @@ export default function TeamDetailPage() {
                   <textarea
                     value={requestMessage}
                     onChange={(e) => setRequestMessage(e.target.value)}
-                    placeholder="Presentati brevemente e spiega perché vorresti far parte di questa equipé..."
+                    placeholder="Presentati brevemente e spiega perché vorresti far parte di questa equipe..."
                     className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-green-500"
                     rows={6}
                   />
@@ -1538,42 +1538,42 @@ export default function TeamDetailPage() {
         {isAdmin && (
           <div className="bg-white rounded-xl shadow-sm overflow-hidden mt-6">
             <div className="px-8 py-6 border-b border-gray-200">
-              <h3 className="text-xl font-bold text-gray-900">Gestione Equipé</h3>
+              <h3 className="text-xl font-bold text-gray-900">Gestione equipe</h3>
               <p className="text-sm text-gray-600 mt-1">Azioni riservate all'amministratore</p>
             </div>
             <div className="p-6 space-y-4">
-              {/* Lascia Equipé */}
+              {/* Lascia equipe */}
               <div className="border border-orange-200 rounded-lg p-4 bg-orange-50">
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
-                    <h4 className="font-bold text-gray-900 mb-1">Lascia Equipé</h4>
+                    <h4 className="font-bold text-gray-900 mb-1">Lascia equipe</h4>
                     <p className="text-sm text-gray-600">
-                      Esci dall'equipé. {team.members.length > 1 ? 'Il ruolo di admin passerà al prossimo membro.' : 'Essendo l\'unico membro, l\'equipé verrà eliminata.'}
+                      Esci dall'equipe. {team.members.length > 1 ? 'Il ruolo di admin passerà al prossimo membro.' : 'Essendo l\'unico membro, l\'equipe verrà eliminata.'}
                     </p>
                   </div>
                   <button
                     onClick={handleLeaveTeam}
                     className="ml-4 px-5 py-2.5 bg-orange-500 text-white rounded-lg font-medium hover:bg-orange-600 transition shadow-sm whitespace-nowrap"
                   >
-                    Lascia Equipé
+                    Lascia equipe
                   </button>
                 </div>
               </div>
 
-              {/* Elimina Equipé */}
+              {/* Elimina equipe */}
               <div className="border border-red-300 rounded-lg p-4 bg-red-50">
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
-                    <h4 className="font-bold text-red-900 mb-1">Elimina Equipé</h4>
+                    <h4 className="font-bold text-red-900 mb-1">Elimina equipe</h4>
                     <p className="text-sm text-red-700">
-                      Elimina definitivamente questa equipé. Questa azione è irreversibile e rimuoverà tutti i dati associati.
+                      Elimina definitivamente questa equipe. Questa azione è irreversibile e rimuoverà tutti i dati associati.
                     </p>
                   </div>
                   <button
                     onClick={handleDeleteTeam}
                     className="ml-4 px-5 py-2.5 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 transition shadow-sm whitespace-nowrap"
                   >
-                    Elimina Equipé
+                    Elimina equipe
                   </button>
                 </div>
               </div>

@@ -56,6 +56,81 @@
         }
       ]
     }
+    ,
+    {
+      "collectionGroup": "ecmEvents",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "professioniIds",
+          "arrayConfig": "CONTAINS"
+        },
+        {
+          "fieldPath": "dataInizioTimestamp",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "ecmEvents",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "professioniIds",
+          "arrayConfig": "CONTAINS"
+        },
+        {
+          "fieldPath": "creditiNum",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "ecmEvents",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "tipologia",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "dataInizioTimestamp",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "ecmEvents",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "professioniIds",
+          "arrayConfig": "CONTAINS"
+        },
+        {
+          "fieldPath": "tipologia",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "dataInizioTimestamp",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "ecmSyncStatus",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "lastSynced",
+          "order": "ASCENDING"
+        }
+      ]
+    }
   ],
   "fieldOverrides": []
 }

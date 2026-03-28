@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 export default function PrivacyPolicy() {
   return (
@@ -15,7 +15,7 @@ export default function PrivacyPolicy() {
             <section className="mb-8">
               <h2 className="text-2xl font-semibold text-gray-900 mb-4">1. Titolare del Trattamento</h2>
               <p className="mb-4">
-                <strong>Equipé</strong><br />
+                <strong>tuaequipe.it</strong><br />
                 Titolare del trattamento: persona fisica (dati completi su richiesta)<br />
                 Email: <a href="mailto:legal@tuaequipe.it" className="text-blue-600 hover:underline">legal@tuaequipe.it</a>
               </p>
@@ -37,13 +37,13 @@ export default function PrivacyPolicy() {
               <h3 className="text-lg font-semibold mb-3">2.2 Dati di Utilizzo</h3>
               <ul className="list-disc list-inside space-y-2 mb-4">
                 <li>Messaggi scambiati tra professionisti</li>
-                <li>Partecipazione a equipé</li>
+                <li>Partecipazione a equipe</li>
                 <li>File condivisi (solo tra professionisti)</li>
                 <li>Log di accesso e utilizzo della piattaforma</li>
               </ul>
 
               <p className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-sm">
-                <strong>Importante:</strong> Equipé NON tratta dati sanitari di pazienti. 
+                <strong>Importante:</strong> tuaequipe.it NON tratta dati sanitari di pazienti. 
                 È severamente vietato condividere informazioni sui pazienti attraverso la piattaforma.
               </p>
             </section>
@@ -61,7 +61,7 @@ export default function PrivacyPolicy() {
               <h3 className="text-lg font-semibold mb-3">3.2 Interesse Legittimo (Art. 6.1.f GDPR)</h3>
               <ul className="list-disc list-inside space-y-2 mb-4">
                 <li>Networking tra professionisti qualificati</li>
-                <li>Formazione di equipé multidisciplinari</li>
+                <li>Formazione di equipe multidisciplinari</li>
                 <li>Miglioramento del servizio e sicurezza</li>
                 <li>Prevenzione frodi e abusi</li>
               </ul>
@@ -88,7 +88,7 @@ export default function PrivacyPolicy() {
               <h3 className="text-lg font-semibold mb-3">5.1 Altri Professionisti</h3>
               <p className="mb-4">
                 I dati del profilo sono visibili agli altri utenti registrati per facilitare 
-                la formazione di equipé e la collaborazione professionale.
+                la formazione di equipe e la collaborazione professionale.
               </p>
 
               <h3 className="text-lg font-semibold mb-3">5.2 Fornitori di Servizi</h3>

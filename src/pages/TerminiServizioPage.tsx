@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 export default function TerminiServizio() {
   return (
@@ -15,8 +15,8 @@ export default function TerminiServizio() {
             <section className="mb-8">
               <h2 className="text-2xl font-semibold text-gray-900 mb-4">1. Oggetto del Servizio</h2>
               <p className="mb-4">
-                Equipé è una piattaforma digitale che facilita la connessione e collaborazione tra professionisti 
-                sociosanitari per la formazione di equipé multidisciplinari. Il servizio NON include il trattamento 
+                tuaequipe.it è una piattaforma digitale che facilita la connessione e collaborazione tra professionisti 
+                sanitari per la formazione di equipe multidisciplinari. Il servizio NON include il trattamento 
                 diretto di pazienti attraverso la piattaforma.
               </p>
             </section>
@@ -24,9 +24,9 @@ export default function TerminiServizio() {
             <section className="mb-8">
               <h2 className="text-2xl font-semibold text-gray-900 mb-4">2. Definizioni</h2>
               <ul className="list-disc list-inside space-y-2">
-                <li><strong>Piattaforma:</strong> Il sito web e l'applicazione Equipé</li>
-                <li><strong>Utente:</strong> Professionista sociosanitario registrato</li>
-                <li><strong>Equipé:</strong> Gruppo di professionisti collaboranti</li>
+                <li><strong>Piattaforma:</strong> Il sito web e l'applicazione tuaequipe.it</li>
+                <li><strong>Utente:</strong> Professionista sanitario registrato</li>
+                <li><strong>equipe:</strong> Gruppo di professionisti collaboranti</li>
                 <li><strong>Referral:</strong> Segnalazione professionale tra utenti</li>
               </ul>
             </section>
@@ -70,7 +70,7 @@ export default function TerminiServizio() {
             <section className="mb-8">
               <h2 className="text-2xl font-semibold text-gray-900 mb-4">6. Limitazioni di Responsabilità</h2>
               <p className="mb-4">
-                Equipé non è responsabile per:
+                tuaequipe.it non è responsabile per:
               </p>
               <ul className="list-disc list-inside space-y-2">
                 <li>Rapporti professionali instaurati tramite la piattaforma</li>
@@ -83,7 +83,7 @@ export default function TerminiServizio() {
             <section className="mb-8">
               <h2 className="text-2xl font-semibold text-gray-900 mb-4">7. Sospensione e Risoluzione</h2>
               <p className="mb-4">
-                Equipé si riserva il diritto di sospendere o risolvere l'accesso in caso di:
+                tuaequipe.it si riserva il diritto di sospendere o risolvere l'accesso in caso di:
               </p>
               <ul className="list-disc list-inside space-y-2">
                 <li>Violazione dei presenti Termini</li>
@@ -96,7 +96,7 @@ export default function TerminiServizio() {
             <section className="mb-8">
               <h2 className="text-2xl font-semibold text-gray-900 mb-4">8. Modifiche ai Termini</h2>
               <p className="mb-4">
-                Equipé può modificare i presenti Termini con preavviso di 30 giorni. 
+                tuaequipe.it può modificare i presenti Termini con preavviso di 30 giorni. 
                 L'uso continuato del servizio costituisce accettazione delle modifiche.
               </p>
             </section>

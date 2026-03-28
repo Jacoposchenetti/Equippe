@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import Header from '@/components/Header';
@@ -265,15 +265,15 @@ export default function ReferralCreatePage() {
               </select>
             </div>
 
-            {/* Filtro Equipé */}
+            {/* Filtro equipe */}
             <div>
-              <label className="block text-sm font-semibold mb-2 text-blue-800">Equipé di Provenienza</label>
+              <label className="block text-sm font-semibold mb-2 text-blue-800">equipe di Provenienza</label>
               <select
                 value={filters.teamId}
                 onChange={(e) => setFilters({ ...filters, teamId: e.target.value })}
                 className="w-full border rounded-lg px-4 py-2"
               >
-                <option value="">Tutte le equipé</option>
+                <option value="">Tutte le equipe</option>
                 {teams.map((team) => (
                   <option key={team.id} value={team.id}>
                     {team.nome || team.name}

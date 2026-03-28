@@ -1,14 +1,13 @@
-﻿import { useAuth } from '@/contexts/AuthContext';
-import { useModal } from '@/contexts/ModalContext';
-import { useNavigate, useParams } from 'react-router-dom';
-import { useEffect, useState } from 'react';
-import { doc, getDoc, updateDoc, Timestamp } from 'firebase/firestore';
+import { useAuth } from '@/contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
+import { useState, useEffect, useRef } from 'react';
+import { collection, addDoc, Timestamp, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { Team, RoleCercato } from '@/types/equippe';
+import { User, RoleCercato } from '@/types/equippe';
 import { Link } from 'react-router-dom';
 import Header from '@/components/Header';
 import MapSelector from '@/components/MapSelector';
-import { uploadTeamPhoto } from '@/lib/teamPhotoUpload';
+import { uploadTeamPhoto, validateTeamPhoto } from '@/lib/teamPhotoUpload';
 
 const SPECIALIZZAZIONI = [
   'Psicologo',
@@ -19,106 +18,118 @@ const SPECIALIZZAZIONI = [
   'Logopedista'
 ];
 
-export default function EditTeamPage() {
-  const { user } = useAuth();
-  const { showToast } = useModal();
+export default function CreateTeamPage() {
+  const { user, userProfile } = useAuth();
   const navigate = useNavigate();
-  const params = useParams();
-  const teamId = params.id as string;
-  
-  const [team, setTeam] = useState<Team | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [allUsers, setAllUsers] = useState<User[]>([]);
+  const [selectedPhoto, setSelectedPhoto] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [teamPhotoURL, setTeamPhotoURL] = useState<string>('');
+  const photoInputRef = useRef<HTMLInputElement>(null);
   const [formData, setFormData] = useState({
     name: '',
     description: '',
-    specializations: [] as string[],
-    coordinate: null as { lat: number; lng: number } | null,
+    remoto: false,
     indirizzo: '',
     raggioKm: 10,
-    remoto: false,
+    coordinate: null as { lat: number; lng: number } | null,
+    selectedMembers: [] as string[],
     ruoliCercati: [] as RoleCercato[],
   });
+  
   const [nuovoRuolo, setNuovoRuolo] = useState({
     specializzazione: '',
     numero: 1,
-    descrizione: '',
+    descrizione: ''
   });
-  
-  // Stati per la gestione della foto equipé
-  const [teamPhoto, setTeamPhoto] = useState<File | null>(null);
-  const [teamPhotoPreview, setTeamPhotoPreview] = useState<string>('');
-  const [teamPhotoURL, setTeamPhotoURL] = useState<string>('');
-  const [uploadingPhoto, setUploadingPhoto] = useState(false);
 
   useEffect(() => {
     if (!user) {
       navigate('/login');
       return;
     }
-    loadTeam();
-  }, [user, teamId]);
+    loadUsers();
+  }, [user]);
 
-  const loadTeam = async () => {
+  const loadUsers = async () => {
     try {
-      const teamDoc = await getDoc(doc(db, 'teams', teamId));
-      if (!teamDoc.exists()) {
-        navigate('/teams');
-        return;
-      }
-
-      const teamData = { id: teamDoc.id, ...teamDoc.data() } as Team;
-      
-      // Verifica che l'utente sia admin
-      if (teamData.createdBy !== user?.uid) {
-        showToast('Solo l\'amministratore può modificare le impostazioni', 'error');
-        navigate(`/teams/${teamId}`);
-        return;
-      }
-
-      setTeam(teamData);
-      setFormData({
-        name: teamData.name || '',
-        description: teamData.description || '',
-        specializations: teamData.specializations || [],
-        coordinate: teamData.coordinate || null,
-        indirizzo: teamData.indirizzo || '',
-        raggioKm: teamData.raggioKm || 10,
-        remoto: teamData.remoto || false,
-        ruoliCercati: teamData.ruoliCercati || [],
-      });
-      
-      // Carica la foto esistente se presente
-      if (teamData.photoURL) {
-        setTeamPhotoURL(teamData.photoURL);
-        setTeamPhotoPreview(teamData.photoURL);
-      }
+      const usersRef = collection(db, 'users');
+      const snapshot = await getDocs(usersRef);
+      const users = snapshot.docs.map(doc => ({
+        uid: doc.id,
+        ...doc.data()
+      } as User));
+      setAllUsers(users.filter(u => u.uid !== user?.uid));
     } catch (error) {
-      console.error('Errore caricamento team:', error);
-    } finally {
-      setLoading(false);
+      console.error('Errore caricamento utenti:', error);
     }
   };
 
-  const handleSpecChange = (spec: string) => {
+  const handleMemberToggle = (userId: string) => {
     setFormData(prev => ({
       ...prev,
-      specializations: prev.specializations.includes(spec)
-        ? prev.specializations.filter(s => s !== spec)
-        : [...prev.specializations, spec]
+      selectedMembers: prev.selectedMembers.includes(userId)
+        ? prev.selectedMembers.filter(id => id !== userId)
+        : [...prev.selectedMembers, userId]
     }));
+  };
+
+  const handlePhotoSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validazione file
+    if (!file.type.startsWith('image/')) {
+      setError('Seleziona un\'immagine valida');
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) { // 5MB
+      setError('L\'immagine deve essere inferiore a 5MB');
+      return;
+    }
+
+    setUploadingPhoto(true);
+    setError('');
+
+    try {
+      const photoURL = await uploadTeamPhoto(file, user!.uid);
+      setTeamPhotoURL(photoURL);
+    } catch (error) {
+      console.error('Errore upload foto:', error);
+      setError('Errore durante l\'upload della foto');
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
+
+  const handleRemovePhoto = () => {
+    setTeamPhotoURL('');
+    // Reset input file
+    const fileInput = document.getElementById('team-photo') as HTMLInputElement;
+    if (fileInput) fileInput.value = '';
   };
 
   const aggiungiRuolo = () => {
     if (!nuovoRuolo.specializzazione || nuovoRuolo.numero < 1) {
-      setError('Seleziona una specializzazione e inserisci un numero valido');
+      setError('Compila specializzazione e numero');
       return;
     }
 
+    const ruolo: RoleCercato = {
+      specializzazione: nuovoRuolo.specializzazione,
+      numero: nuovoRuolo.numero,
+      descrizione: nuovoRuolo.descrizione || undefined,
+      occupati: 0
+    };
+
     setFormData(prev => ({
       ...prev,
-      ruoliCercati: [...prev.ruoliCercati, { ...nuovoRuolo, occupati: 0 }]
+      ruoliCercati: [...prev.ruoliCercati, ruolo]
     }));
 
     setNuovoRuolo({
@@ -136,49 +147,17 @@ export default function EditTeamPage() {
     }));
   };
 
-  // Funzioni per gestire la foto equipé
-  const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    // Validazione file
-    if (!file.type.startsWith('image/')) {
-      setError('Seleziona un\'immagine valida');
-      return;
-    }
-
-    if (file.size > 5 * 1024 * 1024) { // 5MB
-      setError('L\'immagine deve essere inferiore a 5MB');
-      return;
-    }
-
-    setTeamPhoto(file);
-    
-    // Crea preview
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      setTeamPhotoPreview(e.target?.result as string);
-    };
-    reader.readAsDataURL(file);
-    setError('');
-  };
-
-  const removePhoto = () => {
-    setTeamPhoto(null);
-    setTeamPhotoPreview('');
-    setTeamPhotoURL('');
-    
-    // Reset input file
-    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
-    if (fileInput) fileInput.value = '';
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
     if (!formData.name.trim()) {
-      setError('Inserisci il nome dell\'Equipé');
+      setError('Inserisci il nome dell\'equipe');
+      return;
+    }
+
+    if (!formData.coordinate || !formData.indirizzo) {
+      setError('Seleziona la zona operativa sulla mappa');
       return;
     }
 
@@ -187,33 +166,43 @@ export default function EditTeamPage() {
       return;
     }
 
-    setSaving(true);
+    setLoading(true);
 
     try {
-      let finalPhotoURL = teamPhotoURL;
-      
-      // Upload foto se selezionata
-      if (teamPhoto) {
-        setUploadingPhoto(true);
-        try {
-          finalPhotoURL = await uploadTeamPhoto(teamPhoto, teamId);
-          setTeamPhotoURL(finalPhotoURL);
-        } catch (photoError) {
-          console.error('Errore upload foto:', photoError);
-          setError('Errore durante l\'upload della foto');
-          setSaving(false);
-          setUploadingPhoto(false);
-          return;
-        }
-        setUploadingPhoto(false);
-      }
+      if (!user || !userProfile) return;
+
+      // Crea l'array dei membri con il creatore - usa uid e ruolo per compatibilità con TeamMember
+      const creatorMember = {
+        uid: user.uid,
+        userId: user.uid,
+        ruolo: 'admin' as const,
+        role: 'admin' as const,
+        joinedAt: Timestamp.now(),
+      };
+
+      const invitedMembers = formData.selectedMembers.map(userId => ({
+        uid: userId,
+        userId: userId,
+        ruolo: 'member' as const,
+        role: 'member' as const,
+        joinedAt: Timestamp.now(),
+      }));
+
+      const allMembers = [creatorMember, ...invitedMembers];
+
+      // Calcola totale membri richiesti
+      const totaleRichiesti = formData.ruoliCercati.reduce((sum, r) => sum + r.numero, 0);
+      const totaleOccupati = allMembers.length;
+
+      // Estrai specializzazioni dai ruoli cercati
+      const specializations = [...new Set(formData.ruoliCercati.map(r => r.specializzazione))];
 
       // Pulisci ruoli cercati da campi undefined
       const ruoliCercatiPuliti = formData.ruoliCercati.map(ruolo => {
         const ruoloPulito: any = {
           specializzazione: ruolo.specializzazione,
           numero: ruolo.numero,
-          occupati: ruolo.occupati || 0
+          occupati: 0
         };
         if (ruolo.descrizione) {
           ruoloPulito.descrizione = ruolo.descrizione;
@@ -221,66 +210,68 @@ export default function EditTeamPage() {
         return ruoloPulito;
       });
 
-      const updateData: any = {
+      // Crea il team su Firestore - includi solo campi definiti
+      const teamData: any = {
         name: formData.name,
         nome: formData.name,
-        description: formData.description,
-        specializations: [...new Set(formData.ruoliCercati.map(r => r.specializzazione))],
+        description: formData.description || '',
+        specializations: specializations,
+        members: allMembers,
+        memberIds: [user.uid, ...formData.selectedMembers],
+        createdBy: user.uid,
+        adminUid: user.uid,
         remoto: formData.remoto,
-        ruoliCercati: ruoliCercatiPuliti,
+        createdAt: Timestamp.now(),
         updatedAt: Timestamp.now(),
+        status: 'active',
+        ruoliCercati: ruoliCercatiPuliti,
+        completato: totaleOccupati >= totaleRichiesti + 1,
+        settings: {
+          slaRisposta: '48h',
+          regole: '',
+          tematiche: []
+        }
       };
 
       // Aggiungi campi opzionali solo se definiti
       if (formData.indirizzo) {
-        updateData.indirizzo = formData.indirizzo;
+        teamData.indirizzo = formData.indirizzo;
       }
       if (formData.coordinate) {
-        updateData.coordinate = formData.coordinate;
+        teamData.coordinate = formData.coordinate;
       }
       if (formData.raggioKm) {
-        updateData.raggioKm = formData.raggioKm;
+        teamData.raggioKm = formData.raggioKm;
       }
-      if (finalPhotoURL) {
-        updateData.photoURL = finalPhotoURL;
+      if (teamPhotoURL) {
+        teamData.photoURL = teamPhotoURL;
       }
 
-      await updateDoc(doc(db, 'teams', teamId), updateData);
+      console.log('📤 Salvando team con dati:', teamData);
+      await addDoc(collection(db, 'teams'), teamData);
 
-      navigate(`/teams/${teamId}`);
+      navigate('/teams');
     } catch (err: any) {
-      console.error('Errore aggiornamento team:', err);
-      setError(err.message || 'Errore durante l\'aggiornamento');
+      console.error('Errore creazione team:', err);
+      setError(err.message || 'Errore durante la creazione dell\'equipe');
     } finally {
-      setSaving(false);
+      setLoading(false);
     }
   };
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-xl">Caricamento...</div>
-      </div>
-    );
-  }
-
-  if (!team) {
-    return null;
-  }
 
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
 
       <div className="max-w-4xl mx-auto px-6 py-8">
-        <Link to={`/teams/${teamId}`} className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700 mb-6 font-medium">
+        <Link to="/teams" className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700 mb-6 font-medium">
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
           </svg>
-          Torna all'Equipé
+          Torna alle equipe
         </Link>
 
-        <h2 className="text-4xl font-bold text-gray-900 mb-8">Modifica Impostazioni Equipé</h2>
+        <h2 className="text-4xl font-bold text-gray-900 mb-8">Crea Nuova equipe</h2>
 
         {error && (
           <div className="bg-red-50 border-l-4 border-red-500 text-red-700 px-6 py-4 rounded-lg mb-6 flex items-start gap-3">
@@ -291,15 +282,16 @@ export default function EditTeamPage() {
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="bg-white rounded-xl shadow-sm p-8">
+        <form onSubmit={handleSubmit} className="bg-white rounded-xl shadow-sm overflow-hidden">
+          {/* Nome equipe */}
           <div className="mb-6">
-            <label className="block text-sm font-semibold text-gray-700 mb-2">Nome Equipé *</label>
+            <label className="block text-sm font-semibold mb-2">Nome equipe *</label>
             <input
               type="text"
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
               className="w-full border rounded px-3 py-2"
-              placeholder="es. Equipé Salute Mentale Roma"
+              placeholder="es. equipe Salute Mentale Roma"
             />
           </div>
 
@@ -311,70 +303,110 @@ export default function EditTeamPage() {
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               className="w-full border rounded px-3 py-2"
               rows={4}
-              placeholder="Descrivi gli obiettivi e le modalità di collaborazione dell'Equipé..."
+              placeholder="Descrivi gli obiettivi e le modalità di collaborazione dell'equipe..."
             />
           </div>
 
-          {/* Foto Equipé */}
-          <div className="mb-6">
-            <label className="block text-sm font-semibold text-gray-700 mb-2">Foto Equipé</label>
-            <div className="space-y-4">
-              {teamPhotoPreview ? (
-                <div className="relative inline-block">
-                  <img
-                    src={teamPhotoPreview}
-                    alt="Anteprima foto equipé"
-                    className="w-32 h-32 object-cover rounded-lg border border-gray-300"
+          {/* Foto equipe */}
+          <div className="mb-6 border-t pt-6">
+            <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+              <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+              Foto equipe
+            </h3>
+            <p className="text-sm text-gray-600 mb-4">
+              Aggiungi una foto che rappresenti la tua equipe (opzionale)
+            </p>
+
+            <div className="flex items-start gap-6">
+              {/* Preview foto */}
+              <div className="w-32 h-32 bg-gray-100 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center overflow-hidden">
+                {photoPreview ? (
+                  <img 
+                    src={photoPreview} 
+                    alt="Preview foto equipe" 
+                    className="w-full h-full object-cover"
                   />
+                ) : (
+                  <div className="text-center">
+                    <svg className="w-8 h-8 text-gray-400 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    <p className="text-xs text-gray-500">Nessuna foto</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Controlli upload */}
+              <div className="flex-1">
+                <div className="flex gap-3 mb-2">
                   <button
                     type="button"
-                    onClick={removePhoto}
+                    onClick={() => photoInputRef.current?.click()}
                     disabled={uploadingPhoto}
-                    className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition disabled:opacity-50"
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition"
                   >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
+                    {uploadingPhoto ? 'Caricamento...' : 'Scegli Foto'}
                   </button>
-                  {uploadingPhoto && (
-                    <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center rounded-lg">
-                      <div className="text-white text-sm">Caricamento...</div>
-                    </div>
+                  
+                  {(selectedPhoto || photoPreview) && (
+                    <button
+                      type="button"
+                      onClick={handleRemovePhoto}
+                      disabled={uploadingPhoto}
+                      className="px-4 py-2 bg-gray-500 text-white rounded-lg font-medium hover:bg-gray-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition"
+                    >
+                      Rimuovi
+                    </button>
                   )}
                 </div>
-              ) : (
-                <div className="w-32 h-32 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center bg-gray-50">
-                  <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                  </svg>
-                </div>
-              )}
-              
-              <input
-                type="file"
-                accept="image/*"
-                onChange={handlePhotoSelect}
-                disabled={uploadingPhoto}
-                className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 disabled:opacity-50"
-              />
-              
-              <p className="text-xs text-gray-500">
-                Formati supportati: JPG, PNG, GIF. Dimensione massima: 5MB
-              </p>
+
+                {uploadingPhoto && (
+                  <div className="mb-3">
+                    <div className="flex justify-between text-sm text-gray-600 mb-1">
+                      <span>Caricamento in corso...</span>
+                      <span>{Math.round(uploadProgress)}%</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div 
+                        className="bg-blue-600 h-2 rounded-full transition-all" 
+                        style={{ width: `${uploadProgress}%` }}
+                      ></div>
+                    </div>
+                  </div>
+                )}
+
+                <p className="text-xs text-gray-500">
+                  Formati supportati: JPEG, PNG, WebP, GIF<br/>
+                  Dimensione massima: 5MB
+                </p>
+
+                {/* Input file nascosto */}
+                <input
+                  ref={photoInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/gif"
+                  onChange={handlePhotoSelect}
+                  className="hidden"
+                />
+              </div>
             </div>
           </div>
 
-          {/* Zona Operativa */}
+          {/* Località e Zona */}
           <div className="mb-6 border-t pt-6">
             <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
               <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
               </svg>
-              Zona Operativa
+              Zona Operativa *
             </h3>
             <p className="text-sm text-gray-600 mb-4">
-              Cerca il tuo studio o la zona dove opera l'Equipé e definisci il raggio di copertura
+              Cerca il tuo studio o la zona dove opera l'equipe e definisci il raggio di copertura
             </p>
 
             <div className="mb-4 p-4 bg-gray-50 rounded-lg">
@@ -382,9 +414,21 @@ export default function EditTeamPage() {
                 coordinate={formData.coordinate}
                 raggioKm={formData.raggioKm}
                 indirizzo={formData.indirizzo}
-                onCoordinateChange={(coord: { lat: number; lng: number } | null) => setFormData(prev => ({ ...prev, coordinate: coord }))}
-                onIndirizzoChange={(addr: string) => setFormData(prev => ({ ...prev, indirizzo: addr }))}
-                onRaggioChange={(raggio: number) => setFormData(prev => ({ ...prev, raggioKm: raggio }))}
+                onCoordinateChange={(coord: { lat: number; lng: number } | null) => {
+                  console.log('📝 onCoordinateChange chiamato con:', coord);
+                  setFormData(prev => {
+                    console.log('📝 Aggiornando formData da:', prev.coordinate, 'a:', coord);
+                    return { ...prev, coordinate: coord };
+                  });
+                }}
+                onIndirizzoChange={(addr: string) => {
+                  console.log('📝 onIndirizzoChange chiamato con:', addr);
+                  setFormData(prev => ({ ...prev, indirizzo: addr }));
+                }}
+                onRaggioChange={(raggio: number) => {
+                  console.log('📝 onRaggioChange chiamato con:', raggio);
+                  setFormData(prev => ({ ...prev, raggioKm: raggio }));
+                }}
               />
             </div>
 
@@ -393,53 +437,28 @@ export default function EditTeamPage() {
                 type="checkbox"
                 checked={formData.remoto}
                 onChange={(e) => setFormData({ ...formData, remoto: e.target.checked })}
-                className="mr-2 h-4 w-4 text-blue-600"
+                className="mr-2"
               />
-              <span className="font-medium">L'Equipé opera anche da remoto</span>
+              <span>L'equipe opera anche da remoto</span>
             </label>
           </div>
 
           {/* Ruoli Cercati */}
           <div className="mb-6 border-t pt-6">
-            <h3 className="text-lg font-semibold mb-4">Ruoli Cercati *</h3>
+            <label className="block text-sm font-semibold mb-2">Figure Cercate per l'equipe</label>
             <p className="text-sm text-gray-600 mb-4">
-              Specifica le figure professionali che stai cercando per l'Equipé
+              Specifica quali figure professionali stai cercando e quante
             </p>
 
-            {/* Lista ruoli esistenti */}
-            {formData.ruoliCercati.length > 0 && (
-              <div className="mb-4 space-y-2">
-                {formData.ruoliCercati.map((ruolo, index) => (
-                  <div key={index} className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
-                    <div>
-                      <span className="font-semibold">{ruolo.specializzazione}</span>
-                      {' - '}
-                      <span className="text-gray-600">{ruolo.numero} {ruolo.numero === 1 ? 'posto' : 'posti'}</span>
-                      {ruolo.descrizione && (
-                        <p className="text-sm text-gray-600 mt-1">{ruolo.descrizione}</p>
-                      )}
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => rimuoviRuolo(index)}
-                      className="text-red-600 hover:text-red-800 font-medium text-sm"
-                    >
-                      Rimuovi
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* Form aggiungi ruolo */}
-            <div className="border rounded-lg p-4 bg-gray-50">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
+            {/* Form per aggiungere ruolo */}
+            <div className="bg-gray-50 p-4 rounded-lg mb-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-3">
                 <div>
-                  <label className="block text-sm font-medium mb-1">Specializzazione *</label>
+                  <label className="block text-xs font-medium mb-1">Specializzazione *</label>
                   <select
                     value={nuovoRuolo.specializzazione}
-                    onChange={(e) => setNuovoRuolo({ ...nuovoRuolo, specializzazione: e.target.value })}
-                    className="w-full border rounded px-3 py-2"
+                    onChange={(e) => setNuovoRuolo({...nuovoRuolo, specializzazione: e.target.value})}
+                    className="w-full border rounded px-3 py-2 text-sm"
                   >
                     <option value="">Seleziona...</option>
                     {SPECIALIZZAZIONI.map(spec => (
@@ -448,33 +467,99 @@ export default function EditTeamPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Numero posti *</label>
+                  <label className="block text-xs font-medium mb-1">Numero richiesto *</label>
                   <input
                     type="number"
                     min="1"
                     value={nuovoRuolo.numero}
-                    onChange={(e) => setNuovoRuolo({ ...nuovoRuolo, numero: parseInt(e.target.value) })}
-                    className="w-full border rounded px-3 py-2"
+                    onChange={(e) => setNuovoRuolo({...nuovoRuolo, numero: parseInt(e.target.value) || 1})}
+                    className="w-full border rounded px-3 py-2 text-sm"
                   />
                 </div>
-              </div>
-              <div className="mb-3">
-                <label className="block text-sm font-medium mb-1">Descrizione (opzionale)</label>
-                <textarea
-                  value={nuovoRuolo.descrizione}
-                  onChange={(e) => setNuovoRuolo({ ...nuovoRuolo, descrizione: e.target.value })}
-                  className="w-full border rounded px-3 py-2"
-                  rows={2}
-                  placeholder="Es: Cerchiamo un medico con esperienza in..."
-                />
+                <div>
+                  <label className="block text-xs font-medium mb-1">Descrizione (opzionale)</label>
+                  <input
+                    type="text"
+                    value={nuovoRuolo.descrizione}
+                    onChange={(e) => setNuovoRuolo({...nuovoRuolo, descrizione: e.target.value})}
+                    className="w-full border rounded px-3 py-2 text-sm"
+                    placeholder="es. Esperto in trauma"
+                  />
+                </div>
               </div>
               <button
                 type="button"
                 onClick={aggiungiRuolo}
-                className="w-full bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 font-medium"
+                className="w-full bg-blue-500 text-white py-2 rounded hover:bg-blue-600 transition text-sm font-medium"
               >
                 + Aggiungi Ruolo
               </button>
+            </div>
+
+            {/* Lista ruoli aggiunti */}
+            {formData.ruoliCercati.length > 0 && (
+              <div className="space-y-2">
+                <h4 className="text-sm font-medium text-gray-700 mb-2">Ruoli da cercare:</h4>
+                {formData.ruoliCercati.map((ruolo, index) => (
+                  <div key={index} className="bg-white border rounded-lg p-3 flex items-center justify-between">
+                    <div className="flex-1">
+                      <span className="font-medium text-gray-900">{ruolo.specializzazione}</span>
+                      <span className="text-gray-600 ml-2">× {ruolo.numero}</span>
+                      {ruolo.descrizione && (
+                        <p className="text-sm text-gray-500 mt-1">{ruolo.descrizione}</p>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => rimuoviRuolo(index)}
+                      className="text-red-500 hover:text-red-700 ml-4"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                    </button>
+                  </div>
+                ))}
+                <div className="bg-blue-50 p-3 rounded-lg mt-3">
+                  <p className="text-sm text-blue-800">
+                    <strong>Totale membri richiesti:</strong> {formData.ruoliCercati.reduce((sum, r) => sum + r.numero, 0) + 1} 
+                    {" "}(compreso l'admin)
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Invita Membri */}
+          <div className="mb-6">
+            <label className="block text-sm font-semibold mb-2">Invita Membri (opzionale)</label>
+            <p className="text-sm text-gray-600 mb-3">
+              Seleziona i professionisti che vuoi invitare nella tua equipe
+            </p>
+            <div className="max-h-80 overflow-y-auto border rounded p-4">
+              {allUsers.length === 0 ? (
+                <p className="text-gray-500 text-center py-4">Nessun professionista disponibile</p>
+              ) : (
+                <div className="space-y-3">
+                  {allUsers.map((user) => (
+                    <label key={user.uid} className="flex items-start p-3 hover:bg-gray-50 rounded cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={formData.selectedMembers.includes(user.uid)}
+                        onChange={() => handleMemberToggle(user.uid)}
+                        className="mr-3 mt-1"
+                      />
+                      <div className="flex-1">
+                        <div className="font-semibold">{user.profile.nome}</div>
+                        <div className="text-sm text-gray-600">{user.email}</div>
+                        <div className="text-xs text-gray-500 mt-1">
+                          {user.profile.specializzazioni.join(', ')}
+                        </div>
+                      </div>
+                    </label>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 
@@ -482,13 +567,13 @@ export default function EditTeamPage() {
           <div className="flex gap-4">
             <button
               type="submit"
-              disabled={saving}
+              disabled={loading}
               className="flex-1 bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 disabled:bg-gray-400 font-semibold"
             >
-              {saving ? 'Salvataggio...' : 'Salva Modifiche'}
+              {loading ? 'Creazione in corso...' : 'Crea equipe'}
             </button>
             <Link
-              to={`/teams/${teamId}`}
+              to="/teams"
               className="px-6 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 text-center"
             >
               Annulla

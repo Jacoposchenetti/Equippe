@@ -1,4 +1,4 @@
-﻿import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { collection, addDoc, getDocs, query, where, Timestamp, getDoc, doc } from 'firebase/firestore';
@@ -181,7 +181,7 @@ export default function CreatePazientePage() {
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white shadow">
         <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
-          <h1 className="text-xl sm:text-2xl font-bold text-blue-600">Equipé</h1>
+          <h1 className="text-xl sm:text-2xl font-bold text-blue-600">equipe</h1>
           <Link to="/referrals" className="text-sm sm:text-base text-blue-600 hover:underline">← Torna ai Pazienti</Link>
         </div>
       </header>
@@ -215,21 +215,22 @@ export default function CreatePazientePage() {
                 <option value="dietologo">Dietologo</option>
                 <option value="logopedista">Logopedista</option>
                 <option value="neuropsicomotricista">Neuropsicomotricista</option>
+                <option value="fisioterapista">Fisioterapista</option>
                 <option value="psichiatra">Psichiatra</option>
                 <option value="neurologo">Neurologo</option>
                 <option value="neuropsichiatra">Neuropsichiatra Infantile</option>
               </select>
             </div>
 
-            {/* Filtro Equipé */}
+            {/* Filtro equipe */}
             <div>
-              <label className="block text-sm font-semibold mb-2 text-blue-800">Equipé di Provenienza</label>
+              <label className="block text-sm font-semibold mb-2 text-blue-800">equipe di Provenienza</label>
               <select
                 value={filters.teamId}
                 onChange={(e) => setFilters({ ...filters, teamId: e.target.value })}
                 className="w-full border rounded px-3 py-2"
               >
-                <option value="">Tutte le equipé</option>
+                <option value="">Tutte le equipe</option>
                 {teams.map((team) => (
                   <option key={team.id} value={team.id}>
                     {team.nome || team.name}

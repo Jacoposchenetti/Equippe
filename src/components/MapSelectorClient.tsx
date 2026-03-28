@@ -321,7 +321,7 @@ export default function MapSelector({
       )}
 
       {/* Map */}
-      <div className="w-full h-64 border rounded-lg overflow-hidden relative">
+      <div className="w-full h-64 border rounded-lg overflow-hidden relative z-0">
         <MapContainer
           center={[defaultCenter.lat, defaultCenter.lng]}
           zoom={13}

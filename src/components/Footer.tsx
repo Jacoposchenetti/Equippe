@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { Link } from 'react-router-dom';
 
@@ -9,13 +9,13 @@ export default function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           {/* Brand */}
           <div>
-            <h3 className="text-xl font-bold mb-4">Equipé</h3>
+            <h3 className="text-xl font-bold mb-4">tuaequipe.it</h3>
             <p className="text-gray-400 text-sm mb-4">
-              Piattaforma per professionisti sociosanitari
+              Piattaforma per professionisti sanitari
             </p>
             <p className="text-gray-400 text-xs">
               Networking professionale<br />
-              Formazione equipé multidisciplinari<br />
+              Formazione equipe multidisciplinari<br />
               Collaborazione sicura
             </p>
           </div>
@@ -25,7 +25,7 @@ export default function Footer() {
             <h4 className="font-semibold mb-4">Servizi</h4>
             <ul className="space-y-3 text-sm">
               <li><Link to="/dashboard" className="text-gray-400 hover:text-white transition">Cerca Professionisti</Link></li>
-              <li><Link to="/teams" className="text-gray-400 hover:text-white transition">Le Mie Equipé</Link></li>
+              <li><Link to="/teams" className="text-gray-400 hover:text-white transition">Le Mie equipe</Link></li>
               <li><Link to="/messages" className="text-gray-400 hover:text-white transition">Messaggi</Link></li>
               <li><Link to="/referrals" className="text-gray-400 hover:text-white transition">Pazienti</Link></li>
               <li><Link to="/invites" className="text-gray-400 hover:text-white transition">Inviti</Link></li>
@@ -59,12 +59,12 @@ export default function Footer() {
         {/* Bottom Bar */}
         <div className="border-t border-gray-800 mt-10 pt-8">
           <div className="text-sm text-gray-400 mb-6 text-center">
-            <p className="font-semibold">© 2026 Equipé</p>
+            <p className="font-semibold">© 2026 tuaequipe.it</p>
           </div>
           
           <div className="border-t border-gray-800 pt-4 text-center text-xs text-gray-500">
             <p>
-              Questa piattaforma è destinata esclusivamente a professionisti sanitari e socio-sanitari regolarmente iscritti ai rispettivi albi professionali.
+              Questa piattaforma è destinata esclusivamente a professionisti sanitari regolarmente iscritti ai rispettivi albi professionali.
               L'accesso e l'utilizzo sono soggetti alla verifica delle credenziali professionali.
             </p>
           </div>

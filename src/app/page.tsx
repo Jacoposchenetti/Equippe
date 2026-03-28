@@ -8,13 +8,13 @@ export default function Home() {
       <div className="flex min-h-screen flex-col items-center justify-center px-4">
         <main className="text-center max-w-4xl">
           <h1 className="text-6xl font-bold text-blue-600 mb-4">
-            Equipé
+            Equipï¿½
           </h1>
           <h2 className="text-3xl font-semibold text-gray-800 mb-6">
-            La piattaforma per professionisti sociosanitari
+            La piattaforma per professionisti sanitari
           </h2>
           <p className="text-xl text-gray-600 mb-12 max-w-2xl mx-auto">
-            Trova colleghi, forma equipé multidisciplinari e collabora in modo sicuro 
+            Trova colleghi, forma equipï¿½ multidisciplinari e collabora in modo sicuro 
             per offrire il miglior supporto ai tuoi pazienti.
           </p>
 
@@ -40,14 +40,14 @@ export default function Home() {
                 Cerca professionisti
               </h3>
               <p className="text-gray-600">
-                Trova colleghi nella tua città per specializzazione e tematica
+                Trova colleghi nella tua cittï¿½ per specializzazione e tematica
               </p>
             </div>
 
             <div className="bg-white p-6 rounded-lg shadow-md">
               <div className="text-3xl mb-3"></div>
               <h3 className="text-xl font-semibold mb-2 text-gray-800">
-                Forma equipé
+                Forma equipï¿½
               </h3>
               <p className="text-gray-600">
                 Crea team multidisciplinari per gestire casi complessi

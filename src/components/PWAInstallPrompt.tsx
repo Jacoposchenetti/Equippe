@@ -25,7 +25,7 @@ export default function PWAInstallPrompt() {
       setIsIOS(true);
       setTimeout(() => {
         setShowPrompt(true);
-      }, 5000);
+      }, 30000);
       return;
     }
 
@@ -36,7 +36,7 @@ export default function PWAInstallPrompt() {
       
       setTimeout(() => {
         setShowPrompt(true);
-      }, 5000);
+      }, 30000);
     };
 
     window.addEventListener('beforeinstallprompt', handler);
@@ -67,19 +67,21 @@ export default function PWAInstallPrompt() {
   // Banner iOS: istruzioni manuali per "Aggiungi alla schermata Home"
   if (showPrompt && isIOS) {
     return (
-      <div className="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-4 sm:max-w-md bg-white rounded-xl shadow-2xl border-2 border-blue-500 z-50 overflow-hidden animate-slide-up">
+      <div className="fixed bottom-20 sm:bottom-4 left-4 right-4 sm:left-auto sm:right-4 sm:max-w-md bg-white rounded-xl shadow-2xl border-2 border-blue-500 z-50 overflow-hidden animate-slide-up">
         <div className="p-4 sm:p-6">
           <div className="flex items-start gap-3">
             <div className="flex-shrink-0">
-              <img 
-                src="/icon-72x72.png" 
-                alt="Equipé" 
-                className="w-12 h-12 rounded-xl"
-              />
+              <div className="w-12 h-12 rounded-xl overflow-hidden">
+                <img 
+                  src="/icon-72x72.png" 
+                  alt="tuaequipe.it" 
+                  className="w-full h-full object-cover scale-150"
+                />
+              </div>
             </div>
             <div className="flex-1 min-w-0">
               <h3 className="text-lg font-bold text-gray-900 mb-2">
-                Installa Equipé
+                Installa <span className="text-blue-600">tua</span><span className="text-green-600">equipe</span><span className="text-orange-500">.it</span>
               </h3>
               <p className="text-sm text-gray-600 mb-3">
                 Per installare l'app sul tuo iPhone:
@@ -132,19 +134,21 @@ export default function PWAInstallPrompt() {
   }
 
   return (
-    <div className="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-4 sm:max-w-md bg-white rounded-xl shadow-2xl border-2 border-blue-500 z-50 overflow-hidden animate-slide-up">
+    <div className="fixed bottom-20 sm:bottom-4 left-4 right-4 sm:left-auto sm:right-4 sm:max-w-md bg-white rounded-xl shadow-2xl border-2 border-blue-500 z-50 overflow-hidden animate-slide-up">
       <div className="p-4 sm:p-6">
         <div className="flex items-start gap-4">
           <div className="flex-shrink-0">
-            <img 
-              src="/icon-72x72.png" 
-              alt="Equipé" 
-              className="w-12 h-12 sm:w-16 sm:h-16 rounded-xl"
-            />
+            <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-xl overflow-hidden">
+              <img 
+                src="/icon-72x72.png" 
+                alt="tuaequipe.it" 
+                className="w-full h-full object-cover scale-150"
+              />
+            </div>
           </div>
           <div className="flex-1 min-w-0">
             <h3 className="text-lg sm:text-xl font-bold text-gray-900 mb-1">
-              Installa Equipé
+              Installa <span className="text-blue-600">tua</span><span className="text-green-600">equipe</span><span className="text-orange-500">.it</span>
             </h3>
             <p className="text-sm text-gray-600 mb-3">
               Installa l'app sul tuo dispositivo per un accesso rapido e un'esperienza migliore

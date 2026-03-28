@@ -1,6 +1,11 @@
-﻿import * as functions from 'firebase-functions/v1';
+import * as functions from 'firebase-functions/v1';
 import * as admin from 'firebase-admin';
 import { Resend } from 'resend';
+
+// ECM (Educazione Continua in Medicina) - ricerca corsi AGENAS
+// ECM v3 - database locale con sync periodico da AGENAS
+export { getECMDropdownValues, getECMDisciplines, getECMEventDetail, downloadECMProgramma, searchECMLive } from './ecm';
+export { syncECMAutomatic, triggerECMSync, cleanupECMStaleEvents } from './ecmSync';
 
 admin.initializeApp();
 
@@ -332,10 +337,10 @@ export const sendProfessionRejectedEmail = functions
  * Indirizzi email mittente (caselle Aruba)
  */
 const EMAIL_FROM = {
-  noreply: 'Equipe <noreply@tuaequipe.it>',
-  info: 'Equipe <info@tuaequipe.it>',
-  support: 'Equipe <support@tuaequipe.it>',
-  admin: 'Equipe <admin@tuaequipe.it>',
+  noreply: 'tuaequipe.it <noreply@tuaequipe.it>',
+  info: 'tuaequipe.it <info@tuaequipe.it>',
+  support: 'tuaequipe.it <support@tuaequipe.it>',
+  admin: 'tuaequipe.it <admin@tuaequipe.it>',
 };
 
 /** Indirizzi admin per notifiche interne */
@@ -350,7 +355,7 @@ function wrapEmailTemplate(bodyHtml: string): string {
       <!-- Header con logo -->
       <div style="text-align: center; padding: 24px 0 16px 0; border-bottom: 2px solid #0066cc;">
         <a href="https://tuaequipe.it" target="_blank">
-          <img src="https://tuaequipe.it/logo-equipe.png" alt="Equipe" style="height: 48px; width: auto;" />
+          <img src="https://tuaequipe.it/logo-equipe.png" alt="tuaequipe.it" style="height: 48px; width: auto;" />
         </a>
       </div>
       <!-- Body -->
@@ -359,7 +364,7 @@ function wrapEmailTemplate(bodyHtml: string): string {
       </div>
       <!-- Footer -->
       <div style="text-align: center; padding: 16px 20px; border-top: 1px solid #eee; color: #999; font-size: 12px;">
-        <p style="margin: 4px 0;">&copy; ${new Date().getFullYear()} Equipe &mdash; <a href="https://tuaequipe.it" style="color: #999;">tuaequipe.it</a></p>
+        <p style="margin: 4px 0;">&copy; ${new Date().getFullYear()} tuaequipe.it &mdash; <a href="https://tuaequipe.it" style="color: #999;">tuaequipe.it</a></p>
         <p style="margin: 4px 0;">La piattaforma per professionisti sanitari</p>
       </div>
     </div>
@@ -426,6 +431,18 @@ export const sendCustomVerificationEmail = functions
     const uid = context.auth.uid;
 
     try {
+      // Rate limit server-side: max 1 email di verifica ogni 60 secondi per utente
+      const rateLimitRef = admin.firestore().collection('rateLimits').doc(`verification_${uid}`);
+      const rateLimitDoc = await rateLimitRef.get();
+      if (rateLimitDoc.exists) {
+        const lastSent = rateLimitDoc.data()?.lastSentAt?.toMillis?.() || 0;
+        const now = Date.now();
+        if (now - lastSent < 60000) {
+          const secondsLeft = Math.ceil((60000 - (now - lastSent)) / 1000);
+          throw new functions.https.HttpsError('resource-exhausted', `Attendi ${secondsLeft} secondi prima di richiedere una nuova email di verifica`);
+        }
+      }
+
       // Ottieni l'utente da Firebase Auth
       const userRecord = await admin.auth().getUser(uid);
 
@@ -449,11 +466,11 @@ export const sendCustomVerificationEmail = functions
       await getResend().emails.send({
         from: EMAIL_FROM.noreply,
         to: email,
-        subject: 'Verifica il tuo indirizzo email - Equipé',
+        subject: 'Verifica il tuo indirizzo email - equipe',
         html: wrapEmailTemplate(`
           <h2 style="color: #0066cc;">Verifica il tuo indirizzo email</h2>
           <p>Ciao ${displayName},</p>
-          <p>Grazie per esserti registrato su <strong>Equipé</strong>!</p>
+          <p>Grazie per esserti registrato su <strong>equipe</strong>!</p>
           <p>Per completare la registrazione e accedere alla piattaforma, clicca sul pulsante qui sotto:</p>
           <p style="text-align: center; margin: 30px 0;">
             <a href="${verificationLink}" 
@@ -467,15 +484,22 @@ export const sendCustomVerificationEmail = functions
             Se il pulsante non funziona, copia e incolla questo link nel tuo browser:<br>
             <a href="${verificationLink}" style="color: #0066cc; word-break: break-all;">${verificationLink}</a>
           </p>
-          <p style="color: #666; font-size: 13px;">Se non hai creato un account su Equipé, puoi ignorare questa email.</p>
+          <p style="color: #666; font-size: 13px;">Se non hai creato un account su equipe, puoi ignorare questa email.</p>
           <br>
-          <p>A presto,<br>Il team di Equipé</p>
+          <p>A presto,<br>Il team di equipe</p>
         `),
       });
+
+      // Aggiorna rate limit dopo invio riuscito
+      await rateLimitRef.set({ lastSentAt: admin.firestore.FieldValue.serverTimestamp() });
 
       console.log(`✅ Email verifica custom inviata a ${email} per utente ${uid}`);
       return { success: true };
     } catch (error: any) {
+      // Ri-lancia errori di rate limiting senza wrapping
+      if (error instanceof functions.https.HttpsError) {
+        throw error;
+      }
       console.error('❌ Errore invio email verifica custom:', error);
       throw new functions.https.HttpsError('internal', 'Errore invio email di verifica');
     }
@@ -720,7 +744,7 @@ export const sendNewMessageEmail = functions
   });
 
 /**
- * 4. Email notifica nuovo messaggio in gruppo equipé
+ * 4. Email notifica nuovo messaggio in gruppo equipe
  * Trigger: onCreate su messages (collection top-level) per conversazioni di team
  */
 export const sendTeamMessageEmail = functions
@@ -861,7 +885,7 @@ export const sendTeamMessageEmail = functions
   });
 
 /**
- * 5. Email invito a unirsi a un'equipé
+ * 5. Email invito a unirsi a un'equipe
  * Trigger: onCreate su teamInvites
  */
 export const sendTeamInviteEmail = functions
@@ -916,7 +940,7 @@ export const sendTeamInviteEmail = functions
   });
 
 /**
- * 5b. Email risposta a invito equipé (accettato/rifiutato)
+ * 5b. Email risposta a invito equipe (accettato/rifiutato)
  * Trigger: onUpdate su teamInvites quando status cambia da pending
  */
 export const sendTeamInviteResponseEmail = functions
@@ -947,7 +971,7 @@ export const sendTeamInviteResponseEmail = functions
     const inviter = inviterDoc.data();
 
     const responderName = responder?.profile?.nome || responder?.displayName || 'Un professionista';
-    const teamName = team?.nome || team?.name || 'Equipé';
+    const teamName = team?.nome || team?.name || 'equipe';
 
     // Email a chi ha inviato l'invito
     await sendEmail(
@@ -960,7 +984,7 @@ export const sendTeamInviteResponseEmail = functions
           <h2 style="color: ${isAccepted ? '#28a745' : '#dc3545'};">
             Invito ${isAccepted ? 'Accettato' : 'Rifiutato'} ${isAccepted ? '✅' : '❌'}
           </h2>
-          <p><strong>${responderName}</strong> ha ${isAccepted ? 'accettato' : 'rifiutato'} il tuo invito per l'equipé:</p>
+          <p><strong>${responderName}</strong> ha ${isAccepted ? 'accettato' : 'rifiutato'} il tuo invito per l'equipe:</p>
           <div style="background-color: #f5f5f5; padding: 20px; border-radius: 8px; margin: 20px 0;">
             <h3 style="margin: 0 0 10px 0; color: #333;">${teamName}</h3>
           </div>
@@ -972,7 +996,7 @@ export const sendTeamInviteResponseEmail = functions
             <a href="https://tuaequipe.it/teams/${after.teamId}" 
                style="background-color: #0066cc; color: white; padding: 12px 24px; 
                       text-decoration: none; border-radius: 5px; display: inline-block;">
-              Vai all'Equipé
+              Vai all'equipe
             </a>
           </p>
           <br>
@@ -986,7 +1010,7 @@ export const sendTeamInviteResponseEmail = functions
   });
 
 /**
- * 6. Email richiesta equipé accettata/rifiutata
+ * 6. Email richiesta equipe accettata/rifiutata
  * Trigger: onUpdate su teams quando cambiano i membri o le richieste
  */
 export const sendTeamRequestStatusEmail = functions
@@ -1305,5 +1329,190 @@ export const sendPasswordResetEmailCustom = functions
       console.error('❌ Errore invio email reset password:', error);
       throw new functions.https.HttpsError('internal', 'Errore durante l\'invio dell\'email di reset.');
     }
+  });
+
+/**
+ * Cloud Function che gestisce le iscrizioni alla waiting list.
+ * - Invia email di conferma all'utente
+ * - Invia email di notifica all'admin
+ * Trigger: onCreate su collection 'waitlist'
+ */
+export const onWaitlistSignup = functions
+  .region('europe-west1')
+  .firestore
+  .document('waitlist/{docId}')
+  .onCreate(async (snapshot) => {
+    const data = snapshot.data();
+    const { nome, cognome, email, professione, citta } = data;
+
+    // 1. Email di conferma all'utente
+    await sendEmail(
+      email,
+      'Benvenuto nella waiting list di Tuaequipe.it! 🎉',
+      `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2 style="color: #0066cc;">Ciao ${nome}! 👋</h2>
+          <p>Grazie per esserti iscritto/a alla waiting list di <strong>Tuaequipe.it</strong>.</p>
+          <p>Stiamo costruendo la piattaforma dove professionisti sanitari come te potranno:</p>
+          <ul>
+            <li>Trovare colleghi nella propria area</li>
+            <li>Creare team multidisciplinari</li>
+            <li>Scambiarsi referral in modo semplice</li>
+          </ul>
+          <p>Ti ricontatteremo non appena la piattaforma sarà pronta per accoglierti.</p>
+          <p style="color: #666; font-size: 14px; margin-top: 24px;">
+            I tuoi dati:<br>
+            <strong>${nome} ${cognome}</strong><br>
+            ${professione} — ${citta}
+          </p>
+          <br>
+          <p>A presto,<br>Il team di Tuaequipe.it</p>
+        </div>
+      `,
+      EMAIL_FROM.info
+    );
+
+    // 2. Email di notifica all'admin
+    for (const adminEmail of ADMIN_EMAILS) {
+      await sendEmail(
+        adminEmail,
+        `📋 Nuova iscrizione waiting list: ${nome} ${cognome}`,
+        `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2 style="color: #0066cc;">Nuova iscrizione alla waiting list</h2>
+            <table style="width: 100%; border-collapse: collapse; margin: 16px 0;">
+              <tr><td style="padding: 8px; border-bottom: 1px solid #eee; color: #666;">Nome</td><td style="padding: 8px; border-bottom: 1px solid #eee;"><strong>${nome} ${cognome}</strong></td></tr>
+              <tr><td style="padding: 8px; border-bottom: 1px solid #eee; color: #666;">Email</td><td style="padding: 8px; border-bottom: 1px solid #eee;"><strong>${email}</strong></td></tr>
+              <tr><td style="padding: 8px; border-bottom: 1px solid #eee; color: #666;">Professione</td><td style="padding: 8px; border-bottom: 1px solid #eee;"><strong>${professione}</strong></td></tr>
+              <tr><td style="padding: 8px; color: #666;">Città</td><td style="padding: 8px;"><strong>${citta}</strong></td></tr>
+            </table>
+          </div>
+        `,
+        EMAIL_FROM.admin
+      );
+    }
+
+    // 3. Incrementa il contatore in config/stats (lettura veloce da frontend)
+    await admin.firestore().doc('config/stats').set(
+      { waitlistCount: admin.firestore.FieldValue.increment(1) },
+      { merge: true }
+    );
+
+    console.log(`✅ Waitlist: ${nome} ${cognome} (${email}) - conferma e notifica inviate`);
+    return null;
+  });
+
+/**
+ * Funzione HTTP di inizializzazione: conta tutti i documenti attuali della
+ * waitlist e scrive il valore in config/stats.waitlistCount.
+ * Va chiamata UNA SOLA VOLTA dopo il primo deploy.
+ */
+export const initWaitlistStats = functions
+  .region('europe-west1')
+  .https.onRequest(async (req, res) => {
+    // Protezione base: solo GET con header segreto
+    if (req.headers['x-init-secret'] !== process.env.INIT_SECRET && process.env.INIT_SECRET) {
+      res.status(403).send('Forbidden');
+      return;
+    }
+    const snap = await admin.firestore().collection('waitlist').get();
+    const count = snap.size;
+    await admin.firestore().doc('config/stats').set({ waitlistCount: count }, { merge: true });
+    console.log(`✅ initWaitlistStats: conteggio inizializzato a ${count}`);
+    res.json({ ok: true, waitlistCount: count });
+  });
+
+/**
+ * Cloud Function callable per inviare email in blocco agli iscritti della waitlist.
+ * Solo gli admin possono chiamarla.
+ * Parametri:
+ *   - recipients: Array<{ email: string, nome: string, cognome: string, professione: string, citta: string }>
+ *   - subject: string (oggetto email, supporta placeholder {nome}, {cognome}, {professione}, {citta})
+ *   - bodyHtml: string (corpo HTML, supporta placeholder {nome}, {cognome}, {professione}, {citta})
+ *   - fromAddress: 'info' | 'noreply' | 'admin' (default: 'info')
+ */
+export const sendBulkWaitlistEmail = functions
+  .region('europe-west1')
+  .runWith({ timeoutSeconds: 300, memory: '512MB' })
+  .https
+  .onCall(async (data, context) => {
+    // Verifica autenticazione
+    if (!context.auth) {
+      throw new functions.https.HttpsError('unauthenticated', 'Utente non autenticato');
+    }
+
+    // Verifica che sia admin
+    const callerEmail = context.auth.token.email || '';
+    if (!ADMIN_EMAILS.includes(callerEmail)) {
+      throw new functions.https.HttpsError('permission-denied', 'Solo gli amministratori possono inviare email in blocco');
+    }
+
+    const { recipients, subject, bodyHtml, fromAddress } = data;
+
+    if (!recipients || !Array.isArray(recipients) || recipients.length === 0) {
+      throw new functions.https.HttpsError('invalid-argument', 'Lista destinatari vuota');
+    }
+    if (!subject || !bodyHtml) {
+      throw new functions.https.HttpsError('invalid-argument', 'Oggetto e corpo email obbligatori');
+    }
+    if (recipients.length > 500) {
+      throw new functions.https.HttpsError('invalid-argument', 'Massimo 500 destinatari per invio');
+    }
+
+    const from = EMAIL_FROM[fromAddress as keyof typeof EMAIL_FROM] || EMAIL_FROM.info;
+    const results = { sent: 0, failed: 0, errors: [] as string[] };
+
+    // Funzione per sostituire i placeholder
+    const replacePlaceholders = (template: string, recipient: any): string => {
+      return template
+        .replace(/\{nome\}/gi, recipient.nome || '')
+        .replace(/\{cognome\}/gi, recipient.cognome || '')
+        .replace(/\{professione\}/gi, recipient.professione || '')
+        .replace(/\{citta\}/gi, recipient.citta || '')
+        .replace(/\{email\}/gi, recipient.email || '');
+    };
+
+    // Invia email in batch (max 5 parallele per rispettare rate limit Resend)
+    const batchSize = 5;
+    const maxRetries = 2;
+    for (let i = 0; i < recipients.length; i += batchSize) {
+      const batch = recipients.slice(i, i + batchSize);
+      const promises = batch.map(async (recipient: any) => {
+        const personalizedSubject = replacePlaceholders(subject, recipient);
+        const personalizedBody = replacePlaceholders(bodyHtml, recipient);
+
+        for (let attempt = 0; attempt <= maxRetries; attempt++) {
+          try {
+            await getResend().emails.send({
+              from,
+              to: recipient.email,
+              subject: personalizedSubject,
+              html: wrapEmailTemplate(personalizedBody),
+            });
+            results.sent++;
+            return; // successo, esci dal retry loop
+          } catch (error: any) {
+            if (attempt < maxRetries) {
+              // Backoff esponenziale: 1s, 2s
+              await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1)));
+              console.warn(`⚠️ Retry ${attempt + 1}/${maxRetries} per ${recipient.email}`);
+            } else {
+              results.failed++;
+              results.errors.push(`${recipient.email}: ${error.message || 'Errore sconosciuto'}`);
+              console.error(`❌ Errore invio a ${recipient.email} dopo ${maxRetries} retry:`, error);
+            }
+          }
+        }
+      });
+      await Promise.all(promises);
+
+      // Pausa tra batch per rispettare rate limit Resend
+      if (i + batchSize < recipients.length) {
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+    }
+
+    console.log(`📧 Invio bulk completato: ${results.sent} inviate, ${results.failed} fallite su ${recipients.length} totali`);
+    return results;
   });
 

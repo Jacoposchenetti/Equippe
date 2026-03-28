@@ -21,7 +21,7 @@ export default function CookiePolicy() {
             </section>
 
             <section className="mb-8">
-              <h2 className="text-2xl font-semibold text-gray-900 mb-4">2. Cookie Utilizzati da Equipé</h2>
+              <h2 className="text-2xl font-semibold text-gray-900 mb-4">2. Cookie Utilizzati da tuaequipe.it</h2>
               
               <h3 className="text-lg font-semibold mb-3">2.1 Cookie Tecnici (Sempre Attivi)</h3>
               <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
@@ -51,7 +51,7 @@ export default function CookiePolicy() {
               <h3 className="text-lg font-semibold mb-3">2.3 Cookie NON Utilizzati</h3>
               <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
                 <p className="text-sm">
-                  <strong>Equipé NON utilizza:</strong>
+                  <strong>tuaequipe.it NON utilizza:</strong>
                 </p>
                 <ul className="list-disc list-inside space-y-1 text-sm">
                   <li>Cookie di profilazione per pubblicità</li>
@@ -101,7 +101,7 @@ export default function CookiePolicy() {
             <section className="mb-8">
               <h2 className="text-2xl font-semibold text-gray-900 mb-4">4. Gestione dei Cookie</h2>
               
-              <h3 className="text-lg font-semibold mb-3">4.1 Impostazioni Equipé</h3>
+              <h3 className="text-lg font-semibold mb-3">4.1 Impostazioni tuaequipe.it</h3>
               <p className="mb-4">
                 Puoi gestire i tuoi consensi sui cookie accedendo alle impostazioni del tuo profilo 
                 nella sezione "Privacy e Cookie".

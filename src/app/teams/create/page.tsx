@@ -1,4 +1,4 @@
-﻿import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { useState, useEffect, useRef } from 'react';
 import { collection, addDoc, Timestamp, getDocs } from 'firebase/firestore';
@@ -152,7 +152,7 @@ export default function CreateTeamPage() {
     setError('');
 
     if (!formData.name.trim()) {
-      setError('Inserisci il nome dell\'Equipé');
+      setError('Inserisci il nome dell\'equipe');
       return;
     }
 
@@ -253,7 +253,7 @@ export default function CreateTeamPage() {
       navigate('/teams');
     } catch (err: any) {
       console.error('Errore creazione team:', err);
-      setError(err.message || 'Errore durante la creazione dell\'Equipé');
+      setError(err.message || 'Errore durante la creazione dell\'equipe');
     } finally {
       setLoading(false);
     }
@@ -268,10 +268,10 @@ export default function CreateTeamPage() {
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
           </svg>
-          Torna alle Equipé
+          Torna alle equipe
         </Link>
 
-        <h2 className="text-4xl font-bold text-gray-900 mb-8">Crea Nuova Equipé</h2>
+        <h2 className="text-4xl font-bold text-gray-900 mb-8">Crea Nuova equipe</h2>
 
         {error && (
           <div className="bg-red-50 border-l-4 border-red-500 text-red-700 px-6 py-4 rounded-lg mb-6 flex items-start gap-3">
@@ -283,15 +283,15 @@ export default function CreateTeamPage() {
         )}
 
         <form onSubmit={handleSubmit} className="bg-white rounded-xl shadow-sm overflow-hidden">
-          {/* Nome Equipé */}
+          {/* Nome equipe */}
           <div className="mb-6">
-            <label className="block text-sm font-semibold mb-2">Nome Equipé *</label>
+            <label className="block text-sm font-semibold mb-2">Nome equipe *</label>
             <input
               type="text"
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
               className="w-full border rounded px-3 py-2"
-              placeholder="es. Equipé Salute Mentale Roma"
+              placeholder="es. equipe Salute Mentale Roma"
             />
           </div>
 
@@ -303,21 +303,21 @@ export default function CreateTeamPage() {
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               className="w-full border rounded px-3 py-2"
               rows={4}
-              placeholder="Descrivi gli obiettivi e le modalità di collaborazione dell'Equipé..."
+              placeholder="Descrivi gli obiettivi e le modalità di collaborazione dell'equipe..."
             />
           </div>
 
-          {/* Foto Equipé */}
+          {/* Foto equipe */}
           <div className="mb-6 border-t pt-6">
             <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
               <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
               </svg>
-              Foto Equipé
+              Foto equipe
             </h3>
             <p className="text-sm text-gray-600 mb-4">
-              Aggiungi una foto che rappresenti la tua Equipé (opzionale)
+              Aggiungi una foto che rappresenti la tua equipe (opzionale)
             </p>
 
             <div className="flex items-start gap-6">
@@ -326,7 +326,7 @@ export default function CreateTeamPage() {
                 {photoPreview ? (
                   <img 
                     src={photoPreview} 
-                    alt="Preview foto equipé" 
+                    alt="Preview foto equipe" 
                     className="w-full h-full object-cover"
                   />
                 ) : (
@@ -406,7 +406,7 @@ export default function CreateTeamPage() {
               Zona Operativa *
             </h3>
             <p className="text-sm text-gray-600 mb-4">
-              Cerca il tuo studio o la zona dove opera l'Equipé e definisci il raggio di copertura
+              Cerca il tuo studio o la zona dove opera l'equipe e definisci il raggio di copertura
             </p>
 
             <div className="mb-4 p-4 bg-gray-50 rounded-lg">
@@ -439,13 +439,13 @@ export default function CreateTeamPage() {
                 onChange={(e) => setFormData({ ...formData, remoto: e.target.checked })}
                 className="mr-2"
               />
-              <span>L'Equipé opera anche da remoto</span>
+              <span>L'equipe opera anche da remoto</span>
             </label>
           </div>
 
           {/* Ruoli Cercati */}
           <div className="mb-6 border-t pt-6">
-            <label className="block text-sm font-semibold mb-2">Figure Cercate per l'Equipé</label>
+            <label className="block text-sm font-semibold mb-2">Figure Cercate per l'equipe</label>
             <p className="text-sm text-gray-600 mb-4">
               Specifica quali figure professionali stai cercando e quante
             </p>
@@ -534,7 +534,7 @@ export default function CreateTeamPage() {
           <div className="mb-6">
             <label className="block text-sm font-semibold mb-2">Invita Membri (opzionale)</label>
             <p className="text-sm text-gray-600 mb-3">
-              Seleziona i professionisti che vuoi invitare nella tua Equipé
+              Seleziona i professionisti che vuoi invitare nella tua equipe
             </p>
             <div className="max-h-80 overflow-y-auto border rounded p-4">
               {allUsers.length === 0 ? (
@@ -570,7 +570,7 @@ export default function CreateTeamPage() {
               disabled={loading}
               className="flex-1 bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 disabled:bg-gray-400 font-semibold"
             >
-              {loading ? 'Creazione in corso...' : 'Crea Equipé'}
+              {loading ? 'Creazione in corso...' : 'Crea equipe'}
             </button>
             <Link
               to="/teams"

@@ -9,11 +9,11 @@ export default function TeamEditPage() {
       <Header />
       <div className="max-w-4xl mx-auto px-4 sm:px-6 pt-0 pb-24 sm:py-8">
         <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-3 sm:mb-6">
-          Modifica Equipé {id}
+          Modifica equipe {id}
         </h1>
         <div className="bg-white rounded-xl shadow-sm p-6">
           <p className="text-gray-600">
-            Pagina modifica equipé in sviluppo
+            Pagina modifica equipe in sviluppo
           </p>
         </div>
       </div>

@@ -21,7 +21,7 @@ export default function PWAUpdateNotification() {
               Aggiornamento Disponibile
             </h3>
             <p className="text-sm text-blue-100 mb-3">
-              È disponibile una nuova versione di Equipé con miglioramenti e correzioni
+              È disponibile una nuova versione di equipe con miglioramenti e correzioni
             </p>
             <button
               onClick={updateApp}

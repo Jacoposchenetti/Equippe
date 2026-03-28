@@ -251,7 +251,7 @@ export default function RegisterPage() {
     <div className="min-h-screen bg-gray-50 py-12 px-4">
       <div className="max-w-3xl mx-auto">
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-blue-600">Equipé</h1>
+          <h1 className="text-4xl font-bold text-blue-600">equipe</h1>
           <h2 className="mt-4 text-2xl font-bold">Registrati come professionista</h2>
           <p className="mt-2 text-sm text-gray-600">
             Hai già un account?{' '}
@@ -524,7 +524,7 @@ export default function RegisterPage() {
               <div className="space-y-4 p-6 bg-gray-50 rounded-lg border">
                 <h3 className="font-semibold text-gray-900 text-lg">Consensi Privacy (Obbligatori)</h3>
                 <p className="text-sm text-gray-600">
-                  Per utilizzare Equipé è necessario accettare i seguenti consensi in conformità al GDPR:
+                  Per utilizzare tuaequipe.it è necessario accettare i seguenti consensi in conformità al GDPR:
                 </p>
                 
                 <label className="flex items-start gap-3 cursor-pointer">
@@ -539,7 +539,7 @@ export default function RegisterPage() {
                     <Link to="/legal/termini" className="text-blue-600 underline hover:text-blue-800" target="_blank">
                       Termini e Condizioni di Servizio
                     </Link>{' '}
-                    di Equipé <span className="text-red-500">*</span>
+                    di tuaequipe.it <span className="text-red-500">*</span>
                   </span>
                 </label>
                 
@@ -567,7 +567,7 @@ export default function RegisterPage() {
                     className="mt-1 w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                   />
                   <span className="text-sm leading-relaxed">
-                    Vorrei ricevere comunicazioni informative sui nuovi servizi di Equipé{' '}
+                    Vorrei ricevere comunicazioni informative sui nuovi servizi di tuaequipe.it{' '}
                     <Link to="/legal/privacy#marketing" className="text-blue-600 underline hover:text-blue-800" target="_blank">
                       (facoltativo)
                     </Link>

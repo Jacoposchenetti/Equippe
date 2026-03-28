@@ -5,7 +5,7 @@ import MapSelector from './MapSelector';
 import LocationAutocomplete from './LocationAutocomplete';
 import { getConfigurazioneProfessione } from '../lib/professioni';
 
-export type SearchType = 'professionista' | 'equipé';
+export type SearchType = 'professionista' | 'equipe';
 
 export interface SearchFilters {
   type: SearchType;
@@ -71,11 +71,12 @@ export default function EnhancedSearch({ onSearch, availableSpecializations = []
     'Nutrizionista',
     'Dietologo',
     'Logopedista',
-    'Neuropsicomotricista'
+    'Neuropsicomotricista',
+    'Fisioterapista'
   ];
 
-  // Tipologie di equipé (basate sulle specializzazioni dei membri)
-  const equipéSpecs = [
+  // Tipologie di equipe (basate sulle specializzazioni dei membri)
+  const equipeSpecs = [
     'Legale-Fiscale',
     'Tecnico-Progettuale',
     'Sanitaria',
@@ -86,13 +87,13 @@ export default function EnhancedSearch({ onSearch, availableSpecializations = []
 
   const currentSpecs = searchType === 'professionista' 
     ? professionistaSpecs 
-    : equipéSpecs;
+    : equipeSpecs;
 
   return (
     <div className="bg-white p-4 sm:p-6 rounded-lg shadow-md">
       <h2 className="text-lg sm:text-xl font-bold mb-4">Ricerca Avanzata</h2>
 
-      {/* Toggle Professionista/Equipé */}
+      {/* Toggle Professionista/equipe */}
       <div className="flex flex-col sm:flex-row gap-2 mb-4">
         <button
           onClick={() => {
@@ -110,31 +111,31 @@ export default function EnhancedSearch({ onSearch, availableSpecializations = []
         </button>
         <button
           onClick={() => {
-            setSearchType('equipé');
+            setSearchType('equipe');
             setSpecializzazione('');
             // La ricerca si aggiornerà automaticamente tramite useEffect
           }}
           className={`flex-1 py-3 px-4 rounded-lg font-medium transition-colors text-sm sm:text-base ${
-            searchType === 'equipé'
+            searchType === 'equipe'
               ? 'bg-blue-600 text-white'
               : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
           }`}
         >
-          Cerca Equipé
+          Cerca equipe
         </button>
       </div>
 
       {/* Specializzazione */}
       <div className="mb-4">
         <label className="block text-sm font-medium text-gray-700 mb-2">
-          {searchType === 'professionista' ? 'Specializzazione' : 'Tipologia Equipé'}
+          {searchType === 'professionista' ? 'Specializzazione' : 'Tipologia equipe'}
         </label>
         <select
-          value={searchType === 'equipé' ? '' : specializzazione}
+          value={searchType === 'equipe' ? '' : specializzazione}
           onChange={(e) => setSpecializzazione(e.target.value)}
-          disabled={searchType === 'equipé'}
+          disabled={searchType === 'equipe'}
           className={`w-full border border-gray-300 rounded-lg px-3 py-3 text-base focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-            searchType === 'equipé' ? 'bg-gray-100 cursor-not-allowed' : ''
+            searchType === 'equipe' ? 'bg-gray-100 cursor-not-allowed' : ''
           }`}
         >
           <option value="">Tutte</option>
@@ -269,9 +270,9 @@ export default function EnhancedSearch({ onSearch, availableSpecializations = []
         </button>
       )}
 
-      {searchType === 'equipé' && (
+      {searchType === 'equipe' && (
         <p className="text-xs sm:text-sm text-gray-500 mt-2">
-          * Vengono mostrate solo le equipé con posti disponibili
+          * Vengono mostrate solo le equipe con posti disponibili
         </p>
       )}
     </div>

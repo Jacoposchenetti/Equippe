@@ -52,6 +52,7 @@ export default function RegisterPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+  const [honeypot, setHoneypot] = useState(''); // honeypot anti-bot
   const { signUp, signInWithGoogle, user } = useAuth();
   const navigate = useNavigate();
 
@@ -191,6 +192,12 @@ export default function RegisterPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+
+    // Honeypot: se compilato, è un bot — finge successo e naviga via
+    if (honeypot) {
+      navigate('/verify-email');
+      return;
+    }
 
     // Per utenti Google: verifica che nome e data di nascita siano compilati
     if (isGoogleProvider) {
@@ -373,7 +380,7 @@ export default function RegisterPage() {
     <div className="min-h-screen bg-gray-50 py-12 px-4">
       <div className="max-w-3xl mx-auto">
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-blue-600">Equipé</h1>
+          <h1 className="text-4xl font-extrabold tracking-tight"><span className="text-blue-600">tua</span><span className="text-green-600">equipe</span><span className="text-orange-500">.it</span></h1>
           {step === 0 ? (
             <h2 className="mt-6 text-2xl font-extrabold text-gray-900">Come vuoi registrarti?</h2>
           ) : (
@@ -690,8 +697,13 @@ export default function RegisterPage() {
               {/* Resto del form */}
               <form onSubmit={handleSubmit} className="space-y-6">
 
-              {/* Esperienza professionale attuale (obbligatoria) */}
-              <div>
+              {/* Honeypot anti-bot: campo nascosto che solo i bot compilano */}
+              <div aria-hidden="true" style={{ position: 'absolute', left: '-9999px', opacity: 0, height: 0, overflow: 'hidden' }}>
+                <label htmlFor="company">Company</label>
+                <input id="company" type="text" name="company" tabIndex={-1} autoComplete="off" value={honeypot} onChange={(e) => setHoneypot(e.target.value)} />
+              </div>
+
+              {/* Esperienza professionale attuale (obbligatoria) */}              <div>
                 <label className="block text-sm font-medium mb-2">
                   Esperienza professionale attuale *
                 </label>
@@ -935,7 +947,7 @@ export default function RegisterPage() {
               <div className="space-y-4 p-6 bg-gray-50 rounded-lg border">
                 <h3 className="font-semibold text-gray-900 text-lg">Consensi Privacy (Obbligatori)</h3>
                 <p className="text-sm text-gray-600">
-                  Per utilizzare Equipé è necessario accettare i seguenti consensi in conformità al GDPR:
+                  Per utilizzare equipe è necessario accettare i seguenti consensi in conformità al GDPR:
                 </p>
 
                 <label className="flex items-start gap-3 cursor-pointer">
@@ -950,7 +962,7 @@ export default function RegisterPage() {
                     <Link to="/legal/termini" className="text-blue-600 underline hover:text-blue-800" target="_blank">
                       Termini e Condizioni di Servizio
                     </Link>{' '}
-                    di Equipé <span className="text-red-500">*</span>
+                    di equipe <span className="text-red-500">*</span>
                   </span>
                 </label>
 
@@ -978,7 +990,7 @@ export default function RegisterPage() {
                     className="mt-1 w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                   />
                   <span className="text-sm leading-relaxed">
-                    Vorrei ricevere comunicazioni informative sui nuovi servizi di Equipé{' '}
+                    Vorrei ricevere comunicazioni informative sui nuovi servizi di equipe{' '}
                     <Link to="/legal/privacy#marketing" className="text-blue-600 underline hover:text-blue-800" target="_blank">
                       (facoltativo)
                     </Link>

@@ -29,7 +29,7 @@ export default function Header() {
 
   const handleLogout = async () => {
     await signOut();
-    navigate('/');
+    navigate('/login');
   };
 
   const getInitials = () => {
@@ -42,10 +42,11 @@ export default function Header() {
 
   const navLinks = [
     { href: '/dashboard', label: 'Dashboard', badge: 0 },
-    { href: '/teams', label: 'Equipé', badge: 0 },
+    { href: '/teams', label: 'equipe', badge: 0 },
     { href: '/referrals', label: 'Pazienti', badge: 0 },
     { href: '/invites', label: 'Inviti', badge: 0 },
     { href: '/messages', label: 'Messaggi', badge: unreadMessages },
+    { href: '/ecm', label: 'ECM', badge: 0 },
   ];
 
   // Link admin visibile solo per admin
@@ -79,6 +80,11 @@ export default function Header() {
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
       </svg>
     ),
+    '/ecm': (
+      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+      </svg>
+    ),
   };
 
   return (
@@ -87,16 +93,20 @@ export default function Header() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16 relative">
             {/* Logo */}
-            <Link to="/dashboard" className="flex items-center hover:opacity-80 transition">
-              <img 
-                src="/logo-equipe.png" 
-                alt="Equipe Logo" 
-                className="h-10 sm:h-12 w-auto"
-              />
+            <Link to="/dashboard" className="flex items-center gap-2 hover:opacity-80 transition">
+              <div className="h-10 w-10 sm:h-11 sm:w-11 rounded-xl overflow-hidden bg-white p-1">
+                <img 
+                  src="/logo_senza_scritta.png" 
+                  alt="tuaequipe.it Logo" 
+                  className="h-full w-full object-contain"
+                />
+              </div>
+              <span className="font-bold text-lg">
+                <span className="text-blue-400">tua</span>
+                <span className="text-green-400">equipe</span>
+                <span className="text-orange-400">.it</span>
+              </span>
             </Link>
-
-            {/* Mobile centered site name */}
-            <span className="md:hidden text-white font-bold text-xl absolute left-1/2 -translate-x-1/2">Tuaequipe.it</span>
 
             {/* Desktop Navigation */}
             <nav className="hidden md:flex items-center gap-6">
@@ -133,16 +143,34 @@ export default function Header() {
                 );
               })}
               
-              {/* Admin link */}
+              {/* Admin links */}
               {isAdmin && (
-                <Link
-                  to="/admin/verifications"
-                  className={`text-sm font-medium transition hover:text-yellow-400 relative ${
-                    pathname === '/admin/verifications' ? 'text-yellow-400' : 'text-gray-300'
-                  }`}
-                >
-                  Admin
-                </Link>
+                <>
+                  <Link
+                    to="/admin/verifications"
+                    className={`text-sm font-medium transition hover:text-yellow-400 relative ${
+                      pathname === '/admin/verifications' ? 'text-yellow-400' : 'text-gray-300'
+                    }`}
+                  >
+                    Admin
+                  </Link>
+                  <Link
+                    to="/admin/mailing-list"
+                    className={`text-sm font-medium transition hover:text-yellow-400 relative ${
+                      pathname === '/admin/mailing-list' ? 'text-yellow-400' : 'text-gray-300'
+                    }`}
+                  >
+                    Mailing List
+                  </Link>
+                  <Link
+                    to="/admin/waitlist-email"
+                    className={`text-sm font-medium transition hover:text-yellow-400 relative ${
+                      pathname === '/admin/waitlist-email' ? 'text-yellow-400' : 'text-gray-300'
+                    }`}
+                  >
+                    Email WL
+                  </Link>
+                </>
               )}
             </nav>
 
@@ -240,13 +268,29 @@ export default function Header() {
                         Il Mio Profilo
                       </Link>
                       {isAdmin && (
-                        <Link
-                          to="/admin/verifications"
-                          onClick={() => setShowMobileProfileMenu(false)}
-                          className="flex items-center gap-2 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition"
-                        >
-                          Admin
-                        </Link>
+                        <>
+                          <Link
+                            to="/admin/verifications"
+                            onClick={() => setShowMobileProfileMenu(false)}
+                            className="flex items-center gap-2 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition"
+                          >
+                            Admin
+                          </Link>
+                          <Link
+                            to="/admin/mailing-list"
+                            onClick={() => setShowMobileProfileMenu(false)}
+                            className="flex items-center gap-2 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition"
+                          >
+                            Mailing List
+                          </Link>
+                          <Link
+                            to="/admin/waitlist-email"
+                            onClick={() => setShowMobileProfileMenu(false)}
+                            className="flex items-center gap-2 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition"
+                          >
+                            Email WL
+                          </Link>
+                        </>
                       )}
                       <button
                         onClick={() => {
@@ -313,8 +357,8 @@ export default function Header() {
         </div>
       </nav>
 
-      {/* Small spacer for mobile bottom nav */}
-      <div className="md:hidden h-8" />
+      {/* Spacer for mobile bottom nav */}
+      <div className="md:hidden h-20" />
     </>
   );
 }

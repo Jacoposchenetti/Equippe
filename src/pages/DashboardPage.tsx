@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
@@ -31,7 +31,8 @@ export default function DashboardPage() {
       'Psicoterapia': 'Psicoterapeuta',
       'Psichiatria': 'Psichiatra',
       'Nutrizione': 'Nutrizionista',
-      'Logopedia': 'Logopedista'
+      'Logopedia': 'Logopedista',
+      'Fisioterapia': 'Fisioterapista'
     };
     return normalizationMap[spec] || spec;
   };
@@ -253,7 +254,7 @@ export default function DashboardPage() {
 
   // Filtra teams (solo quelli con posti disponibili)
   const filteredTeams = teams.filter(t => {
-    // Solo equipé con posti disponibili (se hanno ruoliCercati)
+    // Solo equipe con posti disponibili (se hanno ruoliCercati)
     if (t.ruoliCercati && t.ruoliCercati.length > 0) {
       const hasAvailableSpots = t.ruoliCercati.some(ruolo => ruolo.occupati < ruolo.numero);
       if (!hasAvailableSpots) return false;
@@ -270,15 +271,15 @@ export default function DashboardPage() {
       if (!hasSpecialization) return false;
     }
 
-    // Location - verifica distanza se ci sono coordinate del filtro E dell'equipé
+    // Location - verifica distanza se ci sono coordinate del filtro E dell'equipe
     if (currentFilters.coordinate && currentFilters.raggioKm) {
-      // Se l'equipé non ha coordinate, mostrala solo se è remota o se il filtro remoto è attivo
+      // Se l'equipe non ha coordinate, mostrala solo se è remota o se il filtro remoto è attivo
       if (!t.coordinate) {
         if (!t.remoto && currentFilters.remoto === false) {
           return false;
         }
       } else {
-        // L'equipé ha coordinate, calcola la distanza
+        // L'equipe ha coordinate, calcola la distanza
         const distance = calculateDistance(
           currentFilters.coordinate.lat,
           currentFilters.coordinate.lng,
@@ -286,9 +287,9 @@ export default function DashboardPage() {
           t.coordinate.lng
         );
 
-        // Se l'equipé non è nel raggio, escludi (a meno che non lavori anche da remoto)
+        // Se l'equipe non è nel raggio, escludi (a meno che non lavori anche da remoto)
         if (distance > currentFilters.raggioKm) {
-          // Se l'equipé non è remota o non è richiesto remoto, escludi
+          // Se l'equipe non è remota o non è richiesto remoto, escludi
           if (!t.remoto && !currentFilters.remoto) {
             return false;
           }
@@ -296,7 +297,7 @@ export default function DashboardPage() {
       }
     }
 
-    // Se il filtro remoto è attivo, mostra solo equipé remote
+    // Se il filtro remoto è attivo, mostra solo equipe remote
     if (currentFilters.remoto && !t.remoto) {
       return false;
     }
@@ -329,7 +330,7 @@ export default function DashboardPage() {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-0 pb-24 sm:py-8">
         <h1 className="text-2xl sm:text-4xl font-bold text-gray-900 mb-3 sm:mb-8">
-          {currentFilters.type === 'professionista' ? 'Cerca Professionisti' : 'Cerca Equipé'}
+          {currentFilters.type === 'professionista' ? 'Cerca Professionisti' : 'Cerca equipe'}
         </h1>
         {!canInteract && (
           <div className="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
@@ -495,11 +496,11 @@ export default function DashboardPage() {
             )}
           </div>
         ) : (
-          // Lista Equipé
+          // Lista equipe
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredTeams.length === 0 ? (
               <div className="col-span-full text-center py-12 text-gray-500">
-                Nessuna equipé trovata con posti disponibili
+                Nessuna equipe trovata con posti disponibili
               </div>
             ) : (
               filteredTeams.map((team, index) => (
@@ -635,7 +636,7 @@ export default function DashboardPage() {
                       onClick={() => navigate(`/teams/${team.teamId || team.id}`)}
                       className="w-full py-3 bg-blue-500 text-white font-medium rounded-lg hover:bg-blue-600 transition"
                     >
-                      Vedi Equipé
+                      Vedi equipe
                     </button>
                   </div>
                 </div>
@@ -643,6 +644,7 @@ export default function DashboardPage() {
             )}
           </div>
         )}
+
       </div>
       <Footer />
     </div>

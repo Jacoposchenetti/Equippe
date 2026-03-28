@@ -1,5 +1,5 @@
 // Funzione per aggiornare consensi GDPR degli utenti esistenti
-// Eseguibile dalla console browser su una pagina autenticata di Equipé
+// Eseguibile dalla console browser su una pagina autenticata di equipe
 
 import { collection, getDocs, doc, updateDoc, Timestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';

@@ -11,6 +11,7 @@ interface ImportMetaEnv {
   readonly VITE_MAPBOX_TOKEN: string
   readonly VITE_APP_URL: string
   readonly VITE_APP_NAME: string
+  readonly VITE_WAITLIST_MODE: string
 }
 
 interface ImportMeta {

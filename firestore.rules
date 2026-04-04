@@ -97,6 +97,10 @@ service cloud.firestore {
     match /ecmSyncStatus/{profId} {
       allow read: if isAuthenticated();
     }
+    // Cache risultati ricerca live ECM (24h TTL, solo server-side)
+    match /ecmLiveCache/{cacheKey} {
+      allow read, write: if false;
+    }
 
     // Counter document aggiornato dalle Cloud Functions (admin SDK)
     match /config/{docId} {
@@ -122,6 +126,11 @@ service cloud.firestore {
       allow get: if isAuthenticated() && isAdmin();
       allow list: if isAuthenticated() && isAdmin();
       allow update, delete: if isAuthenticated() && isAdmin();
+    }
+
+    match /waitlist_email_history/{docId} {
+      allow read: if isAuthenticated() && isAdmin();
+      allow write: if false; // solo admin SDK via Cloud Functions
     }
   }
 }

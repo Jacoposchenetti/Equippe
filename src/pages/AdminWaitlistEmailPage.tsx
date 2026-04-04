@@ -1,11 +1,24 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { useModal } from '@/contexts/ModalContext';
 import { collection, query, getDocs, orderBy, Timestamp } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import { db, functions } from '@/lib/firebase';
 import Header from '@/components/Header';
-import { useModal } from '@/contexts/ModalContext';
+
+interface EmailHistoryEntry {
+  id: string;
+  sentAt?: Timestamp;
+  admin: string;
+  recipients: { email: string; nome: string; cognome: string; professione: string; citta: string }[];
+  subject: string;
+  bodyHtml: string;
+  fromAddress: string;
+  result: { sent: number; failed: number; errors: string[] };
+  failedRecipients?: { email: string; nome: string; cognome: string; professione: string; citta: string }[];
+  lastResendAt?: Timestamp;
+}
 
 const ADMIN_EMAILS = ['admin@tuaequipe.it', 'jschenetti@gmail.com'];
 
@@ -52,6 +65,11 @@ export default function AdminWaitlistEmailPage() {
   const [sending, setSending] = useState(false);
   const [sendResult, setSendResult] = useState<{ sent: number; failed: number; errors: string[] } | null>(null);
 
+  // Storico invii email
+  const [emailHistory, setEmailHistory] = useState<EmailHistoryEntry[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState(true);
+  const [resendingId, setResendingId] = useState<string | null>(null);
+
   useEffect(() => {
     if (!user) {
       navigate('/login');
@@ -64,6 +82,56 @@ export default function AdminWaitlistEmailPage() {
     }
     loadEntries();
   }, [user, navigate]);
+
+  useEffect(() => {
+    if (!user || !user.email || !ADMIN_EMAILS.includes(user.email)) return;
+    const loadHistory = async () => {
+      setLoadingHistory(true);
+      try {
+        const q = query(collection(db, 'waitlist_email_history'), orderBy('sentAt', 'desc'));
+        const snapshot = await getDocs(q);
+        const data: EmailHistoryEntry[] = snapshot.docs.map(docSnap => ({
+          id: docSnap.id,
+          ...docSnap.data(),
+        })) as EmailHistoryEntry[];
+        setEmailHistory(data);
+      } catch (err) {
+        console.error('Errore caricamento storico email:', err);
+      } finally {
+        setLoadingHistory(false);
+      }
+    };
+    loadHistory();
+  }, [user]);
+
+  const handleResendFailed = async (historyEntry: EmailHistoryEntry) => {
+    const failedCount = historyEntry.failedRecipients?.length || 0;
+    if (failedCount === 0) {
+      showToast('Nessun destinatario fallito da reinviare', 'error');
+      return;
+    }
+    if (!window.confirm(`Reinviare l'email a ${failedCount} destinatari falliti?`)) return;
+
+    setResendingId(historyEntry.id);
+    try {
+      const resendFailed = httpsCallable(functions, 'resendFailedWaitlistEmail');
+      const result = await resendFailed({ historyId: historyEntry.id });
+      const data = result.data as { sent: number; failed: number; errors: string[] };
+      showToast(
+        `Reinvio: ${data.sent} recuperate, ${data.failed} ancora fallite`,
+        data.failed > 0 ? 'error' : 'success'
+      );
+      // Ricarica storico
+      const q = query(collection(db, 'waitlist_email_history'), orderBy('sentAt', 'desc'));
+      const snapshot = await getDocs(q);
+      setEmailHistory(snapshot.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() })) as EmailHistoryEntry[]);
+    } catch (error: any) {
+      console.error('Errore reinvio:', error);
+      showToast(`Errore reinvio: ${error.message || 'Errore sconosciuto'}`, 'error');
+    } finally {
+      setResendingId(null);
+    }
+  };
 
   const loadEntries = async () => {
     setLoading(true);
@@ -240,6 +308,76 @@ export default function AdminWaitlistEmailPage() {
       <Header />
 
       <div className="max-w-7xl mx-auto px-4 py-8">
+        {/* Storico invii email */}
+        <div className="mb-10">
+          <h2 className="text-xl font-bold text-gray-800 mb-2">Storico invii email waitlist</h2>
+          {loadingHistory ? (
+            <div className="text-gray-500">Caricamento storico...</div>
+          ) : emailHistory.length === 0 ? (
+            <div className="text-gray-400">Nessun invio registrato</div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="min-w-full bg-white rounded-lg shadow text-sm">
+                <thead className="bg-gray-100">
+                  <tr>
+                    <th className="px-3 py-2 text-left">Data invio</th>
+                    <th className="px-3 py-2 text-left">Oggetto</th>
+                    <th className="px-3 py-2 text-left">Mittente</th>
+                    <th className="px-3 py-2 text-left">Destinatari</th>
+                    <th className="px-3 py-2 text-left">Risultato</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {emailHistory.map(entry => (
+                    <tr key={entry.id} className="border-b last:border-0 hover:bg-gray-50">
+                      <td className="px-3 py-2 whitespace-nowrap">{entry.sentAt?.toDate ? entry.sentAt.toDate().toLocaleString('it-IT') : '-'}</td>
+                      <td className="px-3 py-2 max-w-xs truncate" title={entry.subject}>{entry.subject}</td>
+                      <td className="px-3 py-2">{entry.fromAddress}@tuaequipe.it<br /><span className="text-xs text-gray-500">{entry.admin}</span></td>
+                      <td className="px-3 py-2">
+                        <span title={entry.recipients.map(r => r.email).join(', ')}>
+                          {entry.recipients.length} destinatari
+                        </span>
+                      </td>
+                      <td className="px-3 py-2">
+                        <span className={
+                          entry.result.failed > 0
+                            ? 'text-yellow-700 bg-yellow-100 rounded px-2'
+                            : 'text-green-700 bg-green-100 rounded px-2'
+                        }>
+                          {entry.result.sent} inviate, {entry.result.failed} fallite
+                        </span>
+                        {entry.result.errors.length > 0 && (
+                          <details className="text-xs mt-1">
+                            <summary className="cursor-pointer text-yellow-700">Errori</summary>
+                            <ul className="list-disc ml-4">
+                              {entry.result.errors.map((err, i) => (
+                                <li key={i}>{err}</li>
+                              ))}
+                            </ul>
+                          </details>
+                        )}
+                        {(entry.failedRecipients && entry.failedRecipients.length > 0) && (
+                          <button
+                            onClick={() => handleResendFailed(entry)}
+                            disabled={resendingId === entry.id}
+                            className="mt-1 px-2 py-1 text-xs bg-orange-500 text-white rounded hover:bg-orange-600 disabled:opacity-50 transition"
+                          >
+                            {resendingId === entry.id ? 'Reinvio...' : `Reinvia ${entry.failedRecipients.length} fallite`}
+                          </button>
+                        )}
+                        {entry.lastResendAt && (
+                          <p className="text-xs text-gray-400 mt-1">
+                            Ultimo reinvio: {entry.lastResendAt.toDate ? entry.lastResendAt.toDate().toLocaleString('it-IT') : '-'}
+                          </p>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 gap-4">
           <div>

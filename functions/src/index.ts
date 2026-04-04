@@ -1461,6 +1461,7 @@ export const sendBulkWaitlistEmail = functions
 
     const from = EMAIL_FROM[fromAddress as keyof typeof EMAIL_FROM] || EMAIL_FROM.info;
     const results = { sent: 0, failed: 0, errors: [] as string[] };
+    const failedRecipients: any[] = [];
 
     // Funzione per sostituire i placeholder
     const replacePlaceholders = (template: string, recipient: any): string => {
@@ -1472,47 +1473,239 @@ export const sendBulkWaitlistEmail = functions
         .replace(/\{email\}/gi, recipient.email || '');
     };
 
-    // Invia email in batch (max 5 parallele per rispettare rate limit Resend)
-    const batchSize = 5;
-    const maxRetries = 2;
-    for (let i = 0; i < recipients.length; i += batchSize) {
-      const batch = recipients.slice(i, i + batchSize);
-      const promises = batch.map(async (recipient: any) => {
-        const personalizedSubject = replacePlaceholders(subject, recipient);
-        const personalizedBody = replacePlaceholders(bodyHtml, recipient);
+    // Invia email una alla volta con delay per rispettare rate limit Resend (2/s free tier)
+    const maxRetries = 3;
+    const delayBetweenEmails = 600; // ms tra un'email e l'altra
 
-        for (let attempt = 0; attempt <= maxRetries; attempt++) {
-          try {
-            await getResend().emails.send({
-              from,
-              to: recipient.email,
-              subject: personalizedSubject,
-              html: wrapEmailTemplate(personalizedBody),
+    for (let i = 0; i < recipients.length; i++) {
+      const recipient = recipients[i];
+      const personalizedSubject = replacePlaceholders(subject, recipient);
+      const personalizedBody = replacePlaceholders(bodyHtml, recipient);
+      let sent = false;
+
+      for (let attempt = 0; attempt <= maxRetries; attempt++) {
+        try {
+          const response = await getResend().emails.send({
+            from,
+            to: recipient.email,
+            subject: personalizedSubject,
+            html: wrapEmailTemplate(personalizedBody),
+          });
+
+          if (response.error) {
+            throw new Error(response.error.message || JSON.stringify(response.error));
+          }
+
+          results.sent++;
+          sent = true;
+          break; // successo, esci dal retry loop
+        } catch (error: any) {
+          const isRateLimit = error.message?.includes('429') || error.message?.toLowerCase().includes('rate');
+          if (attempt < maxRetries) {
+            // Backoff esponenziale più aggressivo: 3s, 6s, 12s
+            const backoff = isRateLimit ? 3000 * Math.pow(2, attempt) : 1000 * (attempt + 1);
+            await new Promise(resolve => setTimeout(resolve, backoff));
+            console.warn(`⚠️ Retry ${attempt + 1}/${maxRetries} per ${recipient.email} (backoff ${backoff}ms)`);
+          } else {
+            results.failed++;
+            results.errors.push(`${recipient.email}: ${error.message || 'Errore sconosciuto'}`);
+            failedRecipients.push({
+              email: recipient.email,
+              nome: recipient.nome,
+              cognome: recipient.cognome,
+              professione: recipient.professione,
+              citta: recipient.citta,
             });
-            results.sent++;
-            return; // successo, esci dal retry loop
-          } catch (error: any) {
-            if (attempt < maxRetries) {
-              // Backoff esponenziale: 1s, 2s
-              await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1)));
-              console.warn(`⚠️ Retry ${attempt + 1}/${maxRetries} per ${recipient.email}`);
-            } else {
-              results.failed++;
-              results.errors.push(`${recipient.email}: ${error.message || 'Errore sconosciuto'}`);
-              console.error(`❌ Errore invio a ${recipient.email} dopo ${maxRetries} retry:`, error);
-            }
+            console.error(`❌ Errore invio a ${recipient.email} dopo ${maxRetries} retry:`, error);
           }
         }
-      });
-      await Promise.all(promises);
+      }
 
-      // Pausa tra batch per rispettare rate limit Resend
-      if (i + batchSize < recipients.length) {
-        await new Promise(resolve => setTimeout(resolve, 500));
+      // Delay tra un'email e l'altra per non triggerare rate limit
+      if (sent && i < recipients.length - 1) {
+        await new Promise(resolve => setTimeout(resolve, delayBetweenEmails));
       }
     }
 
+    // Salva storico invio in Firestore
+    try {
+      await admin.firestore().collection('waitlist_email_history').add({
+        sentAt: admin.firestore.FieldValue.serverTimestamp(),
+        admin: callerEmail,
+        recipients: recipients.map((r: any) => ({
+          email: r.email,
+          nome: r.nome,
+          cognome: r.cognome,
+          professione: r.professione,
+          citta: r.citta
+        })),
+        subject,
+        bodyHtml,
+        fromAddress,
+        result: results,
+        failedRecipients,
+      });
+    } catch (err) {
+      console.error('Errore salvataggio storico invio email waitlist:', err);
+    }
+
     console.log(`📧 Invio bulk completato: ${results.sent} inviate, ${results.failed} fallite su ${recipients.length} totali`);
+    return results;
+  });
+
+// ── Reinvio email fallite a destinatari da un invio precedente ──
+export const resendFailedWaitlistEmail = functions
+  .region('europe-west1')
+  .runWith({ timeoutSeconds: 300, memory: '512MB' })
+  .https
+  .onCall(async (data, context) => {
+    if (!context.auth) {
+      throw new functions.https.HttpsError('unauthenticated', 'Utente non autenticato');
+    }
+    const callerEmail = context.auth.token.email || '';
+    if (!ADMIN_EMAILS.includes(callerEmail)) {
+      throw new functions.https.HttpsError('permission-denied', 'Solo gli amministratori possono reinviare email');
+    }
+
+    const { historyId } = data;
+    if (!historyId) {
+      throw new functions.https.HttpsError('invalid-argument', 'historyId obbligatorio');
+    }
+
+    // Carica il record storico
+    const historyDoc = await admin.firestore().collection('waitlist_email_history').doc(historyId).get();
+    if (!historyDoc.exists) {
+      throw new functions.https.HttpsError('not-found', 'Record invio non trovato');
+    }
+
+    const historyData = historyDoc.data()!;
+    const failedRecipients = historyData.failedRecipients || [];
+
+    if (failedRecipients.length === 0) {
+      throw new functions.https.HttpsError('failed-precondition', 'Nessun destinatario fallito da reinviare');
+    }
+
+    const { subject, bodyHtml, fromAddress } = historyData;
+    const from = EMAIL_FROM[fromAddress as keyof typeof EMAIL_FROM] || EMAIL_FROM.info;
+    const results = { sent: 0, failed: 0, errors: [] as string[] };
+    const stillFailed: any[] = [];
+
+    const replacePlaceholders = (template: string, recipient: any): string => {
+      return template
+        .replace(/\{nome\}/gi, recipient.nome || '')
+        .replace(/\{cognome\}/gi, recipient.cognome || '')
+        .replace(/\{professione\}/gi, recipient.professione || '')
+        .replace(/\{citta\}/gi, recipient.citta || '')
+        .replace(/\{email\}/gi, recipient.email || '');
+    };
+
+    const maxRetries = 3;
+    const delayBetweenEmails = 600;
+
+    for (let i = 0; i < failedRecipients.length; i++) {
+      const recipient = failedRecipients[i];
+      const personalizedSubject = replacePlaceholders(subject, recipient);
+      const personalizedBody = replacePlaceholders(bodyHtml, recipient);
+      let sent = false;
+
+      for (let attempt = 0; attempt <= maxRetries; attempt++) {
+        try {
+          const response = await getResend().emails.send({
+            from,
+            to: recipient.email,
+            subject: personalizedSubject,
+            html: wrapEmailTemplate(personalizedBody),
+          });
+
+          if (response.error) {
+            throw new Error(response.error.message || JSON.stringify(response.error));
+          }
+
+          results.sent++;
+          sent = true;
+          break;
+        } catch (error: any) {
+          const isRateLimit = error.message?.includes('429') || error.message?.toLowerCase().includes('rate');
+          if (attempt < maxRetries) {
+            const backoff = isRateLimit ? 3000 * Math.pow(2, attempt) : 1000 * (attempt + 1);
+            await new Promise(resolve => setTimeout(resolve, backoff));
+          } else {
+            results.failed++;
+            results.errors.push(`${recipient.email}: ${error.message || 'Errore sconosciuto'}`);
+            stillFailed.push(recipient);
+          }
+        }
+      }
+
+      if (sent && i < failedRecipients.length - 1) {
+        await new Promise(resolve => setTimeout(resolve, delayBetweenEmails));
+      }
+    }
+
+    // Aggiorna il record storico con i nuovi risultati
+    try {
+      await admin.firestore().collection('waitlist_email_history').doc(historyId).update({
+        'result.sent': admin.firestore.FieldValue.increment(results.sent),
+        'result.failed': results.failed, // sostituisci con il nuovo conteggio (quelli ancora falliti)
+        failedRecipients: stillFailed,
+        lastResendAt: admin.firestore.FieldValue.serverTimestamp(),
+        'result.errors': results.failed > 0 ? results.errors : [],
+      });
+    } catch (err) {
+      console.error('Errore aggiornamento storico dopo reinvio:', err);
+    }
+
+    console.log(`📧 Reinvio completato: ${results.sent} recuperate, ${results.failed} ancora fallite`);
+    return results;
+  });
+
+// ── TEMPORANEA: Patch storico con failedRecipients usando dati da Resend ──
+export const patchWaitlistHistoryFailed = functions
+  .region('europe-west1')
+  .https
+  .onCall(async (data, context) => {
+    if (!context.auth) throw new functions.https.HttpsError('unauthenticated', 'Non autenticato');
+    const callerEmail = context.auth.token.email || '';
+    if (!ADMIN_EMAILS.includes(callerEmail)) throw new functions.https.HttpsError('permission-denied', 'Non admin');
+
+    const { successfulEmails } = data; // array di email che hanno ricevuto con successo
+    if (!successfulEmails || !Array.isArray(successfulEmails)) {
+      throw new functions.https.HttpsError('invalid-argument', 'successfulEmails array richiesto');
+    }
+
+    const successSet = new Set(successfulEmails.map((e: string) => e.toLowerCase()));
+
+    // Trova tutti i record "Buona Pasqua"
+    const historySnap = await admin.firestore().collection('waitlist_email_history')
+      .orderBy('sentAt', 'desc')
+      .limit(10)
+      .get();
+
+    const results: any[] = [];
+
+    for (const doc of historySnap.docs) {
+      const docData = doc.data();
+      if (!docData.subject || !docData.subject.includes('Buona Pasqua')) continue;
+
+      const allRecipients = docData.recipients || [];
+      const failedRecipients = allRecipients.filter((r: any) => !successSet.has(r.email.toLowerCase()));
+
+      await admin.firestore().collection('waitlist_email_history').doc(doc.id).update({
+        failedRecipients,
+        'result.failed': failedRecipients.length,
+        'result.sent': allRecipients.length - failedRecipients.length,
+      });
+
+      results.push({
+        id: doc.id,
+        subject: docData.subject,
+        totalRecipients: allRecipients.length,
+        successCount: allRecipients.length - failedRecipients.length,
+        failedCount: failedRecipients.length,
+        failedEmails: failedRecipients.map((r: any) => r.email),
+      });
+    }
+
     return results;
   });
 

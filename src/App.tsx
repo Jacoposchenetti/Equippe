@@ -28,7 +28,7 @@ import TeamCreatePage from './pages/TeamCreatePage'
 import MessagesPage from './pages/Messages'
 import ProfilePage from './pages/ProfilePage'
 import ProfileEditPage from './pages/ProfileEditPage'
-import InvitesPage from './pages/Invites'
+
 import ReferralsPage from './pages/Referrals'
 import ReferralDetailPage from './pages/ReferralDetailPage'
 import ReferralCreatePage from './pages/ReferralCreatePage'
@@ -173,11 +173,7 @@ function App() {
             <ProfileEditPage />
           </ProtectedRoute>
         } />
-        <Route path="/invites" element={
-          <ProtectedRoute>
-            <InvitesPage />
-          </ProtectedRoute>
-        } />
+        <Route path="/invites" element={<Navigate to="/teams" replace />} />
         <Route path="/referrals" element={
           <ProtectedRoute>
             <ReferralsPage />

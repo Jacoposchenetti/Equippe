@@ -19,13 +19,24 @@ export default function Header() {
   const [showDropdown, setShowDropdown] = useState(false);
   const [showMobileProfileMenu, setShowMobileProfileMenu] = useState(false);
   const [unreadMessages, setUnreadMessages] = useState(0);
+  const [pendingInvites, setPendingInvites] = useState(0);
 
   // Conta messaggi non letti - disabilitato temporaneamente per evitare errori di permessi
-  // Il contatore funzionerà correttamente quando si entra nella pagina messaggi
   useEffect(() => {
-    // Disabilitato per evitare permission errors al caricamento della pagina
     setUnreadMessages(0);
   }, [user, userProfile]);
+
+  // Conta inviti pendenti in realtime
+  useEffect(() => {
+    if (!user) { setPendingInvites(0); return; }
+    const q = query(
+      collection(db, 'teamInvites'),
+      where('toUserId', '==', user.uid),
+      where('status', '==', 'pending')
+    );
+    const unsub = onSnapshot(q, (snap) => setPendingInvites(snap.size), () => setPendingInvites(0));
+    return () => unsub();
+  }, [user]);
 
   const handleLogout = async () => {
     await signOut();
@@ -46,9 +57,8 @@ export default function Header() {
 
   const navLinks = [
     { href: '/dashboard', label: 'Dashboard', badge: 0 },
-    { href: '/teams', label: 'Equipe', badge: 0 },
+    { href: '/teams', label: 'Equipe', badge: pendingInvites },
     { href: '/referrals', label: 'Pazienti', badge: 0 },
-    { href: '/invites', label: 'Inviti', badge: 0 },
     { href: '/messages', label: 'Messaggi', badge: unreadMessages },
     { href: '/ecm', label: 'ECM', badge: 0 },
     ...(isAdmin ? [{ href: '/marketplace', label: 'Marketplace', badge: 0 }] : []),
@@ -69,11 +79,6 @@ export default function Header() {
     '/referrals': (
       <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-      </svg>
-    ),
-    '/invites': (
-      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
       </svg>
     ),
     '/messages': (
@@ -152,14 +157,6 @@ export default function Header() {
               {/* Admin links */}
               {isAdmin && (
                 <>
-                  <Link
-                    to="/marketplace"
-                    className={`text-sm font-medium transition hover:text-purple-400 relative ${
-                      pathname.startsWith('/marketplace') ? 'text-purple-400' : 'text-gray-300'
-                    }`}
-                  >
-                    Marketplace
-                  </Link>
                   <Link
                     to="/admin/verifications"
                     className={`text-sm font-medium transition hover:text-yellow-400 relative ${

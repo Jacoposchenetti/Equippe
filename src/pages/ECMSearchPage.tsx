@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
@@ -26,6 +26,30 @@ const TIPOLOGIE = [
   { value: 'BLENDED', label: 'Blended (mista)' },
 ];
 
+const REGIONI = [
+  { value: '010', label: 'Piemonte' },
+  { value: '020', label: "Valle D'Aosta" },
+  { value: '030', label: 'Lombardia' },
+  { value: '041', label: 'Provincia Autonoma Bolzano' },
+  { value: '042', label: 'Provincia Autonoma Trento' },
+  { value: '050', label: 'Veneto' },
+  { value: '060', label: 'Friuli-Venezia Giulia' },
+  { value: '070', label: 'Liguria' },
+  { value: '080', label: 'Emilia-Romagna' },
+  { value: '090', label: 'Toscana' },
+  { value: '100', label: 'Umbria' },
+  { value: '110', label: 'Marche' },
+  { value: '120', label: 'Lazio' },
+  { value: '130', label: 'Abruzzo' },
+  { value: '140', label: 'Molise' },
+  { value: '150', label: 'Campania' },
+  { value: '160', label: 'Puglia' },
+  { value: '170', label: 'Basilicata' },
+  { value: '180', label: 'Calabria' },
+  { value: '190', label: 'Sicilia' },
+  { value: '200', label: 'Sardegna' },
+];
+
 export default function ECMSearchPage() {
   const { userProfile } = useAuth();
   const { events, loading, error, hasMore, search, loadMore } = useECMSearch();
@@ -33,6 +57,7 @@ export default function ECMSearchPage() {
 
   const [filters, setFilters] = useState<ECMSearchFilters>({});
   const [hasSearched, setHasSearched] = useState(false);
+  const [sortBy, setSortBy] = useState<string>('');
 
   // Carica dropdown obiettivi da AGENAS (una sola volta)
   useEffect(() => {
@@ -50,6 +75,17 @@ export default function ECMSearchPage() {
     }
   }, [userProfile]);
 
+  const sortedEvents = useMemo(() => {
+    if (!sortBy) return events;
+    const [field, dir] = sortBy.split('-') as [string, string];
+    const mult = dir === 'asc' ? 1 : -1;
+    return [...events].sort((a, b) => {
+      const va = field === 'costo' ? a.costoNum : a.creditiNum;
+      const vb = field === 'costo' ? b.costoNum : b.creditiNum;
+      return (va - vb) * mult;
+    });
+  }, [events, sortBy]);
+
   const handleSearch = () => {
     setHasSearched(true);
     search(filters);
@@ -58,6 +94,7 @@ export default function ECMSearchPage() {
   const handleReset = () => {
     setFilters({});
     setHasSearched(false);
+    setSortBy('');
   };
 
   const updateFilter = (key: keyof ECMSearchFilters, value: string | number | undefined) => {
@@ -71,7 +108,7 @@ export default function ECMSearchPage() {
     <div className="min-h-screen bg-gray-50">
       <Header />
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-0 pb-24 sm:py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-0 pb-24 sm:pt-4 sm:pb-8">
         {/* Header */}
         <div className="mb-6 sm:mb-8">
           <h1 className="text-2xl sm:text-4xl font-bold text-gray-900 mb-2">
@@ -108,7 +145,12 @@ export default function ECMSearchPage() {
               <label className="block text-sm font-medium text-gray-700 mb-1">Tipologia</label>
               <select
                 value={filters.tipologia || ''}
-                onChange={e => updateFilter('tipologia', e.target.value)}
+                onChange={e => {
+                  const val = e.target.value;
+                  // Se si seleziona FAD, resetta la regione
+                  if (val === 'FAD') updateFilter('regione', undefined);
+                  updateFilter('tipologia', val);
+                }}
                 className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               >
                 <option value="">Tutte le tipologie</option>
@@ -116,6 +158,36 @@ export default function ECMSearchPage() {
                   <option key={t.value} value={t.value}>{t.label}</option>
                 ))}
               </select>
+            </div>
+
+            {/* Regione */}
+            <div>
+              <label className={`block text-sm font-medium mb-1 ${filters.tipologia === 'FAD' ? 'text-gray-400' : 'text-gray-700'}`}>
+                Regione
+              </label>
+              <select
+                value={filters.regione || ''}
+                disabled={filters.tipologia === 'FAD'}
+                onChange={e => {
+                  const val = e.target.value;
+                  // Se si sceglie una regione, rimuovi FAD dalla tipologia se selezionata
+                  if (val && filters.tipologia === 'FAD') updateFilter('tipologia', undefined);
+                  updateFilter('regione', val);
+                }}
+                className={`w-full rounded-lg border px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                  filters.tipologia === 'FAD'
+                    ? 'border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed'
+                    : 'border-gray-300'
+                }`}
+              >
+                <option value="">Tutte le regioni</option>
+                {REGIONI.map(r => (
+                  <option key={r.value} value={r.value}>{r.label}</option>
+                ))}
+              </select>
+              {filters.tipologia === 'FAD' && (
+                <p className="text-xs text-gray-400 mt-1">I corsi FAD sono online, non hanno una regione</p>
+              )}
             </div>
 
             {/* Titolo */}
@@ -201,6 +273,10 @@ export default function ECMSearchPage() {
             </div>
           </div>
 
+          {filters.regione && !filters.obiettivo && (
+            <p className="text-xs text-amber-600 mt-3">Ricerca live su AGENAS (può richiedere qualche secondo)</p>
+          )}
+
           {/* Bottoni */}
           <div className="flex flex-col sm:flex-row gap-3 mt-6">
             <button
@@ -259,16 +335,31 @@ export default function ECMSearchPage() {
 
         {/* Risultati */}
         {hasSearched && !loading && !error && (
-          <div className="mb-4 flex items-center justify-between">
+          <div className="mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <p className="text-sm text-gray-600">
               {events.length === 0
                 ? 'Nessun evento trovato'
                 : `${events.length} event${events.length === 1 ? 'o' : 'i'} trovat${events.length === 1 ? 'o' : 'i'}`}
               {hasMore ? ' (mostra di più sotto)' : ''}
             </p>
-            <p className="text-xs text-gray-400">
-              Dati forniti da AGENAS
-            </p>
+            <div className="flex items-center gap-2">
+              {events.length > 1 && (
+                <select
+                  value={sortBy}
+                  onChange={e => setSortBy(e.target.value)}
+                  className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="">Ordina per...</option>
+                  <option value="costo-asc">Costo crescente</option>
+                  <option value="costo-desc">Costo decrescente</option>
+                  <option value="crediti-asc">Crediti crescenti</option>
+                  <option value="crediti-desc">Crediti decrescenti</option>
+                </select>
+              )}
+              <p className="text-xs text-gray-400">
+                Dati forniti da AGENAS
+              </p>
+            </div>
           </div>
         )}
 
@@ -298,7 +389,7 @@ export default function ECMSearchPage() {
         {!loading && events.length > 0 && (
           <>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {events.map((event) => (
+              {sortedEvents.map((event) => (
                 <ECMEventCard
                   key={event.id}
                   event={event}

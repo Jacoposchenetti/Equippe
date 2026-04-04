@@ -37,7 +37,7 @@ interface AddressSuggestion {
 
 export default function MapSelector({
   coordinate,
-  raggioKm = 10,
+  raggioKm,
   indirizzo = '',
   onCoordinateChange,
   onIndirizzoChange,
@@ -56,7 +56,7 @@ export default function MapSelector({
   // Usa le nuove props se disponibili, altrimenti le vecchie
   const effectiveCoordinate = selectedLocation?.coordinate || coordinate || initialCenter || { lat: 41.9028, lng: 12.4964 };
   const effectiveIndirizzo = selectedLocation?.address || indirizzo;
-  const effectiveRaggio = raggioKm;
+  const effectiveRaggio = raggioKm ?? 10;
   
   // Wrapper per compatibilità
   const handleCoordinateChange = (coord: { lat: number; lng: number }) => {
@@ -277,7 +277,7 @@ export default function MapSelector({
   }
 
   return (
-    <div className="space-y-4">
+    <div className={readOnly ? 'h-full' : 'space-y-4'}>
       {/* Search bar - nascosta in modalità read-only */}
       {!readOnly && (
       <div className="relative">
@@ -321,7 +321,7 @@ export default function MapSelector({
       )}
 
       {/* Map */}
-      <div className="w-full h-64 border rounded-lg overflow-hidden relative z-0">
+      <div className={`w-full ${readOnly ? 'h-full' : 'h-64'} border rounded-lg overflow-hidden relative z-0`}>
         <MapContainer
           center={[defaultCenter.lat, defaultCenter.lng]}
           zoom={13}
@@ -343,11 +343,13 @@ export default function MapSelector({
           )}
           {console.log('✅ Rendering marker at:', currentCoordinate)}
           <Marker position={[currentCoordinate.lat, currentCoordinate.lng]} />
-          <Circle
-            center={[currentCoordinate.lat, currentCoordinate.lng]}
-            radius={effectiveRaggio * 1000}
-            pathOptions={{ color: 'blue', fillColor: 'blue', fillOpacity: 0.1 }}
-          />
+          {raggioKm != null && (
+            <Circle
+              center={[currentCoordinate.lat, currentCoordinate.lng]}
+              radius={effectiveRaggio * 1000}
+              pathOptions={{ color: 'blue', fillColor: 'blue', fillOpacity: 0.1 }}
+            />
+          )}
         </MapContainer>
         
         {!readOnly && (

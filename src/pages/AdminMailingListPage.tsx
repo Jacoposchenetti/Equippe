@@ -6,7 +6,7 @@ import { db } from '@/lib/firebase';
 import Header from '@/components/Header';
 import { useModal } from '@/contexts/ModalContext';
 
-const ADMIN_EMAILS = ['admin@tuaequipe.it', 'jschenetti@gmail.com'];
+const ADMIN_EMAILS = ['admin@tuaequipe.it', 'jschenetti@gmail.com', 'martinamaccara@icloud.com', 'martinamaccarana@icloud.com'];
 
 interface WaitlistEntry {
   id: string;
@@ -101,7 +101,7 @@ export default function AdminMailingListPage() {
     <div className="min-h-screen bg-gray-50">
       <Header />
 
-      <div className="max-w-7xl mx-auto px-4 py-8">
+      <div className="max-w-7xl mx-auto px-4 pt-0 pb-24 sm:pt-4 sm:pb-8">
         {/* Header section */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8 gap-4">
           <div>

@@ -134,6 +134,11 @@ export default function NotificationBell() {
       case 'profession_rejected':
         navigate('/profile/edit');
         break;
+      case 'marketplace_offer_received':
+      case 'marketplace_offer_accepted':
+      case 'marketplace_offer_rejected':
+        navigate('/marketplace/my');
+        break;
     }
   };
 
@@ -163,6 +168,12 @@ export default function NotificationBell() {
         return 'OK';
       case 'profession_rejected':
         return 'NO';
+      case 'marketplace_offer_received':
+        return '🏢';
+      case 'marketplace_offer_accepted':
+        return '✅';
+      case 'marketplace_offer_rejected':
+        return '❌';
       default:
         return '🔔';
     }

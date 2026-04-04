@@ -29,7 +29,7 @@ const BrandLarge = () => (
 );
 
 /* ─── Scarcity config ─── */
-const TOTAL_SPOTS = 300;
+const TOTAL_SPOTS = 200;
 
 /* ─── Professioni visibili nella landing ─── */
 const PROFESSIONI_LANDING = [
@@ -87,6 +87,12 @@ const PROFESSIONI_LANDING = [
     color: 'bg-rose-50 text-rose-600',
     icon: <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" /></svg>,
   },
+  {
+    nome: 'Osteopata',
+    desc: 'Trattamento muscolo-scheletrico e posturale',
+    color: 'bg-orange-50 text-orange-600',
+    icon: <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" /></svg>,
+  },
 ];
 
 export default function WaitlistPage() {
@@ -105,6 +111,7 @@ export default function WaitlistPage() {
   const [cognome, setCognome] = useState('');
   const [email, setEmail] = useState('');
   const [professione, setProfessione] = useState('');
+  const [isPsichiatra, setIsPsichiatra] = useState('');
   const [citta, setCitta] = useState('');
   const [gdprConsent, setGdprConsent] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -194,6 +201,10 @@ export default function WaitlistPage() {
       setError('Tutti i campi sono obbligatori.');
       return;
     }
+    if (professione === 'Psicoterapeuta' && !isPsichiatra) {
+      setError('Indica se sei anche psichiatra.');
+      return;
+    }
     if (!gdprConsent) {
       setError('Devi accettare l\'informativa sulla privacy per procedere.');
       return;
@@ -214,6 +225,7 @@ export default function WaitlistPage() {
         citta: citta.trim(),
         gdprConsent: true,
         createdAt: serverTimestamp(),
+        ...(professione === 'Psicoterapeuta' && { isPsichiatra: isPsichiatra === 'si' }),
       });
 
       setSuccess(true);
@@ -281,7 +293,7 @@ export default function WaitlistPage() {
           <label htmlFor={`professione-${id}`} className="block text-sm font-medium text-gray-700">
             Professione <span className="text-red-500">*</span>
           </label>
-          <select id={`professione-${id}`} required value={professione} onChange={(e) => setProfessione(e.target.value)}
+          <select id={`professione-${id}`} required value={professione} onChange={(e) => { setProfessione(e.target.value); setIsPsichiatra(''); }}
             className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md text-gray-900 text-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
             <option value="">Seleziona...</option>
             {PROFESSIONI_DISPONIBILI.map((prof) => (
@@ -299,6 +311,26 @@ export default function WaitlistPage() {
             placeholder="La tua città" />
         </div>
       </div>
+
+      {professione === 'Psicoterapeuta' && (
+        <div>
+          <label className="block text-sm font-medium text-gray-700">
+            Sei anche psichiatra? <span className="text-red-500">*</span>
+          </label>
+          <div className="mt-2 flex gap-6">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input type="radio" name={`psichiatra-${id}`} value="si" checked={isPsichiatra === 'si'} onChange={() => setIsPsichiatra('si')}
+                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300" />
+              <span className="text-sm text-gray-700">Sì</span>
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input type="radio" name={`psichiatra-${id}`} value="no" checked={isPsichiatra === 'no'} onChange={() => setIsPsichiatra('no')}
+                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300" />
+              <span className="text-sm text-gray-700">No</span>
+            </label>
+          </div>
+        </div>
+      )}
 
       <div className="flex items-start pt-1">
         <div className="flex items-center h-5">

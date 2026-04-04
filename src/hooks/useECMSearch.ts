@@ -31,6 +31,7 @@ export interface ECMSearchFilters {
   costoMinimo?: number;
   costoMassimo?: number;
   obiettivo?: string;
+  regione?: string;
 }
 
 export interface DropdownOption {
@@ -59,7 +60,7 @@ const getECMDisciplinesCallable = httpsCallable<
 >(functions, 'getECMDisciplines');
 
 const searchECMLiveCallable = httpsCallable<
-  { professione?: string; tipologia?: string; obiettivo?: string; titolo?: string },
+  { professione?: string; tipologia?: string; obiettivo?: string; titolo?: string; regione?: string },
   { events: ECMEvent[] }
 >(functions, 'searchECMLive');
 
@@ -112,14 +113,15 @@ export function useECMSearch() {
     }
     lastFiltersRef.current = filters;
 
-    // Se l'obiettivo è specificato, usa ricerca live su AGENAS
-    if (filters.obiettivo) {
+    // Se l'obiettivo o la regione sono specificati, usa ricerca live su AGENAS
+    if (filters.obiettivo || filters.regione) {
       try {
         const result = await searchECMLiveCallable({
           professione: filters.professione || undefined,
           tipologia: filters.tipologia || undefined,
           obiettivo: filters.obiettivo,
           titolo: filters.titolo || undefined,
+          regione: filters.regione || undefined,
         });
         let liveEvents = result.data.events;
         // Filtri crediti lato client

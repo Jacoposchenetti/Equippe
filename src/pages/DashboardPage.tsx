@@ -328,7 +328,7 @@ export default function DashboardPage() {
       <Header />
       <VerificationBanner />
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-0 pb-24 sm:py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-0 pb-24 sm:pt-4 sm:pb-8">
         <h1 className="text-2xl sm:text-4xl font-bold text-gray-900 mb-3 sm:mb-8">
           {currentFilters.type === 'professionista' ? 'Cerca Professionisti' : 'Cerca equipe'}
         </h1>

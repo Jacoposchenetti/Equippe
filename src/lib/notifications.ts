@@ -19,6 +19,8 @@ interface CreateNotificationParams {
   referralId?: string;
   inviteId?: string;
   accepted?: boolean;
+  listingId?: string;
+  offerId?: string;
 }
 
 export async function createNotification(params: CreateNotificationParams) {
@@ -229,6 +231,56 @@ export async function notifyTeamInviteReceived(recipientId: string, teamId: stri
     });
   } catch (error) {
     console.error('Errore notifyTeamInviteReceived:', error);
+  }
+}
+
+// ============================================
+// MARKETPLACE NOTIFICATIONS
+// ============================================
+
+export async function notifyMarketplaceOfferReceived(
+  authorId: string,
+  offererName: string,
+  offerAmount: number,
+  listingTitle: string,
+  listingId: string,
+  offerId: string,
+) {
+  try {
+    await createNotification({
+      userId: authorId,
+      type: 'marketplace_offer_received',
+      title: 'Nuova offerta ricevuta',
+      message: `${offererName} ha inviato un'offerta di ${offerAmount}€ per "${listingTitle}"`,
+      senderName: offererName,
+      listingId,
+      offerId,
+    });
+  } catch (error) {
+    console.error('Errore notifyMarketplaceOfferReceived:', error);
+  }
+}
+
+export async function notifyMarketplaceOfferOutcome(
+  offererId: string,
+  status: 'accepted' | 'rejected',
+  listingTitle: string,
+  listingId: string,
+  offerId: string,
+) {
+  try {
+    await createNotification({
+      userId: offererId,
+      type: status === 'accepted' ? 'marketplace_offer_accepted' : 'marketplace_offer_rejected',
+      title: status === 'accepted' ? '✅ Offerta accettata!' : '❌ Offerta rifiutata',
+      message: status === 'accepted'
+        ? `La tua offerta per "${listingTitle}" è stata accettata`
+        : `La tua offerta per "${listingTitle}" è stata rifiutata`,
+      listingId,
+      offerId,
+    });
+  } catch (error) {
+    console.error('Errore notifyMarketplaceOfferOutcome:', error);
   }
 }
 

@@ -40,6 +40,11 @@ import AdminVerificationsPage from './pages/AdminVerificationsPage'
 import AdminMailingListPage from './pages/AdminMailingListPage'
 import AdminWaitlistEmailPage from './pages/AdminWaitlistEmailPage'
 import ECMSearchPage from './pages/ECMSearchPage'
+import MarketplacePage from './pages/MarketplacePage'
+import MarketplaceCreatePage from './pages/MarketplaceCreatePage'
+import MarketplaceDetailPage from './pages/MarketplaceDetailPage'
+import MarketplaceMyPage from './pages/MarketplaceMyPage'
+import MarketplaceEditPage from './pages/MarketplaceEditPage'
 
 // Protected Route Component
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -193,6 +198,33 @@ function App() {
         <Route path="/ecm" element={
           <ProtectedRoute>
             <ECMSearchPage />
+          </ProtectedRoute>
+        } />
+        
+        {/* Marketplace Routes */}
+        <Route path="/marketplace" element={
+          <ProtectedRoute>
+            <MarketplacePage />
+          </ProtectedRoute>
+        } />
+        <Route path="/marketplace/create" element={
+          <ProtectedRoute>
+            <MarketplaceCreatePage />
+          </ProtectedRoute>
+        } />
+        <Route path="/marketplace/my" element={
+          <ProtectedRoute>
+            <MarketplaceMyPage />
+          </ProtectedRoute>
+        } />
+        <Route path="/marketplace/:id/edit" element={
+          <ProtectedRoute>
+            <MarketplaceEditPage />
+          </ProtectedRoute>
+        } />
+        <Route path="/marketplace/:id" element={
+          <ProtectedRoute>
+            <MarketplaceDetailPage />
           </ProtectedRoute>
         } />
         

@@ -6,6 +6,14 @@ const AGENAS_URL = 'https://ape.agenas.it/Tools/Eventi.aspx';
 const CACHE_TTL_DROPDOWNS = 24 * 60 * 60 * 1000; // 24 ore
 const MAX_REQUESTS_PER_MINUTE = 10;
 
+/** Mappa codici tipologia testuale → valore numerico AGENAS (ddlTipologiaEvento) */
+const TIPOLOGIA_TO_AGENAS: Record<string, string> = {
+  'FAD': '1',
+  'FSC': '2',
+  'RES': '3',
+  'BLENDED': '4',
+};
+
 /** Parsa il valore costo AGENAS (es. "€ 150,00", "Gratuito") in un numero. */
 function parseCosto(costo: string): number {
   if (!costo) return 0;
@@ -222,7 +230,10 @@ async function searchAgenas(
   if (params.professione) formData.set(`${P}ddlProfessione`, params.professione);
   if (params.disciplina) formData.set(`${P}ddlDisciplina`, params.disciplina);
   if (params.regione) formData.set(`${P}ddlRegioni`, params.regione);
-  if (params.tipologia) formData.set(`${P}ddlTipologiaEvento`, params.tipologia);
+  if (params.tipologia) {
+    const agenasVal = TIPOLOGIA_TO_AGENAS[params.tipologia.toUpperCase()] || params.tipologia;
+    formData.set(`${P}ddlTipologiaEvento`, agenasVal);
+  }
   if (params.obiettivo) formData.set(`${P}ddlObiettivoFormativo`, params.obiettivo);
   if (params.titolo) formData.set(`${P}tbTitoloEvento`, params.titolo);
   if (params.dataInizio) formData.set(`${P}tbDataInizio`, params.dataInizio);
@@ -323,6 +334,50 @@ function parseDropdowns(html: string): DropdownValues {
  * Esegue una sessione completa su AGENAS: GET → search → restituisce
  * l'HTML dei risultati + cookies + hiddenFields per successivi postback
  */
+/**
+ * Estrae il numero totale di pagine dal pager AGENAS.
+ * I bottoni numerici nel DataPager rappresentano le pagine disponibili.
+ */
+function parseTotalPages(html: string): number {
+  const $ = cheerio.load(html);
+  let maxPage = 1;
+  $('[id*="DataPager"] input[type="submit"]').each((_: number, el: any) => {
+    const val = parseInt($(el).attr('value') || '', 10);
+    if (!isNaN(val) && val > maxPage) maxPage = val;
+  });
+  return maxPage;
+}
+
+/**
+ * Esegue una ricerca AGENAS raccogliendo TUTTE le pagine di risultati.
+ * Naviga sempre di una pagina avanti (targetPage=2 dall'ultima sessione),
+ * che equivale a "click Next" sequenziale.
+ * Max 50 pagine (500 eventi) come limite di sicurezza.
+ */
+async function executeSearchAllPages(params: ECMSearchParams): Promise<ECMEvent[]> {
+  const session = await executeSearchSession(params);
+  const allEvents: ECMEvent[] = parseEventResults(session.resultsHtml);
+  const totalPages = parseTotalPages(session.resultsHtml);
+
+  const PAGE_DELAY_MS = 300;
+  const MAX_PAGES = 50;
+  const pages = Math.min(totalPages, MAX_PAGES);
+
+  let currentSession: { resultsHtml: string; cookies: string; hiddenFields: Record<string, string> } = session;
+
+  for (let page = 2; page <= pages; page++) {
+    await new Promise(r => setTimeout(r, PAGE_DELAY_MS));
+    // targetPage=2 con currentSession all'ultima pagina = click "Next" di un passo
+    const nextSession = await navigateToPageFromSession(currentSession, 2);
+    const pageEvents = parseEventResults(nextSession.resultsHtml);
+    if (pageEvents.length === 0) break;
+    allEvents.push(...pageEvents);
+    currentSession = nextSession;
+  }
+
+  return allEvents;
+}
+
 async function executeSearchSession(params: ECMSearchParams): Promise<{
   resultsHtml: string;
   cookies: string;
@@ -868,16 +923,18 @@ export const downloadECMProgramma = functions
 /**
  * Ricerca live su AGENAS con parametri avanzati (es. obiettivo formativo).
  * Usata quando i filtri richiesti non sono disponibili nel database locale.
+ * I risultati vengono cachati in Firestore per 24 ore.
  */
 export const searchECMLive = functions
   .region('europe-west1')
-  .runWith({ timeoutSeconds: 60 })
+  .runWith({ timeoutSeconds: 300 })
   .https
   .onCall(async (data: {
     professione?: string;
     tipologia?: string;
     obiettivo?: string;
     titolo?: string;
+    regione?: string;
   }, context) => {
     if (!context.auth) {
       throw new functions.https.HttpsError('unauthenticated', 'Utente non autenticato');
@@ -888,36 +945,67 @@ export const searchECMLive = functions
       throw new functions.https.HttpsError('resource-exhausted', 'Troppe richieste. Riprova tra un minuto.');
     }
 
-    const { professione, tipologia, obiettivo, titolo } = data;
+    const { professione, tipologia, obiettivo, titolo, regione } = data;
+
+    // Costruisce la chiave cache dai filtri (solo campi valorizzati, ordinati)
+    const cacheKey = ['p', professione, 't', tipologia, 'o', obiettivo, 'ti', titolo, 'r', regione]
+      .map(v => (v || '_'))
+      .join('_')
+      .replace(/[^a-zA-Z0-9_\-]/g, '-');
+
+    const CACHE_TTL_LIVE = 24 * 60 * 60 * 1000; // 24 ore
+    const cacheRef = admin.firestore().collection('ecmLiveCache').doc(cacheKey);
+
+    // Controlla cache
+    try {
+      const cacheDoc = await cacheRef.get();
+      if (cacheDoc.exists) {
+        const cacheData = cacheDoc.data();
+        const age = Date.now() - (cacheData?.timestamp?.toMillis() || 0);
+        if (age < CACHE_TTL_LIVE) {
+          console.log(`✅ ECM live cache hit: ${cacheKey}`);
+          return { events: cacheData?.events || [], fromCache: true };
+        }
+      }
+    } catch (err) {
+      console.warn('⚠️ Errore lettura cache live ECM:', err);
+    }
 
     try {
-      const session = await executeSearchSession({
+      const events = await executeSearchAllPages({
         professione: professione || undefined,
         tipologia: tipologia || undefined,
         obiettivo: obiettivo || undefined,
         titolo: titolo || undefined,
+        regione: regione || undefined,
       });
 
-      const events = parseEventResults(session.resultsHtml);
-      console.log(`✅ ECM live search: ${events.length} risultati`);
+      console.log(`✅ ECM live search: ${events.length} risultati (tutte le pagine)`);
 
-      return {
-        events: events.map(e => ({
-          id: e.id,
-          titolo: e.titolo,
-          provider: e.provider,
-          professione: e.professione,
-          crediti: e.crediti,
-          creditiNum: parseFloat(e.crediti?.replace(',', '.') || '0') || 0,
-          dataInizio: e.dataInizio,
-          dataFine: e.dataFine,
-          tipologia: e.tipologia,
-          costo: e.costo,
-          costoNum: parseCosto(e.costo),
-          professioneLabel: e.professione,
-          professioniIds: professione ? [professione] : [],
-        })),
-      };
+      const mapped = events.map(e => ({
+        id: e.id,
+        titolo: e.titolo,
+        provider: e.provider,
+        professione: e.professione,
+        crediti: e.crediti,
+        creditiNum: parseFloat(e.crediti?.replace(',', '.') || '0') || 0,
+        dataInizio: e.dataInizio,
+        dataFine: e.dataFine,
+        tipologia: e.tipologia,
+        costo: e.costo,
+        costoNum: parseCosto(e.costo),
+        professioneLabel: e.professione,
+        professioniIds: professione ? [professione] : [],
+      }));
+
+      // Salva in cache (fire-and-forget)
+      cacheRef.set({
+        events: mapped,
+        timestamp: admin.firestore.FieldValue.serverTimestamp(),
+        filters: { professione, tipologia, obiettivo, titolo, regione },
+      }).catch(err => console.warn('⚠️ Errore scrittura cache live ECM:', err));
+
+      return { events: mapped, fromCache: false };
     } catch (error: any) {
       console.error('❌ Errore ricerca ECM live:', error.message);
       throw new functions.https.HttpsError(

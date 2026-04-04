@@ -7,7 +7,7 @@ import { User, VerificationStatus, VerificationInfo } from '@/types/equippe';
 import Header from '@/components/Header';
 import { useModal } from '@/contexts/ModalContext';
 
-const ADMIN_EMAILS = ['admin@tuaequipe.it', 'jschenetti@gmail.com'];
+const ADMIN_EMAILS = ['admin@tuaequipe.it', 'jschenetti@gmail.com', 'martinamaccara@icloud.com', 'martinamaccarana@icloud.com'];
 
 interface PendingUser extends User {
   id: string;
@@ -338,7 +338,7 @@ export default function AdminVerificationsPage() {
     <div className="min-h-screen bg-gray-50">
       <Header />
       
-      <div className="max-w-7xl mx-auto px-4 py-8">
+      <div className="max-w-7xl mx-auto px-4 pt-0 pb-24 sm:pt-4 sm:pb-8">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900">Verifiche Professionali</h1>
           <p className="text-gray-600 mt-2">Gestisci le richieste di verifica dei professionisti</p>

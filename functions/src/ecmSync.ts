@@ -585,11 +585,28 @@ export const cleanupECMStaleEvents = functions
 
     if (stale.empty) {
       console.log('🗑️ ECM cleanup: nessun evento scaduto');
-      return;
+    } else {
+      const batch = admin.firestore().batch();
+      stale.docs.forEach((doc) => batch.delete(doc.ref));
+      await batch.commit();
+      console.log(`🗑️ ECM cleanup: rimossi ${stale.size} eventi scaduti`);
     }
 
-    const batch = admin.firestore().batch();
-    stale.docs.forEach((doc) => batch.delete(doc.ref));
-    await batch.commit();
-    console.log(`🗑️ ECM cleanup: rimossi ${stale.size} eventi scaduti`);
+    // Pulizia cache live scaduta (TTL 24h)
+    const oneDayAgo = admin.firestore.Timestamp.fromDate(
+      new Date(Date.now() - 24 * 60 * 60 * 1000)
+    );
+    const staleCache = await admin
+      .firestore()
+      .collection('ecmLiveCache')
+      .where('timestamp', '<', oneDayAgo)
+      .limit(500)
+      .get();
+
+    if (!staleCache.empty) {
+      const cacheBatch = admin.firestore().batch();
+      staleCache.docs.forEach((doc) => cacheBatch.delete(doc.ref));
+      await cacheBatch.commit();
+      console.log(`🗑️ ECM cache cleanup: rimossi ${staleCache.size} documenti scaduti`);
+    }
   });

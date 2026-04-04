@@ -32,7 +32,6 @@ export default function EnhancedSearch({ onSearch, availableSpecializations = []
   const [raggioKm, setRaggioKm] = useState<number>(5);
   const [indirizzo, setIndirizzo] = useState<string>(initialAddress || '');
   const [remoto, setRemoto] = useState<boolean>(false);
-  const [showMap, setShowMap] = useState<boolean>(false);
 
   // Aggiorna automaticamente quando cambia il tipo di ricerca
   useEffect(() => {
@@ -125,122 +124,107 @@ export default function EnhancedSearch({ onSearch, availableSpecializations = []
         </button>
       </div>
 
-      {/* Specializzazione */}
-      <div className="mb-4">
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          {searchType === 'professionista' ? 'Specializzazione' : 'Tipologia equipe'}
-        </label>
-        <select
-          value={searchType === 'equipe' ? '' : specializzazione}
-          onChange={(e) => setSpecializzazione(e.target.value)}
-          disabled={searchType === 'equipe'}
-          className={`w-full border border-gray-300 rounded-lg px-3 py-3 text-base focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-            searchType === 'equipe' ? 'bg-gray-100 cursor-not-allowed' : ''
-          }`}
-        >
-          <option value="">Tutte</option>
-          {searchType === 'professionista' && currentSpecs.map((spec) => (
-            <option key={spec} value={spec}>
-              {spec}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      {/* Area d'interesse - visibile solo se c'è una specializzazione selezionata */}
-      {specializzazione && searchType === 'professionista' && (() => {
-        const config = getConfigurazioneProfessione(specializzazione);
-        const tematiche = config?.tematiche || [];
-        
-        if (tematiche.length === 0) return null;
-        
-        return (
-          <div className="mb-4">
+      {/* Filtri + Mappa side by side */}
+      <div className={`flex flex-col ${coordinate ? 'lg:flex-row' : ''} gap-4 mb-4`}>
+        {/* Left: all filter fields */}
+        <div className={`space-y-4 ${coordinate ? 'lg:w-1/2' : 'w-full'}`}>
+          {/* Specializzazione */}
+          <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Area d'interesse
+              {searchType === 'professionista' ? 'Specializzazione' : 'Tipologia equipe'}
             </label>
             <select
-              value={areaInteresse}
-              onChange={(e) => setAreaInteresse(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-3 py-3 text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
+              value={searchType === 'equipe' ? '' : specializzazione}
+              onChange={(e) => setSpecializzazione(e.target.value)}
+              disabled={searchType === 'equipe'}
+              className={`w-full border border-gray-300 rounded-lg px-3 py-3 text-base focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                searchType === 'equipe' ? 'bg-gray-100 cursor-not-allowed' : ''
+              }`}
             >
-              <option value="">Tutte le aree</option>
-              {tematiche.map((tema) => (
-                <option key={tema} value={tema}>
-                  {tema}
+              <option value="">Tutte</option>
+              {searchType === 'professionista' && currentSpecs.map((spec) => (
+                <option key={spec} value={spec}>
+                  {spec}
                 </option>
               ))}
             </select>
           </div>
-        );
-      })()}
 
-      {/* Località con Mappa */}
-      <div className="mb-4">
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Zona di interesse
-        </label>
-        
-        {/* Autocomplete indirizzo */}
-        <div className="mb-3">
-          <LocationAutocomplete
-            value={indirizzo}
-            onChange={(address, coords) => {
-              setIndirizzo(address);
-              if (coords) {
-                setCoordinate(coords);
-              }
-            }}
-            placeholder="es. Via Roma 123, Milano"
-          />
-        </div>
-        
-        {/* Selettore raggio sempre visibile */}
-        <div className="mb-3">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Raggio di copertura: <strong>{raggioKm} km</strong>
-          </label>
-          <input
-            type="range"
-            min="1"
-            max="50"
-            value={raggioKm}
-            onChange={(e) => setRaggioKm(Number(e.target.value))}
-            className="w-full"
-          />
-          <div className="flex justify-between text-xs text-gray-500 mt-1">
-            <span>1 km</span>
-            <span>25 km</span>
-            <span>50 km</span>
+          {/* Area d'interesse */}
+          {specializzazione && searchType === 'professionista' && (() => {
+            const config = getConfigurazioneProfessione(specializzazione);
+            const tematiche = config?.tematiche || [];
+            if (tematiche.length === 0) return null;
+            return (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Area d'interesse
+                </label>
+                <select
+                  value={areaInteresse}
+                  onChange={(e) => setAreaInteresse(e.target.value)}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-3 text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Tutte le aree</option>
+                  {tematiche.map((tema) => (
+                    <option key={tema} value={tema}>
+                      {tema}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            );
+          })()}
+
+          {/* Zona di interesse */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Zona di interesse
+            </label>
+            <LocationAutocomplete
+              value={indirizzo}
+              onChange={(address, coords) => {
+                setIndirizzo(address);
+                if (coords) {
+                  setCoordinate(coords);
+                }
+              }}
+              placeholder="es. Via Roma 123, Milano"
+            />
+          </div>
+
+          {/* Selettore raggio */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Raggio di copertura: <strong>{raggioKm} km</strong>
+            </label>
+            <input
+              type="range"
+              min="1"
+              max="50"
+              value={raggioKm}
+              onChange={(e) => setRaggioKm(Number(e.target.value))}
+              className="w-full"
+            />
+            <div className="flex justify-between text-xs text-gray-500 mt-1">
+              <span>1 km</span>
+              <span>25 km</span>
+              <span>50 km</span>
+            </div>
           </div>
         </div>
-        
-        {/* Checkbox per mostrare la mappa */}
-        <div className="mb-3">
-          <label className="flex items-center">
-            <input
-              type="checkbox"
-              checked={showMap}
-              onChange={(e) => setShowMap(e.target.checked)}
-              className="mr-3 h-5 w-5 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-            />
-            <span className="text-sm font-medium text-gray-700">
-              Vedi sulla mappa
-            </span>
-          </label>
-        </div>
-        
-        {/* Mappa condizionale */}
-        {showMap && (
-          <div className="overflow-hidden rounded-lg">
-            <MapSelector
-              coordinate={coordinate}
-              raggioKm={raggioKm}
-              indirizzo={indirizzo}
-              onCoordinateChange={setCoordinate}
-              onIndirizzoChange={setIndirizzo}
-              onRaggioChange={setRaggioKm}
-            />
+
+        {/* Right: map (only when a location is selected) */}
+        {coordinate && (
+          <div className="lg:w-1/2">
+            <div className="h-full min-h-[280px] rounded-lg overflow-hidden border">
+              <MapSelector
+                coordinate={coordinate}
+                raggioKm={raggioKm}
+                indirizzo={indirizzo}
+                readOnly
+              />
+            </div>
           </div>
         )}
       </div>

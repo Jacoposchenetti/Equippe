@@ -132,5 +132,24 @@ service cloud.firestore {
       allow read: if isAuthenticated() && isAdmin();
       allow write: if false; // solo admin SDK via Cloud Functions
     }
+
+    // Marketplace listings
+    match /marketplace_listings/{listingId} {
+      allow read: if isAuthenticated();
+      allow create: if canWrite() && request.auth.uid == request.resource.data.authorId;
+      allow update: if isAuthenticated() && request.auth.uid == resource.data.authorId;
+      allow delete: if isAuthenticated() && (request.auth.uid == resource.data.authorId || isAdmin());
+    }
+
+    // Marketplace offers
+    match /marketplace_offers/{offerId} {
+      allow read: if isAuthenticated() 
+        && (request.auth.uid == resource.data.offererId || request.auth.uid == resource.data.authorId);
+      allow list: if isAuthenticated();
+      allow create: if canWrite() && request.auth.uid == request.resource.data.offererId;
+      allow update: if isAuthenticated() 
+        && (request.auth.uid == resource.data.offererId || request.auth.uid == resource.data.authorId);
+      allow delete: if isAuthenticated() && request.auth.uid == resource.data.offererId;
+    }
   }
 }

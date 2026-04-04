@@ -131,6 +131,11 @@ function getNotificationUrl(notification: any): string {
     case 'referral_accepted':
       return `${baseUrl}/referrals/${notification.referralId}`;
     
+    case 'marketplace_offer_received':
+    case 'marketplace_offer_accepted':
+    case 'marketplace_offer_rejected':
+      return `${baseUrl}/marketplace/my`;
+    
     default:
       return `${baseUrl}/dashboard`;
   }
@@ -344,7 +349,7 @@ const EMAIL_FROM = {
 };
 
 /** Indirizzi admin per notifiche interne */
-const ADMIN_EMAILS = ['admin@tuaequipe.it', 'jschenetti@gmail.com'];
+const ADMIN_EMAILS = ['admin@tuaequipe.it', 'jschenetti@gmail.com', 'martinamaccara@icloud.com', 'martinamaccarana@icloud.com'];
 
 /**
  * Wraps email body HTML with branded header (logo) and footer
@@ -1709,3 +1714,119 @@ export const patchWaitlistHistoryFailed = functions
     return results;
   });
 
+/**
+ * Trigger: nuova offerta marketplace creata
+ * Invia email al proprietario dell'annuncio
+ */
+export const onMarketplaceOfferCreated = functions
+  .region('europe-west1')
+  .firestore
+  .document('marketplace_offers/{offerId}')
+  .onCreate(async (snapshot) => {
+    const offer = snapshot.data();
+    if (!offer) return;
+
+    try {
+      const authorRecord = await admin.auth().getUser(offer.authorId);
+      const authorEmail = authorRecord.email;
+      if (!authorEmail) return;
+
+      const slotsText = (offer.requestedSlots || []).map((s: any) =>
+        `<li>${s.day}: ${s.startTime} \u2013 ${s.endTime}</li>`
+      ).join('');
+
+      await sendEmail(
+        authorEmail,
+        `Nuova offerta per "${offer.listingTitle}"`,
+        `
+          <h2 style="color:#0066cc;">Hai ricevuto una nuova offerta!</h2>
+          <p><strong>${offer.offererName}</strong> ha inviato un'offerta per il tuo annuncio
+          <strong>"${offer.listingTitle}"</strong>.</p>
+          <table style="margin:16px 0;border-collapse:collapse;width:100%;">
+            <tr><td style="padding:6px 12px;background:#f5f8ff;font-weight:bold;">Importo offerto</td>
+                <td style="padding:6px 12px;">${offer.offerAmount}\u20ac</td></tr>
+            ${offer.message ? '<tr><td style="padding:6px 12px;background:#f5f8ff;font-weight:bold;">Messaggio</td><td style="padding:6px 12px;">' + offer.message + '</td></tr>' : ''}
+          </table>
+          ${slotsText ? '<p><strong>Fasce orarie richieste:</strong></p><ul>' + slotsText + '</ul>' : ''}
+          <p style="text-align:center;margin:28px 0;">
+            <a href="https://tuaequipe.it/marketplace/my"
+               style="background:#0066cc;color:white;padding:12px 28px;text-decoration:none;border-radius:6px;display:inline-block;font-weight:bold;">
+              Gestisci offerte
+            </a>
+          </p>
+          <p style="color:#888;font-size:13px;">Accedi a "I miei annunci" per accettare o rifiutare l'offerta.</p>
+        `,
+        EMAIL_FROM.info
+      );
+
+      // Notifica in-app al proprietario dell'annuncio
+      await createInternalNotification({
+        userId: offer.authorId,
+        type: 'marketplace_offer_received',
+        title: 'Nuova offerta ricevuta',
+        message: `${offer.offererName} ha inviato un'offerta di ${offer.offerAmount}\u20ac per "${offer.listingTitle}"`,
+        senderName: offer.offererName,
+        senderPhotoURL: offer.offererPhotoURL || '',
+        listingId: offer.listingId || '',
+        offerId: snapshot.id,
+      });
+    } catch (error) {
+      console.error('\u274c onMarketplaceOfferCreated:', error);
+    }
+  });
+
+/**
+ * Trigger: offerta marketplace aggiornata (accepted / rejected)
+ * Invia email all'offerente con l'esito
+ */
+export const onMarketplaceOfferUpdated = functions
+  .region('europe-west1')
+  .firestore
+  .document('marketplace_offers/{offerId}')
+  .onUpdate(async (change) => {
+    const before = change.before.data();
+    const after = change.after.data();
+
+    if (!before || !after) return;
+    if (before.status === after.status) return;
+    if (after.status !== 'accepted' && after.status !== 'rejected') return;
+
+    try {
+      const offererRecord = await admin.auth().getUser(after.offererId);
+      const offererEmail = offererRecord.email;
+      if (!offererEmail) return;
+
+      const accepted = after.status === 'accepted';
+      const emoji = accepted ? '\u2705' : '\u274c';
+      const esito = accepted ? 'accettata' : 'rifiutata';
+      const color = accepted ? '#16a34a' : '#dc2626';
+
+      await sendEmail(
+        offererEmail,
+        `${emoji} La tua offerta \u00e8 stata ${esito}`,
+        `
+          <h2 style="color:${color};">${emoji} Offerta ${esito}!</h2>
+          <p>La tua offerta per l'annuncio <strong>"${after.listingTitle}"</strong>
+          di <strong>${after.authorName}</strong> \u00e8 stata <strong>${esito}</strong>.</p>
+          ${after.responseMessage ? '<div style="background:#f9f9f9;border-left:4px solid ' + color + ';padding:12px 16px;margin:16px 0;border-radius:4px;"><p style="margin:0;font-style:italic;">"' + after.responseMessage + '"</p></div>' : ''}
+          ${accepted ? '<p style="text-align:center;margin:28px 0;"><a href="https://tuaequipe.it/marketplace/' + after.listingId + '" style="background:#0066cc;color:white;padding:12px 28px;text-decoration:none;border-radius:6px;display:inline-block;font-weight:bold;">Visualizza annuncio</a></p>' : ''}
+          <p style="color:#888;font-size:13px;">Puoi consultare tutte le tue offerte in "I miei annunci".</p>
+        `,
+        EMAIL_FROM.info
+      );
+
+      // Notifica in-app all'offerente
+      await createInternalNotification({
+        userId: after.offererId,
+        type: accepted ? 'marketplace_offer_accepted' : 'marketplace_offer_rejected',
+        title: accepted ? '\u2705 Offerta accettata!' : '\u274c Offerta rifiutata',
+        message: accepted
+          ? `La tua offerta per "${after.listingTitle}" \u00e8 stata accettata`
+          : `La tua offerta per "${after.listingTitle}" \u00e8 stata rifiutata`,
+        listingId: after.listingId,
+        offerId: change.after.id,
+      });
+    } catch (error) {
+      console.error('\u274c onMarketplaceOfferUpdated:', error);
+    }
+  });

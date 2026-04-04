@@ -551,6 +551,35 @@ export const CONFIGURAZIONI_PROFESSIONI: Record<string, ConfigurazioneProfession
     noteAggiuntive: 'Dopo la laurea, per esercitare è obbligatoria l\'iscrizione all\'albo neuropsicomotricisti, istituito presso gli Ordini TSRM e PSTRP (Tecnici Sanitari di Radiologia Medica e delle Professioni Sanitarie Tecniche, della Riabilitazione e della Prevenzione)'
   },
   
+  'Osteopata': {
+    nome: 'Osteopata',
+    hasAlbo: true,
+    tematiche: [
+      'Dolore muscolo-scheletrico',
+      'Cervicalgia e lombalgia',
+      'Cefalea e emicrania',
+      'Disturbi posturali',
+      'Dolori articolari',
+      'Disturbi funzionali viscerali',
+      'Trattamento cranio-sacrale',
+      'Osteopatia pediatrica',
+      'Osteopatia in gravidanza',
+      'Riabilitazione post-traumatica',
+      'Disfunzioni temporomandibolari',
+      'Disturbi del sonno'
+    ],
+    documentiRichiesti: [
+      {
+        tipo: 'albo',
+        nome: 'Numero iscrizione Albo degli Osteopati (Ordine TSRM e PSTRP)',
+        obbligatorio: true,
+        placeholder: 'es. 12345',
+        descrizione: 'Numero iscrizione all\'Albo degli Osteopati presso l\'Ordine TSRM e PSTRP'
+      }
+    ],
+    noteAggiuntive: 'L\'osteopata è un professionista sanitario iscritto all\'Ordine TSRM e PSTRP'
+  },
+  
   'Sessuologo': {
     nome: 'Sessuologo',
     hasAlbo: false,

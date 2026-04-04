@@ -268,7 +268,7 @@ export default function ProfilePage() {
     <div className="min-h-screen bg-gray-50">
       <Header />
 
-      <div className="max-w-4xl mx-auto px-4 py-8">
+      <div className="max-w-4xl mx-auto px-4 pt-0 pb-24 sm:pt-4 sm:pb-8">
         {/* Banner verifica documentazione */}
         {profileUser.profile.verificationInfo?.status !== 'approved' && (
           <div className="mb-6 bg-yellow-50 border-l-4 border-yellow-400 rounded-lg p-4 shadow-sm">

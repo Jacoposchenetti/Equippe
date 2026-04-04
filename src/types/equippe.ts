@@ -302,7 +302,10 @@ export type NotificationType =
   | 'referral_accepted'      // Referral accettata
   | 'profession_verification_request' // Nuova richiesta verifica professione (admin)
   | 'profession_approved'    // Professione approvata (utente)
-  | 'profession_rejected';   // Professione rifiutata (utente)
+  | 'profession_rejected'    // Professione rifiutata (utente)
+  | 'marketplace_offer_received'  // Nuova offerta ricevuta sul proprio annuncio
+  | 'marketplace_offer_accepted'  // La tua offerta è stata accettata
+  | 'marketplace_offer_rejected'; // La tua offerta è stata rifiutata
 
 export interface Notification {
   id: string;
@@ -325,4 +328,98 @@ export interface Notification {
   referralId?: string;         // Per referral
   inviteId?: string;           // Per team_invite_response
   accepted?: boolean;          // Per team_invite_response e referral_accepted
+  listingId?: string;          // Per notifiche marketplace
+  offerId?: string;            // Per notifiche marketplace
+}
+
+// ===== MARKETPLACE TYPES =====
+
+export type DayOfWeek = 'lunedi' | 'martedi' | 'mercoledi' | 'giovedi' | 'venerdi' | 'sabato' | 'domenica';
+
+export const DAYS_OF_WEEK: { value: DayOfWeek; label: string }[] = [
+  { value: 'lunedi', label: 'Lunedì' },
+  { value: 'martedi', label: 'Martedì' },
+  { value: 'mercoledi', label: 'Mercoledì' },
+  { value: 'giovedi', label: 'Giovedì' },
+  { value: 'venerdi', label: 'Venerdì' },
+  { value: 'sabato', label: 'Sabato' },
+  { value: 'domenica', label: 'Domenica' },
+];
+
+export interface DayAvailability {
+  day: DayOfWeek;
+  startTime: string; // "08:00"
+  endTime: string;   // "20:00"
+}
+
+export type MarketplaceListingStatus = 'active' | 'paused' | 'closed';
+export type MarketplacePriceType = 'orario' | 'mezza_giornata' | 'giornaliero' | 'mensile';
+export type MarketplacePropertyType = 'studio' | 'ufficio' | 'stanza';
+
+export interface PriceOption {
+  amount: number;
+  type: MarketplacePriceType;
+  label?: string; // etichetta personalizzata opzionale
+}
+
+export const PRICE_TYPE_LABELS: Record<MarketplacePriceType, string> = {
+  orario: 'ora',
+  mezza_giornata: 'mezza giornata a settimana',
+  giornaliero: 'giorno a settimana',
+  mensile: 'mese',
+};
+
+export interface MarketplaceListing {
+  id?: string;
+  authorId: string;
+  authorName: string;
+  authorPhotoURL?: string;
+  title: string;
+  description: string;
+  /** @deprecated usa prices[] */
+  price?: number;
+  /** @deprecated usa prices[] */ 
+  priceType?: MarketplacePriceType;
+  prices: PriceOption[];
+  address: string;
+  city: string;
+  cap: string;
+  provincia: string;
+  coordinate?: { lat: number; lng: number };
+  features: string[];
+  photos: string[];
+  rooms: number;
+  bathrooms: number;
+  area: number; // m²
+  propertyType: MarketplacePropertyType;
+  availability: DayAvailability[];
+  status: MarketplaceListingStatus;
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+}
+
+export type MarketplaceOfferStatus = 'pending' | 'accepted' | 'rejected' | 'withdrawn';
+
+export interface RequestedSlot {
+  day: DayOfWeek;
+  startTime: string;
+  endTime: string;
+}
+
+export interface MarketplaceOffer {
+  id?: string;
+  listingId: string;
+  listingTitle: string;
+  authorId: string;       // proprietario annuncio
+  authorName: string;
+  offererId: string;      // chi fa l'offerta
+  offererName: string;
+  offererPhotoURL?: string;
+  requestedSlots: RequestedSlot[];
+  message: string;
+  offerAmount: number;    // €
+  status: MarketplaceOfferStatus;
+  responseMessage?: string;
+  createdAt: Timestamp;
+  respondedAt?: Timestamp;
 }

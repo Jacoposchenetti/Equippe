@@ -1,10 +1,12 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, lazy, Suspense } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { doc, getDoc, collection, addDoc, Timestamp, query, where, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/contexts/AuthContext';
 import { useModal } from '@/contexts/ModalContext';
 import Header from '@/components/Header';
+
+const MapSelector = lazy(() => import('@/components/MapSelectorClient'));
 import {
   MarketplaceListing,
   MarketplaceOffer,
@@ -286,8 +288,9 @@ export default function MarketplaceDetailPage() {
 
             {/* Sidebar */}
             <div className="space-y-5">
+              <div className="sticky top-4 space-y-4">
               {/* Price card */}
-              <div className="bg-white rounded-xl shadow-sm border p-5 sticky top-4">
+              <div className="bg-white rounded-xl shadow-sm border p-5">
                 <div className="space-y-1 mb-1">
                   {displayPrices.map((p, i) => (
                     <div key={i} className={i === 0 ? 'text-2xl font-bold text-blue-600' : 'text-sm text-gray-600'}>
@@ -452,6 +455,23 @@ export default function MarketplaceDetailPage() {
                     </Link>
                   </div>
                 )}
+              </div>
+
+              {/* Map card */}
+              {listing.coordinate && (
+                <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
+                  <div className="h-52">
+                    <Suspense fallback={<div className="h-full bg-gray-100 flex items-center justify-center text-gray-400 text-sm">Caricamento mappa...</div>}>
+                      <MapSelector
+                        coordinate={listing.coordinate}
+                        indirizzo={listing.address}
+                        readOnly
+                        initialZoom={14}
+                      />
+                    </Suspense>
+                  </div>
+                </div>
+              )}
               </div>
             </div>
           </div>

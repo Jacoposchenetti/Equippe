@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import 'leaflet/dist/leaflet.css';
 import { useModal } from '@/contexts/ModalContext';
 
@@ -13,6 +14,15 @@ let useMapEvents: any;
 let useMap: any;
 let L: any;
 
+export interface MapMarker {
+  id: string;
+  lat: number;
+  lng: number;
+  imageUrl?: string;
+  title?: string;
+  href?: string;
+}
+
 interface MapSelectorProps {
   coordinate?: { lat: number; lng: number } | null;
   raggioKm?: number;
@@ -21,6 +31,7 @@ interface MapSelectorProps {
   onIndirizzoChange?: (addr: string) => void;
   onRaggioChange?: (raggio: number) => void;
   readOnly?: boolean;
+  markers?: MapMarker[];
   // Nuove props per compatibilità
   initialCenter?: { lat: number; lng: number };
   initialZoom?: number;
@@ -43,6 +54,7 @@ export default function MapSelector({
   onIndirizzoChange,
   onRaggioChange,
   readOnly = false,
+  markers = [],
   // Nuove props
   initialCenter,
   initialZoom,
@@ -50,6 +62,7 @@ export default function MapSelector({
   selectedLocation,
 }: MapSelectorProps) {
   const { showToast } = useModal();
+  const navigate = useNavigate();
   const [isClient, setIsClient] = useState(false);
   const [isMapReady, setIsMapReady] = useState(false);
   
@@ -260,8 +273,9 @@ export default function MapSelector({
     const map = useMap();
     
     useEffect(() => {
-      if (map) {
-        map.setView([coordinate.lat, coordinate.lng], raggioKm <= 2 ? 15 : raggioKm <= 5 ? 13 : raggioKm <= 10 ? 12 : raggioKm <= 20 ? 11 : raggioKm <= 50 ? 10 : 9);
+      if (map && L && !initialZoom) {
+        const bounds = L.latLng(coordinate.lat, coordinate.lng).toBounds(raggioKm * 2000);
+        map.fitBounds(bounds, { padding: [10, 10] });
       }
     }, [coordinate, raggioKm, map]);
     
@@ -324,7 +338,7 @@ export default function MapSelector({
       <div className={`w-full ${readOnly ? 'h-full' : 'h-64'} border rounded-lg overflow-hidden relative z-0`}>
         <MapContainer
           center={[defaultCenter.lat, defaultCenter.lng]}
-          zoom={13}
+          zoom={initialZoom ?? 13}
           style={{ height: '100%', width: '100%' }}
         >
           <TileLayer
@@ -341,7 +355,6 @@ export default function MapSelector({
               }}
             />
           )}
-          {console.log('✅ Rendering marker at:', currentCoordinate)}
           <Marker position={[currentCoordinate.lat, currentCoordinate.lng]} />
           {raggioKm != null && (
             <Circle
@@ -350,6 +363,27 @@ export default function MapSelector({
               pathOptions={{ color: 'blue', fillColor: 'blue', fillOpacity: 0.1 }}
             />
           )}
+          {markers.map(m => {
+            const palette = ['#86efac','#fdba74','#c4b5fd','#93c5fd','#f9a8d4','#fde68a','#6ee7b7','#a5b4fc'];
+            const bgColor = palette[(m.title || m.id).split('').reduce((a, c) => a + c.charCodeAt(0), 0) % palette.length];
+            const initials = (m.title || '?').split(' ').map((w: string) => w[0]).join('').toUpperCase().slice(0, 2);
+            const icon = L.divIcon({
+              className: '',
+              iconSize: [44, 44],
+              iconAnchor: [22, 22],
+              html: m.imageUrl
+                ? `<div style="display:block;width:44px;height:44px;border-radius:50%;overflow:hidden;border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,0.35);cursor:pointer;"><img src="${m.imageUrl}" style="width:100%;height:100%;object-fit:cover;" /></div>`
+                : `<div style="display:flex;align-items:center;justify-content:center;width:44px;height:44px;border-radius:50%;background:${bgColor};border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,0.35);color:#374151;font-size:13px;font-weight:700;cursor:pointer;">${initials}</div>`,
+            });
+            return (
+              <Marker
+                key={m.id}
+                position={[m.lat, m.lng]}
+                icon={icon}
+                eventHandlers={m.href ? { click: () => navigate(m.href!) } : undefined}
+              />
+            );
+          })}
         </MapContainer>
         
         {!readOnly && (

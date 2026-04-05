@@ -46,16 +46,20 @@ export default function DashboardPage() {
     loadData();
   }, [user]);
 
-  // Inizializza automaticamente la ricerca al caricamento
+  // Inizializza i filtri con la posizione del proprio studio appena userProfile è disponibile
   useEffect(() => {
-    if (!loading) {
-      // Esegui una ricerca di base al caricamento
-      setCurrentFilters({
-        type: 'professionista',
-        remoto: false,
-      });
+    if (!userProfile) return;
+    const studioCoord = userProfile.profile?.studi?.[0]?.coordinate || null;
+    const studioAddr = userProfile.profile?.studi?.[0]?.indirizzo || '';
+    if (studioCoord || studioAddr) {
+      setCurrentFilters(prev => ({
+        ...prev,
+        coordinate: studioCoord,
+        indirizzo: studioAddr || undefined,
+        raggioKm: 5,
+      }));
     }
-  }, [loading]);
+  }, [userProfile]);
 
   const loadData = async () => {
     try {
@@ -121,7 +125,27 @@ export default function DashboardPage() {
 
           return teamData;
         }));
-        setTeams(teamsData);
+        // Geocodifica i team che hanno indirizzo ma coordinate mancanti o uguali al default Roma
+        const isDefaultRome = (c: any) => c && Math.abs(c.lat - 41.9028) < 0.001 && Math.abs(c.lng - 12.4964) < 0.001;
+        const geocodedTeams = await Promise.all(teamsData.map(async (t) => {
+          if ((!t.coordinate || isDefaultRome(t.coordinate)) && t.indirizzo) {
+            try {
+              const token = import.meta.env.VITE_MAPBOX_TOKEN;
+              // Usa solo via+numero+città (le prime 2-3 parti) per geocodifica più precisa
+              const shortAddr = t.indirizzo.split(',').slice(0, 2).join(',').trim();
+              const res = await fetch(
+                `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(shortAddr)}.json?country=it&limit=1&language=it&access_token=${token}`
+              );
+              const data = await res.json();
+              if (data.features?.[0]) {
+                const [lng, lat] = data.features[0].center;
+                return { ...t, coordinate: { lat, lng } };
+              }
+            } catch { /* ignore */ }
+          }
+          return t;
+        }));
+        setTeams(geocodedTeams);
         console.log('✅ Caricati', teamsData.length, 'teams');
         console.log('Teams:', teamsData);
       } catch (teamError) {
@@ -233,20 +257,13 @@ export default function DashboardPage() {
         }
       }
 
-      // Se non ha posizioni nel raggio, escludi (a meno che non sia remoto)
+      // Se non ha posizioni nel raggio, escludi — includi solo se ha remoto E la checkbox è attiva
       if (!hasLocationInRange) {
-        // Se ha studi con remoto o non ha filtro remoto attivo, potrebbe essere incluso
         const hasRemoto = p.profile.studi?.some(s => s.remoto);
-        if (!hasRemoto && !currentFilters.remoto) {
+        if (!hasRemoto || !currentFilters.remoto) {
           return false;
         }
       }
-    }
-
-    // Remoto
-    if (currentFilters.remoto) {
-      const hasRemoto = p.profile.studi?.some(s => s.remoto);
-      if (!hasRemoto) return false;
     }
 
     return true;
@@ -273,13 +290,12 @@ export default function DashboardPage() {
 
     // Location - verifica distanza se ci sono coordinate del filtro E dell'equipe
     if (currentFilters.coordinate && currentFilters.raggioKm) {
-      // Se l'equipe non ha coordinate, mostrala solo se è remota o se il filtro remoto è attivo
       if (!t.coordinate) {
-        if (!t.remoto && currentFilters.remoto === false) {
+        // Senza coordinate: mostra solo se remoto E checkbox attiva
+        if (!t.remoto || !currentFilters.remoto) {
           return false;
         }
       } else {
-        // L'equipe ha coordinate, calcola la distanza
         const distance = calculateDistance(
           currentFilters.coordinate.lat,
           currentFilters.coordinate.lng,
@@ -287,19 +303,13 @@ export default function DashboardPage() {
           t.coordinate.lng
         );
 
-        // Se l'equipe non è nel raggio, escludi (a meno che non lavori anche da remoto)
         if (distance > currentFilters.raggioKm) {
-          // Se l'equipe non è remota o non è richiesto remoto, escludi
-          if (!t.remoto && !currentFilters.remoto) {
+          // Fuori raggio: mostra solo se remoto E checkbox attiva
+          if (!t.remoto || !currentFilters.remoto) {
             return false;
           }
         }
       }
-    }
-
-    // Se il filtro remoto è attivo, mostra solo equipe remote
-    if (currentFilters.remoto && !t.remoto) {
-      return false;
     }
 
     return true;
@@ -330,7 +340,7 @@ export default function DashboardPage() {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-0 pb-24 sm:pt-4 sm:pb-8">
         <h1 className="text-2xl sm:text-4xl font-bold text-gray-900 mb-3 sm:mb-8">
-          {currentFilters.type === 'professionista' ? 'Cerca Professionisti' : 'Cerca equipe'}
+          {currentFilters.type === 'professionista' ? 'Professionisti' : 'Equipe'}
         </h1>
         {!canInteract && (
           <div className="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
@@ -346,6 +356,37 @@ export default function DashboardPage() {
             onSearch={handleSearch}
             initialAddress={userProfile?.profile?.studi?.[0]?.indirizzo || ''}
             initialCoordinate={userProfile?.profile?.studi?.[0]?.coordinate || null}
+            mapMarkers={currentFilters.type === 'professionista'
+              ? filteredProfessionisti.flatMap(p => {
+                  const coords =
+                    p.profile.studi?.find((s: any) => s.coordinate?.lat && s.coordinate?.lng)?.coordinate ||
+                    (p.profile.location?.lat ? p.profile.location : null);
+                  if (!coords) return [];
+                  return [{
+                    id: p.uid,
+                    lat: coords.lat,
+                    lng: coords.lng,
+                    imageUrl: p.profile.photoURL || undefined,
+                    title: p.profile.nome || '',
+                    href: `/profile/${p.uid}`,
+                  }];
+                })
+              : filteredTeams.flatMap(t => {
+                  const coords = (t.coordinate?.lat && t.coordinate?.lng)
+                    ? t.coordinate
+                    : (t as any).membersWithData?.find((m: any) => m.userData?.profile?.studi?.[0]?.coordinate?.lat)
+                        ?.userData?.profile?.studi?.[0]?.coordinate ?? null;
+                  if (!coords) return [];
+                  return [{
+                    id: t.teamId || t.id || '',
+                    lat: coords.lat,
+                    lng: coords.lng,
+                    imageUrl: t.photoURL || undefined,
+                    title: t.name || '',
+                    href: `/teams/${t.teamId || t.id}`,
+                  }];
+                })
+            }
           />
         </div>
 

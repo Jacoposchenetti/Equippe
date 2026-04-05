@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import MapSelector from './MapSelector';
 import LocationAutocomplete from './LocationAutocomplete';
 import { getConfigurazioneProfessione } from '../lib/professioni';
+import type { MapMarker } from './MapSelectorClient';
 
 export type SearchType = 'professionista' | 'equipe';
 
@@ -22,9 +23,10 @@ interface EnhancedSearchProps {
   availableSpecializations?: string[];
   initialAddress?: string;
   initialCoordinate?: { lat: number; lng: number } | null;
+  mapMarkers?: MapMarker[];
 }
 
-export default function EnhancedSearch({ onSearch, availableSpecializations = [], initialAddress, initialCoordinate }: EnhancedSearchProps) {
+export default function EnhancedSearch({ onSearch, availableSpecializations = [], initialAddress, initialCoordinate, mapMarkers = [] }: EnhancedSearchProps) {
   const [searchType, setSearchType] = useState<SearchType>('professionista');
   const [specializzazione, setSpecializzazione] = useState<string>('');
   const [areaInteresse, setAreaInteresse] = useState<string>('');
@@ -33,24 +35,13 @@ export default function EnhancedSearch({ onSearch, availableSpecializations = []
   const [indirizzo, setIndirizzo] = useState<string>(initialAddress || '');
   const [remoto, setRemoto] = useState<boolean>(false);
 
-  // Aggiorna automaticamente quando cambia il tipo di ricerca
-  useEffect(() => {
-    handleSearch();
-  }, [searchType]);
-
   // Reset area interesse quando cambia specializzazione
   useEffect(() => {
     setAreaInteresse('');
   }, [specializzazione]);
 
-  // Aggiorna automaticamente quando si resettano i filtri aggiuntivi
+  // Auto-search su qualsiasi cambio filtro
   useEffect(() => {
-    if (!specializzazione && !indirizzo && !coordinate && !remoto) {
-      handleSearch();
-    }
-  }, [specializzazione, indirizzo, coordinate, remoto]);
-
-  const handleSearch = () => {
     onSearch({
       type: searchType,
       specializzazione: specializzazione || undefined,
@@ -60,7 +51,7 @@ export default function EnhancedSearch({ onSearch, availableSpecializations = []
       indirizzo: indirizzo || undefined,
       remoto,
     });
-  };
+  }, [searchType, specializzazione, areaInteresse, coordinate, raggioKm, indirizzo, remoto]);
 
   // Specializzazioni per professionisti
   const professionistaSpecs = [
@@ -223,6 +214,7 @@ export default function EnhancedSearch({ onSearch, availableSpecializations = []
                 raggioKm={raggioKm}
                 indirizzo={indirizzo}
                 readOnly
+                markers={mapMarkers}
               />
             </div>
           </div>
@@ -239,20 +231,10 @@ export default function EnhancedSearch({ onSearch, availableSpecializations = []
             className="mr-3 h-5 w-5 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
           />
           <span className="text-sm sm:text-base font-medium text-gray-700">
-            Include lavoro da remoto
+            Lavora da remoto
           </span>
         </label>
       </div>
-
-      {/* Bottone Cerca - mostrato solo se ci sono filtri aggiuntivi */}
-      {(specializzazione || indirizzo || coordinate || remoto) && (
-        <button
-          onClick={handleSearch}
-          className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-blue-700 transition-colors text-base"
-        >
-          Cerca
-        </button>
-      )}
 
       {searchType === 'equipe' && (
         <p className="text-xs sm:text-sm text-gray-500 mt-2">

@@ -8,27 +8,50 @@ import LocationAutocomplete from '@/components/LocationAutocomplete';
 import { MarketplaceListing, DAYS_OF_WEEK, DayOfWeek, PRICE_TYPE_LABELS } from '@/types/equippe';
 
 const MapSelector = lazy(() => import('@/components/MapSelectorClient'));
+import type { MapMarker } from '@/components/MapSelectorClient';
 
 const ADMIN_EMAILS = ['admin@tuaequipe.it', 'jschenetti@gmail.com', 'udemyteam2025@gmail.com', 'martinamaccara@icloud.com', 'martinamaccarana@icloud.com'];
+
+const FILTER_KEY = 'marketplace_filters_v2';
+
+function loadFilters() {
+  try {
+    const raw = sessionStorage.getItem(FILTER_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch { return null; }
+}
+
+function saveFilters(partial: Record<string, unknown>) {
+  try {
+    const current = loadFilters() ?? {};
+    sessionStorage.setItem(FILTER_KEY, JSON.stringify({ ...current, ...partial }));
+  } catch { /* ignore */ }
+}
 
 export default function MarketplacePage() {
   const { user } = useAuth();
   const isAdmin = !!user?.email && ADMIN_EMAILS.includes(user.email);
 
+  const saved = loadFilters();
+
   const [listings, setListings] = useState<MarketplaceListing[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filterAddress, setFilterAddress] = useState('');
-  const [filterCoord, setFilterCoord] = useState<{ lat: number; lng: number } | null>(null);
-  const [filterRadius, setFilterRadius] = useState(15);
-  const [filterDay, setFilterDay] = useState<DayOfWeek | ''>('');
-  const [filterMaxPrice, setFilterMaxPrice] = useState('');
-  const [filterPriceTypes, setFilterPriceTypes] = useState<string[]>([]);
+  const [filterAddress, setFilterAddress] = useState<string>(saved?.filterAddress ?? '');
+  const [filterCoord, setFilterCoord] = useState<{ lat: number; lng: number } | null>(saved?.filterCoord ?? null);
+  const [filterRadius, setFilterRadius] = useState<number>(saved?.filterRadius ?? 3);
+  const [filterDay, setFilterDay] = useState<DayOfWeek | ''>(saved?.filterDay ?? '');
+  const [filterMaxPrice, setFilterMaxPrice] = useState<string>(saved?.filterMaxPrice ?? '');
+  const [filterPriceTypes, setFilterPriceTypes] = useState<string[]>(saved?.filterPriceTypes ?? []);
   const [savedListings, setSavedListings] = useState<string[]>([]);
-  const [showSavedOnly, setShowSavedOnly] = useState(false);
+  const [showSavedOnly, setShowSavedOnly] = useState<boolean>(saved?.showSavedOnly ?? false);
   const [marketplaceUnread, setMarketplaceUnread] = useState(0);
 
   const togglePriceType = (type: string) =>
-    setFilterPriceTypes(prev => prev.includes(type) ? prev.filter(t => t !== type) : [...prev, type]);
+    setFilterPriceTypes(prev => {
+      const next = prev.includes(type) ? prev.filter(t => t !== type) : [...prev, type];
+      saveFilters({ filterPriceTypes: next });
+      return next;
+    });
 
   useEffect(() => {
     loadListings();
@@ -113,13 +136,17 @@ export default function MarketplacePage() {
       if (haversine(filterCoord.lat, filterCoord.lng, l.coordinate.lat, l.coordinate.lng) > filterRadius) return false;
     }
     if (filterDay && !l.availability.some(a => a.day === filterDay)) return false;
-    if (filterMaxPrice) {
-      const minPrice = l.prices?.length ? Math.min(...l.prices.map(p => p.amount)) : (l.price ?? Infinity);
-      if (minPrice > Number(filterMaxPrice)) return false;
-    }
     if (filterPriceTypes.length > 0) {
       const types = l.prices?.length ? l.prices.map(p => p.type) : (l.priceType ? [l.priceType] : []);
       if (!filterPriceTypes.some(ft => types.includes(ft as any))) return false;
+    }
+    if (filterMaxPrice) {
+      const allPrices = l.prices?.length ? l.prices : (l.priceType ? [{ type: l.priceType, amount: l.price ?? Infinity }] : []);
+      const relevantPrices = filterPriceTypes.length > 0
+        ? allPrices.filter(p => filterPriceTypes.includes(p.type))
+        : allPrices;
+      const minRelevant = relevantPrices.length ? Math.min(...relevantPrices.map(p => p.amount)) : Infinity;
+      if (minRelevant > Number(filterMaxPrice)) return false;
     }
     return true;
   });
@@ -149,7 +176,7 @@ export default function MarketplacePage() {
             <div className="flex gap-3">
               <button
                 type="button"
-                onClick={() => setShowSavedOnly(v => !v)}
+                onClick={() => setShowSavedOnly(v => { const next = !v; saveFilters({ showSavedOnly: next }); return next; })}
                 className={`px-4 py-2 rounded-lg text-sm font-medium border transition flex items-center gap-1.5 ${
                   showSavedOnly
                     ? 'bg-red-50 border-red-300 text-red-600'
@@ -196,6 +223,7 @@ export default function MarketplacePage() {
                         onChange={(addr, coords) => {
                           setFilterAddress(addr);
                           setFilterCoord(coords ?? null);
+                          saveFilters({ filterAddress: addr, filterCoord: coords ?? null });
                         }}
                         placeholder="Cerca un indirizzo o città..."
                       />
@@ -203,7 +231,7 @@ export default function MarketplacePage() {
                     {filterCoord && (
                       <button
                         type="button"
-                        onClick={() => { setFilterAddress(''); setFilterCoord(null); }}
+                        onClick={() => { setFilterAddress(''); setFilterCoord(null); saveFilters({ filterAddress: '', filterCoord: null }); }}
                         className="px-3 py-2 text-sm text-gray-400 hover:text-gray-600 border border-dashed border-gray-300 rounded-lg whitespace-nowrap"
                       >
                         Rimuovi zona
@@ -218,7 +246,7 @@ export default function MarketplacePage() {
                         min={1}
                         max={100}
                         value={filterRadius}
-                        onChange={e => setFilterRadius(Number(e.target.value))}
+                        onChange={e => { const v = Number(e.target.value); setFilterRadius(v); saveFilters({ filterRadius: v }); }}
                         className="flex-1 accent-blue-600"
                       />
                     </div>
@@ -230,7 +258,7 @@ export default function MarketplacePage() {
                     <label className="block text-sm font-medium text-gray-700 mb-1">Giorno disponibile</label>
                     <select
                       value={filterDay}
-                      onChange={e => setFilterDay(e.target.value as DayOfWeek | '')}
+                      onChange={e => { const v = e.target.value as DayOfWeek | ''; setFilterDay(v); saveFilters({ filterDay: v }); }}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     >
                       <option value="">Tutti i giorni</option>
@@ -244,7 +272,7 @@ export default function MarketplacePage() {
                     <input
                       type="number"
                       value={filterMaxPrice}
-                      onChange={e => setFilterMaxPrice(e.target.value)}
+                      onChange={e => { const v = e.target.value; setFilterMaxPrice(v); saveFilters({ filterMaxPrice: v }); }}
                       placeholder="es. 500"
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     />
@@ -294,6 +322,20 @@ export default function MarketplacePage() {
                         raggioKm={filterRadius}
                         indirizzo={filterAddress}
                         readOnly
+                        markers={filtered
+                          .filter(l => {
+                            if (!l.coordinate) return false;
+                            if (!filterCoord) return true;
+                            return haversine(filterCoord.lat, filterCoord.lng, l.coordinate.lat, l.coordinate.lng) <= filterRadius;
+                          })
+                          .map(l => ({
+                            id: l.id!,
+                            lat: l.coordinate!.lat,
+                            lng: l.coordinate!.lng,
+                            imageUrl: l.photos?.[0],
+                            title: l.title,
+                            href: `/marketplace/${l.id}`,
+                          } as MapMarker))}
                       />
                     </div>
                   </Suspense>

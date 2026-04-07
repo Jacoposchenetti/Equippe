@@ -21,7 +21,7 @@ export default {
         }
       },
       fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'],
+        sans: ['Nunito Sans', 'system-ui', 'sans-serif'],
       },
     },
   },

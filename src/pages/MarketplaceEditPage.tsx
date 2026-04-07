@@ -1,4 +1,4 @@
-import { useState, useEffect, lazy, Suspense } from 'react';
+import { useState, useEffect, useRef, lazy, Suspense } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { doc, getDoc, updateDoc, Timestamp } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
@@ -23,7 +23,12 @@ const MapSelector = lazy(() => import('@/components/MapSelectorClient'));
 const FEATURES_OPTIONS = [
   'Ascensore', 'Wi-Fi', 'Aria condizionata', 'Riscaldamento',
   'Sala d\'attesa', 'Parcheggio', 'Accessibile disabili', 'Arredato',
-  'Insonorizzato', 'Bagno privato', 'Cucina/Angolo cottura',
+  'Insonorizzazione', 'Bagno privato', 'Cucina/Angolo cottura',
+];
+
+const DOTAZIONI_OPTIONS = [
+  'Lettino/poltrona inclusi', 'Lettino/poltrona da portare',
+  'Connessione internet', 'Climatizzazione',
 ];
 
 const ADMIN_EMAILS = ['admin@tuaequipe.it', 'jschenetti@gmail.com', 'udemyteam2025@gmail.com', 'martinamaccara@icloud.com', 'martinamaccarana@icloud.com'];
@@ -36,9 +41,9 @@ export default function MarketplaceEditPage() {
   const isAdmin = !!user?.email && ADMIN_EMAILS.includes(user.email);
 
   const [loadingData, setLoadingData] = useState(true);
-  const [loading, setLoading] = useState(false);
-  const [newPhotos, setNewPhotos] = useState<File[]>([]);
-  const [newPhotoPreviews, setNewPhotoPreviews] = useState<string[]>([]);
+  const [uploadingPhotos, setUploadingPhotos] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'idle'>('idle');
+  const isLoadedRef = useRef(false);
   const [existingPhotos, setExistingPhotos] = useState<string[]>([]);
 
   const [prices, setPrices] = useState<PriceOption[]>([]);
@@ -104,8 +109,44 @@ export default function MarketplaceEditPage() {
       showToast('Errore nel caricamento dell\'annuncio', 'error');
     } finally {
       setLoadingData(false);
+      isLoadedRef.current = true;
     }
   };
+
+  // Auto-save con debounce 1.5s
+  useEffect(() => {
+    if (!isLoadedRef.current) return;
+    setSaveStatus('idle');
+    const timer = setTimeout(async () => {
+      if (!user || !id) return;
+      setSaveStatus('saving');
+      try {
+        await updateDoc(doc(db, 'marketplace_listings', id), {
+          title: form.title.trim(),
+          description: form.description.trim(),
+          prices,
+          address: form.address.trim(),
+          city: form.city.trim(),
+          cap: form.cap.trim(),
+          provincia: form.provincia.trim(),
+          ...(coordinate && { coordinate }),
+          features: form.features,
+          photos: existingPhotos,
+          rooms: Number(form.rooms) || 1,
+          bathrooms: Number(form.bathrooms) || 1,
+          area: Number(form.area) || 0,
+          propertyType: form.propertyType,
+          availability,
+          updatedAt: Timestamp.now(),
+        });
+        setSaveStatus('saved');
+      } catch (error) {
+        console.error('Auto-save error:', error);
+        setSaveStatus('idle');
+      }
+    }, 1500);
+    return () => clearTimeout(timer);
+  }, [form, prices, availability, coordinate, existingPhotos]);
 
   const handleChange = (field: string, value: string) => {
     setForm(prev => ({ ...prev, [field]: value }));
@@ -137,93 +178,34 @@ export default function MarketplaceEditPage() {
     setAvailability(prev => prev.filter((_, i) => i !== index));
   };
 
-  const handlePhotoAdd = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePhotoAdd = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     const valid = files.filter(f => f.type.startsWith('image/') && f.size <= 5 * 1024 * 1024);
     if (valid.length < files.length) {
       showToast('Alcune immagini sono state escluse (max 5MB, solo immagini)', 'warning');
     }
-    const totalAllowed = 5 - existingPhotos.length;
-    const toAdd = valid.slice(0, totalAllowed - newPhotos.length);
-    setNewPhotos(prev => [...prev, ...toAdd]);
-    setNewPhotoPreviews(prev => [...prev, ...toAdd.map(f => URL.createObjectURL(f))]);
-    e.target.value = '';
-  };
-
-  const removeExistingPhoto = (index: number) => {
-    setExistingPhotos(prev => prev.filter((_, i) => i !== index));
-  };
-
-  const removeNewPhoto = (index: number) => {
-    URL.revokeObjectURL(newPhotoPreviews[index]);
-    setNewPhotos(prev => prev.filter((_, i) => i !== index));
-    setNewPhotoPreviews(prev => prev.filter((_, i) => i !== index));
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!user || !id) return;
-
-    if (!form.title.trim()) { showToast('Inserisci un titolo', 'error'); return; }
-    if (!form.city.trim()) { showToast('Inserisci la città', 'error'); return; }
-    if (prices.length === 0) { showToast('Aggiungi almeno un prezzo', 'error'); return; }
-    if (availability.length === 0) { showToast('Aggiungi almeno una fascia oraria di disponibilità', 'error'); return; }
-
-    setLoading(true);
+    const toAdd = valid.slice(0, 5 - existingPhotos.length);
+    if (toAdd.length === 0) { e.target.value = ''; return; }
+    setUploadingPhotos(true);
     try {
-      // Upload new photos
       const uploadedURLs: string[] = [];
-      for (const photo of newPhotos) {
-        const storageRef = ref(storage, `marketplace/${user.uid}/${Date.now()}_${photo.name}`);
+      for (const photo of toAdd) {
+        const storageRef = ref(storage, `marketplace/${user!.uid}/${Date.now()}_${photo.name}`);
         await uploadBytes(storageRef, photo);
         const url = await getDownloadURL(storageRef);
         uploadedURLs.push(url);
       }
-
-      // Geocode if no coordinate yet
-      let coord = coordinate;
-      if (!coord) {
-        const fullAddress = [form.address, form.city, form.cap, form.provincia].filter(Boolean).join(', ');
-        const token = import.meta.env.VITE_MAPBOX_TOKEN;
-        if (token && fullAddress) {
-          try {
-            const res = await fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(fullAddress)}.json?country=it&limit=1&language=it&access_token=${token}`);
-            const data = await res.json();
-            if (data.features?.length) {
-              const [lng, lat] = data.features[0].center;
-              coord = { lat, lng };
-            }
-          } catch { /* ignore */ }
-        }
-      }
-
-      await updateDoc(doc(db, 'marketplace_listings', id), {
-        title: form.title.trim(),
-        description: form.description.trim(),
-        prices,
-        address: form.address.trim(),
-        city: form.city.trim(),
-        cap: form.cap.trim(),
-        provincia: form.provincia.trim(),
-        ...(coord && { coordinate: coord }),
-        features: form.features,
-        photos: [...existingPhotos, ...uploadedURLs],
-        rooms: Number(form.rooms) || 1,
-        bathrooms: Number(form.bathrooms) || 1,
-        area: Number(form.area) || 0,
-        propertyType: form.propertyType,
-        availability,
-        updatedAt: Timestamp.now(),
-      });
-
-      showToast('Annuncio aggiornato!', 'success');
-      navigate(`/marketplace/${id}`);
-    } catch (error) {
-      console.error('Errore aggiornamento:', error);
-      showToast('Errore nell\'aggiornamento dell\'annuncio', 'error');
+      setExistingPhotos(prev => [...prev, ...uploadedURLs]);
+    } catch {
+      showToast('Errore nel caricamento delle foto', 'error');
     } finally {
-      setLoading(false);
+      setUploadingPhotos(false);
+      e.target.value = '';
     }
+  };
+
+  const removeExistingPhoto = (index: number) => {
+    setExistingPhotos(prev => prev.filter((_, i) => i !== index));
   };
 
   if (!isAdmin) {
@@ -248,7 +230,7 @@ export default function MarketplaceEditPage() {
     );
   }
 
-  const totalPhotos = existingPhotos.length + newPhotos.length;
+  const totalPhotos = existingPhotos.length;
 
   return (
     <>
@@ -258,7 +240,7 @@ export default function MarketplaceEditPage() {
           <h1 className="text-2xl font-bold text-gray-900 mb-1">Modifica annuncio</h1>
           <p className="text-gray-500 text-sm mb-6">Aggiorna i dettagli del tuo annuncio</p>
 
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form className="space-y-6">
             <Section title="Informazioni principali">
               <div className="space-y-4">
                 <Field label="Titolo annuncio *">
@@ -271,8 +253,7 @@ export default function MarketplaceEditPage() {
                   <Field label="Tipo immobile">
                     <select value={form.propertyType} onChange={e => handleChange('propertyType', e.target.value)} className="input-field">
                       <option value="studio">Studio</option>
-                      <option value="ufficio">Ufficio</option>
-                      <option value="stanza">Stanza</option>
+                      <option value="locale_intero">Locale intero</option>
                     </select>
                   </Field>
                   <Field label="Area (m²)">
@@ -368,15 +349,12 @@ export default function MarketplaceEditPage() {
                     <button type="button" onClick={() => removeExistingPhoto(i)} className="absolute top-1 right-1 w-5 h-5 bg-red-500 text-white rounded-full text-xs flex items-center justify-center hover:bg-red-600">×</button>
                   </div>
                 ))}
-                {/* New photos */}
-                {newPhotoPreviews.map((src, i) => (
-                  <div key={`new-${i}`} className="relative w-24 h-24 rounded-lg overflow-hidden border border-blue-300">
-                    <img src={src} alt="" className="w-full h-full object-cover" />
-                    <button type="button" onClick={() => removeNewPhoto(i)} className="absolute top-1 right-1 w-5 h-5 bg-red-500 text-white rounded-full text-xs flex items-center justify-center hover:bg-red-600">×</button>
-                    <span className="absolute bottom-0 left-0 right-0 bg-blue-600 text-white text-[9px] text-center">Nuova</span>
+                {uploadingPhotos && (
+                  <div className="w-24 h-24 rounded-lg border-2 border-dashed border-blue-300 flex items-center justify-center">
+                    <svg className="w-6 h-6 text-blue-400 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/></svg>
                   </div>
-                ))}
-                {totalPhotos < 5 && (
+                )}
+                {!uploadingPhotos && totalPhotos < 5 && (
                   <label className="w-24 h-24 rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center cursor-pointer hover:border-blue-400 transition">
                     <input type="file" accept="image/*" onChange={handlePhotoAdd} className="hidden" multiple />
                     <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -391,6 +369,16 @@ export default function MarketplaceEditPage() {
             <Section title="Caratteristiche">
               <div className="flex flex-wrap gap-2">
                 {FEATURES_OPTIONS.map(f => (
+                  <button key={f} type="button" onClick={() => toggleFeature(f)} className={`px-3 py-1.5 rounded-full text-sm border transition ${form.features.includes(f) ? 'bg-blue-50 border-blue-300 text-blue-700' : 'border-gray-300 text-gray-600 hover:border-gray-400'}`}>
+                    {f}
+                  </button>
+                ))}
+              </div>
+            </Section>
+
+            <Section title="Dotazioni e attrezzature">
+              <div className="flex flex-wrap gap-2">
+                {DOTAZIONI_OPTIONS.map(f => (
                   <button key={f} type="button" onClick={() => toggleFeature(f)} className={`px-3 py-1.5 rounded-full text-sm border transition ${form.features.includes(f) ? 'bg-blue-50 border-blue-300 text-blue-700' : 'border-gray-300 text-gray-600 hover:border-gray-400'}`}>
                     {f}
                   </button>
@@ -432,11 +420,22 @@ export default function MarketplaceEditPage() {
               </div>
             </Section>
 
-            <div className="flex gap-3 pt-2">
-              <button type="button" onClick={() => navigate(`/marketplace/${id}`)} className="px-5 py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition text-sm font-medium">Annulla</button>
-              <button type="submit" disabled={loading} className="px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition text-sm font-medium">
-                {loading ? 'Salvataggio...' : 'Salva modifiche'}
-              </button>
+            <div className="flex items-center gap-4 pt-2">
+              <button type="button" onClick={() => navigate(`/marketplace/${id}`)} className="px-5 py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition text-sm font-medium">← Torna all'annuncio</button>
+              <span className="text-sm text-gray-500 flex items-center gap-1.5">
+                {saveStatus === 'saving' && (
+                  <>
+                    <svg className="w-4 h-4 animate-spin text-blue-500" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/></svg>
+                    Salvataggio...
+                  </>
+                )}
+                {saveStatus === 'saved' && (
+                  <>
+                    <svg className="w-4 h-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/></svg>
+                    Salvato
+                  </>
+                )}
+              </span>
             </div>
           </form>
         </div>

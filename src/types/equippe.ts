@@ -305,7 +305,8 @@ export type NotificationType =
   | 'profession_rejected'    // Professione rifiutata (utente)
   | 'marketplace_offer_received'  // Nuova offerta ricevuta sul proprio annuncio
   | 'marketplace_offer_accepted'  // La tua offerta è stata accettata
-  | 'marketplace_offer_rejected'; // La tua offerta è stata rifiutata
+  | 'marketplace_offer_rejected'  // La tua offerta è stata rifiutata
+  | 'mention';                    // Qualcuno ti ha menzionato in una chat
 
 export interface Notification {
   id: string;
@@ -354,7 +355,7 @@ export interface DayAvailability {
 
 export type MarketplaceListingStatus = 'active' | 'paused' | 'closed';
 export type MarketplacePriceType = 'orario' | 'mezza_giornata' | 'giornaliero' | 'mensile';
-export type MarketplacePropertyType = 'studio' | 'ufficio' | 'stanza';
+export type MarketplacePropertyType = 'studio' | 'locale_intero';
 
 export interface PriceOption {
   amount: number;

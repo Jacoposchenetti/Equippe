@@ -97,7 +97,7 @@ export default function EnhancedSearch({ onSearch, availableSpecializations = []
               : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
           }`}
         >
-          Cerca Professionista
+          Professionista
         </button>
         <button
           onClick={() => {
@@ -111,7 +111,7 @@ export default function EnhancedSearch({ onSearch, availableSpecializations = []
               : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
           }`}
         >
-          Cerca equipe
+          Equipe
         </button>
       </div>
 

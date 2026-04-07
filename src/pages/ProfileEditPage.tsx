@@ -2,7 +2,7 @@
 
 import { useAuth } from '@/contexts/AuthContext';
 import { useModal } from '@/contexts/ModalContext';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useEffect, useRef, useState } from 'react';
 import { doc, updateDoc, deleteDoc, deleteField } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
@@ -55,15 +55,18 @@ function removeUndefined(obj: any): any {
   return obj;
 }
 
-function CollapsibleSection({ title, children, defaultOpen = false, subtitle }: {
+function CollapsibleSection({ title, children, defaultOpen = false, subtitle, id, forceOpen }: {
   title: string;
   children: React.ReactNode;
   defaultOpen?: boolean;
   subtitle?: string;
+  id?: string;
+  forceOpen?: boolean;
 }) {
-  const [open, setOpen] = useState(defaultOpen);
+  const [open, setOpen] = useState(defaultOpen || !!forceOpen);
+  useEffect(() => { if (forceOpen) setOpen(true); }, [forceOpen]);
   return (
-    <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+    <div id={id} className="bg-white rounded-xl shadow-sm overflow-hidden">
       <button
         type="button"
         onClick={() => setOpen(!open)}
@@ -89,6 +92,16 @@ export default function EditProfilePage() {
   const { user, userProfile, refreshProfile, deleteCurrentUser } = useAuth();
   const { showToast, showConfirm } = useModal();
   const navigate = useNavigate();
+  const location = useLocation();
+  const targetHash = location.hash.replace('#', '');
+
+  useEffect(() => {
+    if (!targetHash) return;
+    const el = document.getElementById(targetHash);
+    if (el) {
+      setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'start' }), 200);
+    }
+  }, [targetHash]);
 
   const [nome, setNome] = useState('');
   const [dataNascita, setDataNascita] = useState('');
@@ -637,9 +650,9 @@ export default function EditProfilePage() {
 
         <form className="space-y-6">
           {/* Informazioni base */}
-          <CollapsibleSection title="Informazioni Base" defaultOpen={true} subtitle={nome || 'Nome, data di nascita, foto...'}>
+          <CollapsibleSection id="sezione-info-base" title="Informazioni Base" defaultOpen={true} subtitle={nome || 'Nome, data di nascita, foto...'} forceOpen={['sezione-foto','sezione-bio','sezione-nascita'].includes(targetHash)}>
             <div className="space-y-4">
-              <div>
+              <div id="sezione-foto">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Foto Profilo
                 </label>
@@ -688,7 +701,7 @@ export default function EditProfilePage() {
                 />
               </div>
 
-              <div>
+              <div id="sezione-bio">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Bio
                 </label>
@@ -702,7 +715,7 @@ export default function EditProfilePage() {
                 />
               </div>
 
-              <div>
+              <div id="sezione-nascita">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Data di Nascita *
                 </label>
@@ -981,7 +994,7 @@ export default function EditProfilePage() {
           </CollapsibleSection>
 
           {/* Tematiche per Professione */}
-          <CollapsibleSection title="Tematiche di Interesse" subtitle={`${[...professioniApprovate, ...professioniPending].reduce((acc, p) => acc + (p.tematiche?.length || 0), 0)} tematiche selezionate`}>
+          <CollapsibleSection id="sezione-tematiche" title="Tematiche di Interesse" subtitle={`${[...professioniApprovate, ...professioniPending].reduce((acc, p) => acc + (p.tematiche?.length || 0), 0)} tematiche selezionate`} forceOpen={targetHash === 'sezione-tematiche'}>
             <p className="text-gray-600 mb-6">
               Seleziona le tematiche specifiche per ogni tua professione.
             </p>
@@ -1096,7 +1109,7 @@ export default function EditProfilePage() {
           </CollapsibleSection>
 
           {/* Curriculum: Esperienze, Formazione, Certificazioni */}
-          <CollapsibleSection title="Curriculum" subtitle={`${esperienze.length} esperienze, ${formazione.length} formazione, ${certificazioni.length} certificazioni`}>
+          <CollapsibleSection id="sezione-curriculum" title="Curriculum" subtitle={`${esperienze.length} esperienze, ${formazione.length} formazione, ${certificazioni.length} certificazioni`} forceOpen={targetHash === 'sezione-curriculum'}>
           <CurriculumEditor
             esperienze={esperienze}
             formazione={formazione}

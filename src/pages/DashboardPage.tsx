@@ -10,6 +10,7 @@ import Header from '../components/Header';
 import Footer from '../components/Footer';
 import EnhancedSearch, { SearchFilters } from '../components/EnhancedSearch';
 import VerificationBanner from '../components/VerificationBanner';
+import ProfileCompletionBanner from '../components/ProfileCompletionBanner';
 import { useCanInteract } from '../hooks/useCanInteract';
 
 export default function DashboardPage() {
@@ -180,8 +181,9 @@ export default function DashboardPage() {
   const filteredProfessionisti = professionisti.filter(p => {
     // Specializzazione - controlla sia il nome originale che quello normalizzato
     if (currentFilters.specializzazione) {
-      const normalizedSpecs = p.profile.specializzazioni.map(spec => normalizeSpecialization(spec));
-      if (!p.profile.specializzazioni.includes(currentFilters.specializzazione) &&
+      const specs = p.profile.specializzazioni || [];
+      const normalizedSpecs = specs.map(spec => normalizeSpecialization(spec));
+      if (!specs.includes(currentFilters.specializzazione) &&
           !normalizedSpecs.includes(currentFilters.specializzazione)) {
         return false;
       }
@@ -337,6 +339,7 @@ export default function DashboardPage() {
     <div className="min-h-screen bg-gray-50">
       <Header />
       <VerificationBanner />
+      <ProfileCompletionBanner />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-0 pb-24 sm:pt-4 sm:pb-8">
         <h1 className="text-2xl sm:text-4xl font-bold text-gray-900 mb-3 sm:mb-8">
@@ -459,14 +462,14 @@ export default function DashboardPage() {
 
                     {/* Badge Specializzazioni */}
                     <div className="flex flex-wrap justify-center gap-2 mb-4">
-                      {[...new Set(p.profile.specializzazioni.map(spec => normalizeSpecialization(spec)))].slice(0, 2).map((spec, i) => (
+                      {[...new Set((p.profile.specializzazioni || []).map(spec => normalizeSpecialization(spec)))].slice(0, 2).map((spec, i) => (
                         <span key={i} className="inline-block px-3 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">
                           {spec}
                         </span>
                       ))}
-                      {[...new Set(p.profile.specializzazioni.map(spec => normalizeSpecialization(spec)))].length > 2 && (
+                      {[...new Set((p.profile.specializzazioni || []).map(spec => normalizeSpecialization(spec)))].length > 2 && (
                         <span className="inline-block px-3 py-1 text-xs font-medium bg-gray-100 text-gray-600 rounded-full">
-                          +{[...new Set(p.profile.specializzazioni.map(spec => normalizeSpecialization(spec)))].length - 2}
+                          +{[...new Set((p.profile.specializzazioni || []).map(spec => normalizeSpecialization(spec)))].length - 2}
                         </span>
                       )}
                     </div>

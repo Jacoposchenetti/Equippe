@@ -2,15 +2,11 @@ import { useState, useEffect } from 'react';
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { doc, setDoc, Timestamp } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { db, auth, storage, functions } from '@/lib/firebase';
-import { Studio, ProfessioneConDocumenti, EsperienzaProfessionale, Formazione, Certificazione } from '@/types/equippe';
-import { CITTA_ITALIANE, PROVINCE_ITALIANE } from '@/lib/comuni';
+import { db, auth, functions } from '@/lib/firebase';
+import { Studio } from '@/types/equippe';
 import AddressAutocomplete from '@/components/AddressAutocomplete';
 import { httpsCallable } from 'firebase/functions';
-import DocumentiProfessioneForm from '@/components/DocumentiProfessioneForm';
-import { EsperienzaAttualeRegistrazione } from '@/components/CurriculumSection';
-import { PROFESSIONI_DISPONIBILI } from '@/lib/professioni';
+import { PROFESSIONI_DISPONIBILI, CONFIGURAZIONI_PROFESSIONI } from '@/lib/professioni';
 
 export default function RegisterPage() {
   const [searchParams] = useSearchParams();
@@ -21,17 +17,11 @@ export default function RegisterPage() {
     password: '',
     confirmPassword: '',
     nome: '',
-    dataNascita: '',
-    città: '', // Mantieni per backward compatibility
-    disponibilità: '',
+    telefono: '',
+    professione: '',
+    numeroAlbo: '',
     studi: [] as Studio[],
-    professioniConDocumenti: [] as ProfessioneConDocumenti[],
-    esperienzaAttuale: null as EsperienzaProfessionale | null,
-    formazione: [] as Formazione[],
-    certificazioni: [] as Certificazione[],
   });
-  const [photoFile, setPhotoFile] = useState<File | null>(null);
-  const [photoPreview, setPhotoPreview] = useState<string>('');
   const [consents, setConsents] = useState({
     termini: false,
     privacy: false,
@@ -45,16 +35,17 @@ export default function RegisterPage() {
     coordinate: undefined,
   });
   
-  // Stati per la gestione delle professioni
-  const [selectedProfessione, setSelectedProfessione] = useState('');
-  const [showDocumentiForm, setShowDocumentiForm] = useState(false);
-  
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [honeypot, setHoneypot] = useState(''); // honeypot anti-bot
   const { signUp, signInWithGoogle, user } = useAuth();
   const navigate = useNavigate();
+
+  // Label dinamica del campo albo in base alla professione selezionata
+  const alboConfig = formData.professione
+    ? CONFIGURAZIONI_PROFESSIONI[formData.professione]?.documentiRichiesti?.find(d => d.tipo === 'albo' && d.obbligatorio)
+    : null;
 
   // Se l'utente arriva da Google, pre-compila i dati dal profilo Google
   useEffect(() => {
@@ -65,40 +56,8 @@ export default function RegisterPage() {
         email: googleUser.email || '',
         nome: googleUser.displayName || '',
       }));
-      if (googleUser.photoURL) {
-        setPhotoPreview(googleUser.photoURL);
-      }
     }
   }, [isGoogleProvider]);
-
-  // Funzione per rimuovere ricorsivamente tutti i campi undefined
-  const removeUndefined = (obj: any): any => {
-    if (obj === null || obj === undefined) {
-      return null;
-    }
-    if (Array.isArray(obj)) {
-      return obj
-        .map(item => removeUndefined(item))
-        .filter(item => item !== null && item !== undefined);
-    }
-    if (obj instanceof Date || obj.constructor.name === 'Timestamp') {
-      return obj; // Preserva Date e Timestamp
-    }
-    if (typeof obj === 'object') {
-      const cleaned: any = {};
-      Object.keys(obj).forEach(key => {
-        const value = obj[key];
-        if (value !== undefined) {
-          const cleanedValue = removeUndefined(value);
-          if (cleanedValue !== null && cleanedValue !== undefined) {
-            cleaned[key] = cleanedValue;
-          }
-        }
-      });
-      return Object.keys(cleaned).length > 0 ? cleaned : null;
-    }
-    return obj;
-  };
 
   const addStudio = () => {
     if (!currentStudio.indirizzo || !currentStudio.coordinate) {
@@ -108,7 +67,6 @@ export default function RegisterPage() {
     setFormData({
       ...formData,
       studi: [...formData.studi, { ...currentStudio }],
-      città: formData.città || 'Italia', // Default generico
     });
     setCurrentStudio({
       indirizzo: '',
@@ -125,51 +83,6 @@ export default function RegisterPage() {
       ...formData,
       studi: formData.studi.filter((_, i) => i !== index),
     });
-  };
-  
-  // Gestione professioni
-  const handleAddProfessione = () => {
-    if (!selectedProfessione) {
-      setError('Seleziona una professione');
-      return;
-    }
-    
-    // Verifica che la professione non sia già stata aggiunta
-    if (formData.professioniConDocumenti.some(p => p.professione === selectedProfessione)) {
-      setError('Questa professione è già stata aggiunta');
-      return;
-    }
-    
-    setError('');
-    setShowDocumentiForm(true);
-  };
-  
-  const handleProfessioneComplete = (data: ProfessioneConDocumenti) => {
-    console.log('✅ Professione completata in RegisterPage:', data);
-    setFormData({
-      ...formData,
-      professioniConDocumenti: [...formData.professioniConDocumenti, data]
-    });
-    setShowDocumentiForm(false);
-    setSelectedProfessione('');
-    setError(''); // Pulisci eventuali errori
-    console.log('📋 Form aggiornato, step corrente:', step);
-  };
-  
-  const handleProfessioneCancel = () => {
-    setShowDocumentiForm(false);
-    setSelectedProfessione('');
-  };
-  
-  const removeProfessione = (index: number) => {
-    setFormData({
-      ...formData,
-      professioniConDocumenti: formData.professioniConDocumenti.filter((_, i) => i !== index)
-    });
-  };
-
-  const toggleArray = (array: string[], item: string) => {
-    return array.includes(item) ? array.filter(i => i !== item) : [...array, item];
   };
 
   const handleStep1 = (e: React.FormEvent) => {
@@ -199,16 +112,10 @@ export default function RegisterPage() {
       return;
     }
 
-    // Per utenti Google: verifica che nome e data di nascita siano compilati
-    if (isGoogleProvider) {
-      if (!formData.nome.trim()) {
-        setError('Il nome è obbligatorio');
-        return;
-      }
-      if (!formData.dataNascita) {
-        setError('La data di nascita è obbligatoria');
-        return;
-      }
+    // Per utenti Google: verifica che nome sia compilato
+    if (isGoogleProvider && !formData.nome.trim()) {
+      setError('Il nome è obbligatorio');
+      return;
     }
 
     // Validazione consensi obbligatori GDPR
@@ -217,18 +124,23 @@ export default function RegisterPage() {
       return;
     }
 
-    if (formData.professioniConDocumenti.length === 0) {
-      setError('Aggiungi almeno una professione con i relativi documenti');
+    if (!formData.professione) {
+      setError('Seleziona una professione');
       return;
     }
 
-    if (!formData.esperienzaAttuale || !formData.esperienzaAttuale.titolo.trim() || !formData.esperienzaAttuale.organizzazione.trim() || !formData.esperienzaAttuale.dataInizio) {
-      setError('Compila l\'esperienza professionale attuale (ruolo, organizzazione e data inizio sono obbligatori)');
+    if (!formData.numeroAlbo.trim()) {
+      setError('Il numero di iscrizione all\'albo è obbligatorio');
+      return;
+    }
+
+    if (!formData.telefono.trim()) {
+      setError('Il numero di telefono è obbligatorio');
       return;
     }
 
     if (formData.studi.length === 0) {
-      setError('Aggiungi almeno uno studio o seleziona "Lavoro da remoto"');
+      setError('Aggiungi almeno uno studio');
       return;
     }
 
@@ -238,10 +150,8 @@ export default function RegisterPage() {
       let currentUser;
       
       if (isGoogleProvider && auth.currentUser) {
-        // Utente Google: già autenticato, non serve creare l'account
         currentUser = auth.currentUser;
       } else {
-        // Registrazione classica con email/password
         currentUser = await signUp(formData.email, formData.password, formData.nome);
       }
       
@@ -249,56 +159,39 @@ export default function RegisterPage() {
         throw new Error('User not authenticated after signup');
       }
 
-      // Upload foto profilo se presente
-      let photoURL = '';
-      if (photoFile) {
-        try {
-          console.log('Inizio upload foto profilo...');
-          const photoRef = ref(storage, `profile-photos/${currentUser.uid}`);
-          await uploadBytes(photoRef, photoFile);
-          photoURL = await getDownloadURL(photoRef);
-          console.log('Foto caricata con successo');
-        } catch (uploadError) {
-          console.error('Errore upload foto:', uploadError);
-          // Continua la registrazione senza foto
-        }
-      }
+      // Costruisci professionePending minimale con solo il documento albo
+      const alboDocConfig = CONFIGURAZIONI_PROFESSIONI[formData.professione]?.documentiRichiesti?.find(d => d.tipo === 'albo' && d.obbligatorio);
+      const professionePending = {
+        professione: formData.professione,
+        documenti: [{
+          tipo: 'albo' as const,
+          nome: alboDocConfig?.nome || 'Numero iscrizione albo',
+          valore: formData.numeroAlbo.trim(),
+        }],
+      };
 
-      // Costruisci lista specializzazioni per retrocompatibilità
-      const specializzazioni = formData.professioniConDocumenti.map(p => p.professione);
-      
-      // Aggrega tematiche ed esperienza da tutte le professioni per retrocompatibilità
-      const tematicheAggregate = Array.from(new Set(
-        formData.professioniConDocumenti.flatMap(p => p.tematiche || [])
-      ));
-      // Prendi l'esperienza maggiore tra tutte le professioni (o la prima disponibile)
-      const esperienzaAggregata = formData.professioniConDocumenti.find(p => p.anniEsperienza)?.anniEsperienza || '';
-
-      // Salva profilo completo in Firestore
-      const profileData: any = {
+      // Salva profilo minimale in Firestore
+      const profileData = {
         uid: currentUser.uid,
         email: formData.email,
         profile: {
           nome: formData.nome,
-          dataNascita: formData.dataNascita,
-          albo: '', // Campo deprecato, lasciato vuoto
-          specializzazioni: specializzazioni, // Per retrocompatibilità
-          professioniPending: formData.professioniConDocumenti, // Professioni in attesa di approvazione admin
-          tematiche: tematicheAggregate, // Aggregate da professioni per retrocompatibilità
-          esperienza: esperienzaAggregata, // Presa da professioni per retrocompatibilità
-          location: { lat: 0, lng: 0, città: formData.città }, // Legacy
-          studi: formData.studi, // Nuovo campo multi-studio
-          disponibilità: formData.disponibilità,
-          esperienze: formData.esperienzaAttuale ? [formData.esperienzaAttuale] : [],
-          formazione: formData.formazione,
-          certificazioni: formData.certificazioni,
-          verified: false, // Sarà verificato manualmente dall'admin
+          albo: '', // Campo deprecato
+          specializzazioni: [formData.professione], // Per retrocompatibilità
+          professioniPending: [professionePending],
+          tematiche: [] as string[],
+          esperienza: '',
+          location: { lat: 0, lng: 0, città: 'Italia' }, // Legacy
+          studi: formData.studi,
+          disponibilità: '',
+          telefono: formData.telefono.trim(),
+          verified: false,
           verificationInfo: {
-            status: 'pending',
+            status: 'pending' as const,
             submittedAt: Timestamp.now()
           }
         },
-        teams: [],
+        teams: [] as string[],
         stats: { referralsSent: 0, referralsReceived: 0 },
         consents: {
           termini: { accepted: consents.termini, timestamp: Timestamp.now() },
@@ -310,31 +203,22 @@ export default function RegisterPage() {
         authProvider: isGoogleProvider ? 'google' : 'email',
       };
 
-      // Aggiungi photoURL: usa foto caricata, oppure foto Google come fallback
-      if (photoURL) {
-        profileData.profile.photoURL = photoURL;
-      } else if (isGoogleProvider && auth.currentUser?.photoURL) {
-        profileData.profile.photoURL = auth.currentUser.photoURL;
+      // Per utenti Google: usa foto Google come fallback
+      if (isGoogleProvider && auth.currentUser?.photoURL) {
+        (profileData.profile as any).photoURL = auth.currentUser.photoURL;
       }
 
-      // Rimuovi tutti i campi undefined ricorsivamente
-      const cleanProfileData = removeUndefined(profileData);
-
       console.log('💾 Salvataggio profilo in Firestore per utente:', currentUser.uid);
-      console.log('📝 Dati profilo da salvare:', cleanProfileData);
       
       try {
-        await setDoc(doc(db, 'users', currentUser.uid), cleanProfileData);
+        await setDoc(doc(db, 'users', currentUser.uid), profileData);
         console.log('✅ Profilo salvato con successo');
       } catch (firestoreError: any) {
         console.error('❌ ERRORE FIRESTORE setDoc:', firestoreError);
-        console.error('   Codice:', firestoreError.code);
-        console.error('   Messaggio:', firestoreError.message);
-        throw firestoreError; // Rilancia l'errore per gestirlo nel catch esterno
+        throw firestoreError;
       }
 
       // Invia email di verifica solo per registrazione email/password
-      // (Google verifica l'email automaticamente)
       if (!isGoogleProvider) {
         try {
           const sendVerification = httpsCallable(functions, 'sendCustomVerificationEmail');
@@ -345,18 +229,15 @@ export default function RegisterPage() {
         }
       }
 
-      // Google: vai direttamente alla dashboard (email già verificata)
-      // Email: vai alla pagina di verifica email
-      if (isGoogleProvider) {
+      // In dev mode o Google: vai diretto alla dashboard
+      // In produzione con email: vai alla pagina di verifica email
+      if (isGoogleProvider || import.meta.env.DEV) {
         navigate('/dashboard');
       } else {
         navigate('/verify-email');
       }
     } catch (err: any) {
-      console.error('❌ Errore registrazione completo:', err);
-      console.error('   Codice errore:', err.code);
-      console.error('   Messaggio:', err.message);
-      console.error('   Stack:', err.stack);
+      console.error('❌ Errore registrazione:', err);
       
       if (err.code === 'auth/email-already-in-use') {
         setError('Questa email è già registrata. Usa il login o un\'altra email.');
@@ -378,7 +259,7 @@ export default function RegisterPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 py-12 px-4">
-      <div className="max-w-3xl mx-auto">
+      <div className="max-w-xl mx-auto">
         <div className="text-center mb-8">
           <h1 className="text-4xl font-extrabold tracking-tight"><span className="text-blue-600">tua</span><span className="text-green-600">equipe</span><span className="text-orange-500">.it</span></h1>
           {step === 0 ? (
@@ -448,9 +329,6 @@ export default function RegisterPage() {
                         email: googleUser.email || '',
                         nome: googleUser.displayName || '',
                       }));
-                      if (googleUser.photoURL) {
-                        setPhotoPreview(googleUser.photoURL);
-                      }
                       navigate('/register?provider=google', { replace: true });
                       setStep(2);
                     } else {
@@ -508,45 +386,6 @@ export default function RegisterPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-1">Data di nascita *</label>
-                <input
-                  type="date"
-                  required
-                  className="w-full px-3 py-2 border rounded"
-                  value={formData.dataNascita}
-                  onChange={(e) => setFormData({ ...formData, dataNascita: e.target.value })}
-                  max={new Date().toISOString().split('T')[0]}
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-1">Foto profilo</label>
-                <div className="space-y-2">
-                  {photoPreview && (
-                    <div className="flex justify-center">
-                      <img src={photoPreview} alt="Anteprima" className="w-32 h-32 rounded-full object-cover" />
-                    </div>
-                  )}
-                  <input
-                    type="file"
-                    accept="image/*"
-                    className="w-full px-3 py-2 border rounded"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) {
-                        setPhotoFile(file);
-                        const reader = new FileReader();
-                        reader.onloadend = () => {
-                          setPhotoPreview(reader.result as string);
-                        };
-                        reader.readAsDataURL(file);
-                      }
-                    }}
-                  />
-                </div>
-              </div>
-
-              <div>
                 <label className="block text-sm font-medium mb-1">Email *</label>
                 <input
                   type="email"
@@ -585,284 +424,92 @@ export default function RegisterPage() {
               </button>
             </form>
           ) : (
-            <>
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-semibold">Profilo professionale</h3>
+            <form onSubmit={handleSubmit} className="space-y-6">
+              <div className="flex justify-between items-center mb-2">
+                <h3 className="text-lg font-semibold">Informazioni professionali</h3>
                 {!isGoogleProvider && (
                   <button type="button" onClick={() => setStep(1)} className="text-sm text-blue-600">&larr; Indietro</button>
                 )}
               </div>
 
-              {/* Per utenti Google: mostra nome e possibilità di modificarlo */}
+              {/* Per utenti Google: mostra nome modificabile */}
               {isGoogleProvider && (
-                <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                  <p className="text-sm text-blue-800 mb-3">
-                    ✅ Accesso con Google effettuato. Completa il tuo profilo professionale.
+                <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg space-y-3">
+                  <p className="text-sm text-blue-800">
+                    ✅ Accesso con Google effettuato.
                   </p>
-                  <div className="space-y-3">
-                    <div>
-                      <label className="block text-sm font-medium mb-1">Nome completo *</label>
-                      <input
-                        type="text"
-                        required
-                        className="w-full px-3 py-2 border rounded"
-                        value={formData.nome}
-                        onChange={(e) => setFormData({ ...formData, nome: e.target.value })}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium mb-1">Data di nascita *</label>
-                      <input
-                        type="date"
-                        required
-                        className="w-full px-3 py-2 border rounded"
-                        value={formData.dataNascita}
-                        onChange={(e) => setFormData({ ...formData, dataNascita: e.target.value })}
-                        max={new Date().toISOString().split('T')[0]}
-                      />
-                    </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Nome completo *</label>
+                    <input
+                      type="text"
+                      required
+                      className="w-full px-3 py-2 border rounded"
+                      value={formData.nome}
+                      onChange={(e) => setFormData({ ...formData, nome: e.target.value })}
+                    />
                   </div>
                 </div>
               )}
 
-              {/* NUOVO: Sezione Professioni con documenti - FUORI DAL FORM */}
-              <div className="mb-6">
-                <label className="block text-sm font-medium mb-2">
-                  Le tue professioni *
-                </label>
-                <p className="text-xs text-gray-600 mb-3">
-                  Aggiungi le tue professioni e fornisci i documenti necessari per la verifica
-                </p>
-
-                {/* Lista professioni aggiunte */}
-                {formData.professioniConDocumenti.length > 0 && (
-                  <div className="mb-4 space-y-2">
-                    {formData.professioniConDocumenti.map((prof, index) => (
-                      <div key={index} className="flex items-center justify-between p-3 bg-green-50 border border-green-200 rounded">
-                        <div className="flex-1">
-                          <div className="font-medium text-green-900">{prof.professione}</div>
-                          <div className="text-xs text-green-700">
-                            {prof.documenti.length} documento/i caricato/i
-                            {prof.note && ' • Con note aggiuntive'}
-                          </div>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => removeProfessione(index)}
-                          className="text-red-600 hover:text-red-800 text-sm font-medium ml-3"
-                        >
-                          Rimuovi
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {/* Form per aggiungere nuova professione */}
-                {!showDocumentiForm ? (
-                  <div className="border rounded p-4 space-y-3 bg-gray-50">
-                    <div>
-                      <label className="block text-xs font-medium mb-1">Seleziona professione</label>
-                      <select
-                        className="w-full px-3 py-2 border rounded"
-                        value={selectedProfessione}
-                        onChange={(e) => setSelectedProfessione(e.target.value)}
-                      >
-                        <option value="">-- Seleziona una professione --</option>
-                        {PROFESSIONI_DISPONIBILI.filter(
-                          p => !formData.professioniConDocumenti.some(pc => pc.professione === p)
-                        ).map(prof => (
-                          <option key={prof} value={prof}>{prof}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={handleAddProfessione}
-                      disabled={!selectedProfessione}
-                      className="w-full py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
-                    >
-                      + Aggiungi Professione
-                    </button>
-                  </div>
-                ) : (
-                  <DocumentiProfessioneForm
-                    professione={selectedProfessione}
-                    onComplete={handleProfessioneComplete}
-                    onCancel={handleProfessioneCancel}
-                  />
-                )}
-              </div>
-
-              {/* Resto del form */}
-              <form onSubmit={handleSubmit} className="space-y-6">
-
-              {/* Honeypot anti-bot: campo nascosto che solo i bot compilano */}
+              {/* Honeypot anti-bot */}
               <div aria-hidden="true" style={{ position: 'absolute', left: '-9999px', opacity: 0, height: 0, overflow: 'hidden' }}>
                 <label htmlFor="company">Company</label>
                 <input id="company" type="text" name="company" tabIndex={-1} autoComplete="off" value={honeypot} onChange={(e) => setHoneypot(e.target.value)} />
               </div>
 
-              {/* Esperienza professionale attuale (obbligatoria) */}              <div>
-                <label className="block text-sm font-medium mb-2">
-                  Esperienza professionale attuale *
-                </label>
-                <p className="text-xs text-gray-600 mb-3">
-                  Indica la tua posizione lavorativa attuale
-                </p>
-                <div className="border rounded p-4 bg-gray-50">
-                  <EsperienzaAttualeRegistrazione
-                    esperienza={formData.esperienzaAttuale}
-                    onChange={(e) => setFormData({ ...formData, esperienzaAttuale: e })}
-                  />
-                </div>
+              {/* Professione */}
+              <div>
+                <label className="block text-sm font-medium mb-1">Professione *</label>
+                <select
+                  className="w-full px-3 py-2 border rounded"
+                  value={formData.professione}
+                  onChange={(e) => setFormData({ ...formData, professione: e.target.value, numeroAlbo: '' })}
+                  required
+                >
+                  <option value="">-- Seleziona una professione --</option>
+                  {PROFESSIONI_DISPONIBILI.map(prof => (
+                    <option key={prof} value={prof}>{prof}</option>
+                  ))}
+                </select>
               </div>
 
-              {/* Formazione */}
-              <div>
-                <label className="block text-sm font-medium mb-2">
-                  Formazione <span className="text-gray-400 font-normal">(facoltativo)</span>
-                </label>
-                <p className="text-xs text-gray-600 mb-3">
-                  Lauree, master, specializzazioni e altri titoli di studio
-                </p>
-
-                {formData.formazione.length > 0 && (
-                  <div className="mb-3 space-y-2">
-                    {formData.formazione.map((f, index) => (
-                      <div key={f.id} className="flex items-center justify-between p-3 bg-purple-50 border border-purple-200 rounded">
-                        <div className="text-sm flex-1">
-                          <div className="font-medium text-purple-900">{f.titolo}</div>
-                          <div className="text-purple-700">{f.istituzione} {f.annoConseguimento && `(${f.annoConseguimento})`}</div>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => setFormData({ ...formData, formazione: formData.formazione.filter((_, i) => i !== index) })}
-                          className="text-red-600 hover:text-red-800 text-sm font-medium ml-3"
-                        >
-                          Rimuovi
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                <div className="border rounded p-4 space-y-3 bg-gray-50">
+              {/* Numero iscrizione albo — label dinamica */}
+              {formData.professione && (
+                <div>
+                  <label className="block text-sm font-medium mb-1">
+                    {alboConfig?.nome || 'Numero iscrizione albo'} *
+                  </label>
+                  {alboConfig?.descrizione && (
+                    <p className="text-xs text-gray-500 mb-1">{alboConfig.descrizione}</p>
+                  )}
                   <input
                     type="text"
-                    id="formazione-titolo"
-                    placeholder="Titolo di studio (es. Laurea Magistrale in Psicologia)"
-                    className="w-full px-3 py-2 border rounded text-sm"
+                    required
+                    className="w-full px-3 py-2 border rounded"
+                    placeholder={alboConfig?.placeholder || 'es. 12345'}
+                    value={formData.numeroAlbo}
+                    onChange={(e) => setFormData({ ...formData, numeroAlbo: e.target.value })}
                   />
-                  <input
-                    type="text"
-                    id="formazione-istituzione"
-                    placeholder="Istituzione (es. Università degli Studi di Trento)"
-                    className="w-full px-3 py-2 border rounded text-sm"
-                  />
-                  <input
-                    type="text"
-                    id="formazione-anno"
-                    placeholder="Anno conseguimento (es. 2020)"
-                    className="w-full px-3 py-2 border rounded text-sm"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const titolo = (document.getElementById('formazione-titolo') as HTMLInputElement).value.trim();
-                      const istituzione = (document.getElementById('formazione-istituzione') as HTMLInputElement).value.trim();
-                      const anno = (document.getElementById('formazione-anno') as HTMLInputElement).value.trim();
-                      if (!titolo || !istituzione) return;
-                      setFormData({
-                        ...formData,
-                        formazione: [...formData.formazione, { id: Date.now().toString(), titolo, istituzione, annoConseguimento: anno }]
-                      });
-                      (document.getElementById('formazione-titolo') as HTMLInputElement).value = '';
-                      (document.getElementById('formazione-istituzione') as HTMLInputElement).value = '';
-                      (document.getElementById('formazione-anno') as HTMLInputElement).value = '';
-                    }}
-                    className="w-full py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 text-sm font-medium"
-                  >
-                    + Aggiungi Titolo di Studio
-                  </button>
                 </div>
-              </div>
+              )}
 
-              {/* Certificazioni e Attestati */}
+              {/* Telefono */}
               <div>
-                <label className="block text-sm font-medium mb-2">
-                  Certificazioni e Attestati <span className="text-gray-400 font-normal">(facoltativo)</span>
-                </label>
-                <p className="text-xs text-gray-600 mb-3">
-                  Corsi, certificazioni professionali e attestati
-                </p>
-
-                {formData.certificazioni.length > 0 && (
-                  <div className="mb-3 space-y-2">
-                    {formData.certificazioni.map((c, index) => (
-                      <div key={c.id} className="flex items-center justify-between p-3 bg-amber-50 border border-amber-200 rounded">
-                        <div className="text-sm flex-1">
-                          <div className="font-medium text-amber-900">{c.titolo}</div>
-                          <div className="text-amber-700">{c.istituzione} {c.anno && `(${c.anno})`}</div>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => setFormData({ ...formData, certificazioni: formData.certificazioni.filter((_, i) => i !== index) })}
-                          className="text-red-600 hover:text-red-800 text-sm font-medium ml-3"
-                        >
-                          Rimuovi
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                <div className="border rounded p-4 space-y-3 bg-gray-50">
-                  <input
-                    type="text"
-                    id="cert-titolo"
-                    placeholder="Nome certificazione (es. Corso di Biofeedback)"
-                    className="w-full px-3 py-2 border rounded text-sm"
-                  />
-                  <input
-                    type="text"
-                    id="cert-istituzione"
-                    placeholder="Ente rilasciante (es. Centro di Psicologia Clinica)"
-                    className="w-full px-3 py-2 border rounded text-sm"
-                  />
-                  <input
-                    type="text"
-                    id="cert-anno"
-                    placeholder="Anno (es. 2022)"
-                    className="w-full px-3 py-2 border rounded text-sm"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const titolo = (document.getElementById('cert-titolo') as HTMLInputElement).value.trim();
-                      const istituzione = (document.getElementById('cert-istituzione') as HTMLInputElement).value.trim();
-                      const anno = (document.getElementById('cert-anno') as HTMLInputElement).value.trim();
-                      if (!titolo || !istituzione) return;
-                      setFormData({
-                        ...formData,
-                        certificazioni: [...formData.certificazioni, { id: Date.now().toString(), titolo, istituzione, anno }]
-                      });
-                      (document.getElementById('cert-titolo') as HTMLInputElement).value = '';
-                      (document.getElementById('cert-istituzione') as HTMLInputElement).value = '';
-                      (document.getElementById('cert-anno') as HTMLInputElement).value = '';
-                    }}
-                    className="w-full py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 text-sm font-medium"
-                  >
-                    + Aggiungi Certificazione / Attestato
-                  </button>
-                </div>
+                <label className="block text-sm font-medium mb-1">Telefono *</label>
+                <input
+                  type="tel"
+                  required
+                  className="w-full px-3 py-2 border rounded"
+                  placeholder="es. 333 1234567"
+                  value={formData.telefono}
+                  onChange={(e) => setFormData({ ...formData, telefono: e.target.value })}
+                />
               </div>
 
               {/* Studi */}
               <div>
-                <label className="block text-sm font-medium mb-2">Studi professionali *</label>
+                <label className="block text-sm font-medium mb-2">Indirizzo studio *</label>
                 
-                {/* Lista studi aggiunti */}
                 {formData.studi.length > 0 && (
                   <div className="mb-3 space-y-2">
                     {formData.studi.map((studio, index) => (
@@ -888,10 +535,8 @@ export default function RegisterPage() {
                   </div>
                 )}
 
-                {/* Form per aggiungere nuovo studio */}
                 <div className="border rounded p-4 space-y-3">
                   <div>
-                    <label className="block text-xs font-medium mb-1">Indirizzo Studio *</label>
                     <AddressAutocomplete
                       value={currentStudio.indirizzo}
                       coordinate={currentStudio.coordinate}
@@ -900,8 +545,8 @@ export default function RegisterPage() {
                           ...currentStudio,
                           indirizzo: location.indirizzo || '',
                           coordinate: location.coordinate,
-                          città: '', // Vuoto, non più usato
-                          provincia: '' // Vuoto, non più usato
+                          città: '',
+                          provincia: ''
                         });
                       }}
                       placeholder="es. Via Roma 123, Milano MI"
@@ -932,23 +577,9 @@ export default function RegisterPage() {
                 </div>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium mb-1">Disponibilità</label>
-                <input
-                  type="text"
-                  className="w-full px-3 py-2 border rounded"
-                  placeholder="es. Lunedì-Venerdì 9-19"
-                  value={formData.disponibilità}
-                  onChange={(e) => setFormData({ ...formData, disponibilità: e.target.value })}
-                />
-              </div>
-
-              {/* Sezione Consensi Privacy GDPR */}
-              <div className="space-y-4 p-6 bg-gray-50 rounded-lg border">
-                <h3 className="font-semibold text-gray-900 text-lg">Consensi Privacy (Obbligatori)</h3>
-                <p className="text-sm text-gray-600">
-                  Per utilizzare equipe è necessario accettare i seguenti consensi in conformità al GDPR:
-                </p>
+              {/* Consensi GDPR */}
+              <div className="space-y-4 p-5 bg-gray-50 rounded-lg border">
+                <h3 className="font-semibold text-gray-900">Consensi Privacy</h3>
 
                 <label className="flex items-start gap-3 cursor-pointer">
                   <input
@@ -962,7 +593,7 @@ export default function RegisterPage() {
                     <Link to="/legal/termini" className="text-blue-600 underline hover:text-blue-800" target="_blank">
                       Termini e Condizioni di Servizio
                     </Link>{' '}
-                    di equipe <span className="text-red-500">*</span>
+                    <span className="text-red-500">*</span>
                   </span>
                 </label>
 
@@ -978,7 +609,7 @@ export default function RegisterPage() {
                     <Link to="/legal/privacy" className="text-blue-600 underline hover:text-blue-800" target="_blank">
                       Informativa Privacy
                     </Link>{' '}
-                    e autorizzo il trattamento dei miei dati professionali per le finalità del servizio <span className="text-red-500">*</span>
+                    <span className="text-red-500">*</span>
                   </span>
                 </label>
 
@@ -990,28 +621,18 @@ export default function RegisterPage() {
                     className="mt-1 w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                   />
                   <span className="text-sm leading-relaxed">
-                    Vorrei ricevere comunicazioni informative sui nuovi servizi di equipe{' '}
-                    <Link to="/legal/privacy#marketing" className="text-blue-600 underline hover:text-blue-800" target="_blank">
-                      (facoltativo)
-                    </Link>
+                    Vorrei ricevere comunicazioni informative sui nuovi servizi{' '}
+                    <span className="text-gray-400">(facoltativo)</span>
                   </span>
                 </label>
-
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mt-4">
-                  <p className="text-xs text-blue-800">
-                    <strong>Privacy e Sicurezza:</strong> I tuoi dati sono trattati secondo il GDPR,
-                    conservati su server UE e crittografati. Non condividiamo mai informazioni con terzi
-                    non autorizzati.
-                  </p>
-                </div>
               </div>
 
               <button
                 type="submit"
-                disabled={loading || (!consents.termini || !consents.privacy)}
+                disabled={loading || !consents.termini || !consents.privacy}
                 className="w-full py-3 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
               >
-                {loading ? 'Registrazione in corso...' : 'Completa Registrazione'}
+                {loading ? 'Registrazione in corso...' : 'Registrati'}
               </button>
 
               {(!consents.termini || !consents.privacy) && (
@@ -1020,9 +641,12 @@ export default function RegisterPage() {
                 </p>
               )}
             </form>
-            </>
           )}
         </div>
+
+        <p className="text-center text-xs text-gray-400 mt-6">
+          Potrai completare il tuo profilo dopo la registrazione
+        </p>
       </div>
     </div>
   );

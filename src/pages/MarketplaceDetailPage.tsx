@@ -180,6 +180,8 @@ export default function MarketplaceDetailPage() {
 
   const propertyLabel: Record<string, string> = {
     studio: 'Studio',
+    locale_intero: 'Locale intero',
+    // legacy values
     ufficio: 'Ufficio',
     stanza: 'Stanza',
   };

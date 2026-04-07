@@ -10,7 +10,7 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Inter, system-ui, sans-serif;
+  font-family: 'Nunito Sans', system-ui, sans-serif;
 }
 
 /* Miglioramenti per Mobile */

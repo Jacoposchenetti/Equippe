@@ -410,7 +410,7 @@ export default function WaitlistPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid lg:grid-cols-2 gap-8 lg:gap-0 items-end min-h-[540px]">
             {/* Left — Text */}
-            <div className="py-12 lg:py-16 lg:pr-12">
+            <div className="self-start pt-8 pb-12 lg:pt-10 lg:pb-16 lg:pr-12">
               <div className="mb-5">
                 <BrandLarge />
               </div>

@@ -315,9 +315,10 @@ export default function MarketplacePage() {
               {/* Right: map (only when a location is selected) */}
               {filterCoord && (
                 <div className="lg:w-1/2">
-                  <Suspense fallback={<div className="h-full min-h-[280px] bg-gray-100 rounded-lg flex items-center justify-center text-gray-400">Caricamento mappa...</div>}>
-                    <div className="h-full min-h-[280px] rounded-lg overflow-hidden border">
+                  <Suspense fallback={<div className="h-[280px] bg-gray-100 rounded-lg flex items-center justify-center text-gray-400">Caricamento mappa...</div>}>
+                    <div className="h-[280px] lg:h-full lg:min-h-[280px] rounded-lg overflow-hidden border">
                       <MapSelector
+                        key={`${filterCoord.lat},${filterCoord.lng},${filterRadius}`}
                         coordinate={filterCoord}
                         raggioKm={filterRadius}
                         indirizzo={filterAddress}

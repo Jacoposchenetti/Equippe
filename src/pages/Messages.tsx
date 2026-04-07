@@ -8,7 +8,7 @@ import { db } from '@/lib/firebase';
 import { Conversation, Message, Team, ConversationType, FileAttachment } from '@/types/equippe';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
-import { notifyNewMessage } from '@/lib/notifications';
+import { notifyNewMessage, createNotification } from '@/lib/notifications';
 import { uploadFile, validateFile, getFileIcon, formatFileSize } from '@/lib/fileUpload';
 import { useModal } from '@/contexts/ModalContext';
 
@@ -38,6 +38,16 @@ function getDateKey(date: Date): string {
   return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
 }
 
+/** Evidenzia le menzioni @nome nella bolla */
+function renderMentions(text: string, isMine: boolean): React.ReactNode {
+  const parts = text.split(/(@\w+)/g);
+  return parts.map((part, i) =>
+    /^@\w+$/.test(part)
+      ? <span key={i} className={`font-bold ${isMine ? 'text-amber-300' : 'text-[#0C8CE9]'}`}>{part}</span>
+      : part
+  );
+}
+
 export default function MessagesPage() {
   const { user, userProfile } = useAuth();
   const navigate = useNavigate();
@@ -56,9 +66,14 @@ export default function MessagesPage() {
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const [uploadProgress, setUploadProgress] = useState<{[key: string]: number}>({});
   const [pendingAttachments, setPendingAttachments] = useState<FileAttachment[]>([]);
+  // Mention state
+  const [mentionQuery, setMentionQuery] = useState<string | null>(null);
+  const [mentionStartPos, setMentionStartPos] = useState(0);
+  const [mentionHighlightIdx, setMentionHighlightIdx] = useState(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const messageInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!user?.uid || !userProfile) {
@@ -660,9 +675,107 @@ export default function MessagesPage() {
         );
       }
 
+      // Notifiche di menzione (@nome) — solo chat di gruppo
+      if (text && conversation.type === 'team') {
+        const mentionRegex = /@(\w+)/g;
+        let mMatch;
+        const notifiedMentions = new Set<string>();
+        while ((mMatch = mentionRegex.exec(text)) !== null) {
+          const tag = mMatch[1].toLowerCase();
+          for (const [uid, data] of Object.entries(conversation.participantsData || {})) {
+            if (uid === user.uid || notifiedMentions.has(uid)) continue;
+            const firstName = (data as any).name?.split(' ')[0]?.toLowerCase() ?? '';
+            if (firstName === tag) {
+              notifiedMentions.add(uid);
+              await createNotification({
+                userId: uid,
+                type: 'mention',
+                title: `${userProfile.profile.nome} ti ha menzionato`,
+                message: text.length > 100 ? text.slice(0, 100) + '…' : text,
+                conversationId: selectedConversation,
+                messageId: messageDoc.id,
+                senderId: user.uid,
+                senderName: userProfile.profile.nome,
+                senderPhotoURL: userProfile.profile.photoURL || '',
+              });
+            }
+          }
+        }
+      }
+
     } catch (error) {
       console.error('Error sending message with attachments:', error);
       throw error;
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-xl">Caricamento...</div>
+      </div>
+    );
+  }
+
+  const selectedConvData = conversations.find(c => c.id === selectedConversation);
+  const otherUserId = selectedConvData?.participants.find(id => id !== user?.uid);
+  const otherUserName = otherUserId ? selectedConvData?.participantsData[otherUserId]?.name : '';
+
+  /** Candidati per l'autocomplete @ */
+  const mentionCandidates: { uid: string; name: string }[] =
+    mentionQuery !== null && selectedConvData?.type === 'team'
+      ? Object.entries(selectedConvData.participantsData || {})
+          .filter(([uid, data]) =>
+            uid !== user?.uid &&
+            (data as any).name?.toLowerCase().includes(mentionQuery.toLowerCase())
+          )
+          .map(([uid, data]) => ({ uid, name: (data as any).name as string }))
+      : [];
+
+  const handleMessageInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    const cursor = e.target.selectionStart ?? val.length;
+    const before = val.slice(0, cursor);
+    const atMatch = before.match(/@(\w*)$/);
+    if (atMatch && selectedConvData?.type === 'team') {
+      setMentionQuery(atMatch[1]);
+      setMentionStartPos(before.length - atMatch[0].length);
+      setMentionHighlightIdx(0);
+    } else {
+      setMentionQuery(null);
+    }
+    setMessageText(val);
+  };
+
+  const insertMention = (participant: { uid: string; name: string }) => {
+    const firstName = participant.name.split(' ')[0];
+    const before = messageText.slice(0, mentionStartPos);
+    const after = messageText.slice(messageInputRef.current?.selectionStart ?? messageText.length);
+    const newText = before + '@' + firstName + ' ' + after;
+    setMessageText(newText);
+    setMentionQuery(null);
+    setTimeout(() => {
+      if (messageInputRef.current) {
+        const pos = before.length + firstName.length + 2;
+        messageInputRef.current.focus();
+        messageInputRef.current.setSelectionRange(pos, pos);
+      }
+    }, 0);
+  };
+
+  const handleInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (mentionQuery === null || mentionCandidates.length === 0) return;
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setMentionHighlightIdx(i => Math.min(i + 1, mentionCandidates.length - 1));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setMentionHighlightIdx(i => Math.max(i - 1, 0));
+    } else if (e.key === 'Enter' || e.key === 'Tab') {
+      e.preventDefault();
+      insertMention(mentionCandidates[mentionHighlightIdx]);
+    } else if (e.key === 'Escape') {
+      setMentionQuery(null);
     }
   };
 
@@ -683,18 +796,6 @@ export default function MessagesPage() {
 
     setSending(false);
   };
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-xl">Caricamento...</div>
-      </div>
-    );
-  }
-
-  const selectedConvData = conversations.find(c => c.id === selectedConversation);
-  const otherUserId = selectedConvData?.participants.find(id => id !== user?.uid);
-  const otherUserName = otherUserId ? selectedConvData?.participantsData[otherUserId]?.name : '';
 
   return (
     <div className="min-h-screen bg-white md:bg-gray-50">
@@ -848,7 +949,7 @@ export default function MessagesPage() {
                       </button>
                       
                       {selectedConvData?.type === 'team' ? (
-                        <>
+                        <div className="flex items-center gap-3 flex-1 min-w-0 cursor-pointer" onClick={() => selectedConvData.teamId && navigate(`/teams/${selectedConvData.teamId}`)}>
                           {selectedConvData.teamPhotoURL ? (
                             <div className="w-10 h-10 rounded-full p-[2px] bg-gradient-to-br from-amber-400 to-orange-500 flex-shrink-0">
                               <img 
@@ -865,16 +966,16 @@ export default function MessagesPage() {
                             </div>
                           )}
                           <div className="flex-1 min-w-0">
-                            <h2 className="text-[16px] font-bold text-[#1B3A5C] truncate">
+                            <h2 className="text-[16px] font-bold text-[#1B3A5C] truncate hover:underline">
                               {selectedConvData.teamName}
                             </h2>
                             <p className="text-[13px] text-gray-500">
                               {selectedConvData.participants.length} membri
                             </p>
                           </div>
-                        </>
+                        </div>
                       ) : (
-                        <>
+                        <div className="flex items-center gap-3 flex-1 min-w-0 cursor-pointer" onClick={() => otherUserId && navigate(`/profile/${otherUserId}`)}>
                           {otherUserId && selectedConvData?.participantsData?.[otherUserId]?.photoURL ? (
                             <div className="w-10 h-10 rounded-full p-[2px] bg-[#0C8CE9] flex-shrink-0">
                               <img 
@@ -889,9 +990,9 @@ export default function MessagesPage() {
                             </div>
                           )}
                           <div className="flex-1 min-w-0">
-                            <h2 className="text-[16px] font-bold text-[#1B3A5C] truncate">{otherUserName}</h2>
+                            <h2 className="text-[16px] font-bold text-[#1B3A5C] truncate hover:underline">{otherUserName}</h2>
                           </div>
-                        </>
+                        </div>
                       )}
                       
                       {/* Menu tre punti stile BlaBlaCar */}
@@ -930,7 +1031,10 @@ export default function MessagesPage() {
                             <div className={`flex ${isMine ? 'justify-end' : 'justify-start'} mb-2`}>
                               <div className="flex items-end gap-2 max-w-[80%]">
                                 {!isMine && isTeamChat && (
-                                  <div className="w-7 h-7 rounded-full overflow-hidden flex-shrink-0 mb-4">
+                                  <div 
+                                    className="w-7 h-7 rounded-full overflow-hidden flex-shrink-0 mb-4 cursor-pointer"
+                                    onClick={() => navigate(`/profile/${msg.senderId}`)}
+                                  >
                                     {msg.senderPhotoURL ? (
                                       <img 
                                         src={msg.senderPhotoURL} 
@@ -946,7 +1050,10 @@ export default function MessagesPage() {
                                 )}
                                 <div>
                                   {!isMine && isTeamChat && (
-                                    <p className="text-[11px] font-semibold text-gray-500 mb-1 ml-1">
+                                    <p 
+                                      className="text-[11px] font-semibold text-gray-500 mb-1 ml-1 cursor-pointer hover:underline"
+                                      onClick={() => navigate(`/profile/${msg.senderId}`)}
+                                    >
                                       {msg.senderName}
                                     </p>
                                   )}
@@ -957,7 +1064,7 @@ export default function MessagesPage() {
                                   } px-4 py-2.5`}>
                                     {/* Contenuto testuale */}
                                     {msg.content && (
-                                      <p className="whitespace-pre-wrap break-words text-[15px] leading-relaxed">{msg.content}</p>
+                                      <p className="whitespace-pre-wrap break-words text-[15px] leading-relaxed">{renderMentions(msg.content, isMine)}</p>
                                     )}
                                     
                                     {/* Allegati */}
@@ -1109,10 +1216,30 @@ export default function MessagesPage() {
                       </button>
 
                       <div className="flex-1 relative">
+                        {/* Dropdown menzioni */}
+                        {mentionQuery !== null && mentionCandidates.length > 0 && (
+                          <div className="absolute bottom-full mb-1 left-0 right-0 bg-white border border-gray-200 rounded-xl shadow-lg z-50 max-h-44 overflow-y-auto">
+                            {mentionCandidates.map((c, idx) => (
+                              <button
+                                key={c.uid}
+                                type="button"
+                                onMouseDown={(e) => { e.preventDefault(); insertMention(c); }}
+                                className={`w-full flex items-center gap-2 px-3 py-2 text-left transition ${idx === mentionHighlightIdx ? 'bg-blue-50' : 'hover:bg-gray-50'}`}
+                              >
+                                <div className="w-7 h-7 rounded-full bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+                                  {c.name.charAt(0).toUpperCase()}
+                                </div>
+                                <span className="text-sm font-medium text-gray-900">{c.name}</span>
+                              </button>
+                            ))}
+                          </div>
+                        )}
                         <input
+                          ref={messageInputRef}
                           type="text"
                           value={messageText}
-                          onChange={(e) => setMessageText(e.target.value)}
+                          onChange={handleMessageInputChange}
+                          onKeyDown={handleInputKeyDown}
                           placeholder={`Il tuo messaggio per ${selectedConvData?.type === 'team' ? selectedConvData.teamName : otherUserName}`}
                           className="w-full px-4 py-2.5 bg-[#F5F6F8] border-0 rounded-full text-[15px] text-[#1B3A5C] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#0C8CE9]/30"
                           disabled={sending || uploadingFiles.length > 0}

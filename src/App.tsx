@@ -74,7 +74,8 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   }
 
   // Altrimenti, se l'email non è verificata, reindirizza alla pagina di verifica
-  if (!user.emailVerified) {
+  // In dev mode, bypassa la verifica email per testing locale
+  if (!user.emailVerified && !import.meta.env.DEV) {
     return <Navigate to="/verify-email" replace />
   }
   

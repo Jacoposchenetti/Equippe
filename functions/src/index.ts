@@ -505,6 +505,11 @@ export const sendCustomVerificationEmail = functions
       if (error instanceof functions.https.HttpsError) {
         throw error;
       }
+      // Intercetta il rate limit di Firebase Auth (TOO_MANY_ATTEMPTS_TRY_LATER)
+      if (error?.errorInfo?.message?.includes('TOO_MANY_ATTEMPTS') || error?.message?.includes('TOO_MANY_ATTEMPTS')) {
+        console.warn('⚠️ Rate limit Firebase Auth per utente', uid);
+        throw new functions.https.HttpsError('resource-exhausted', 'Troppe richieste. Attendi 5 minuti prima di richiedere una nuova email.');
+      }
       console.error('❌ Errore invio email verifica custom:', error);
       throw new functions.https.HttpsError('internal', 'Errore invio email di verifica');
     }

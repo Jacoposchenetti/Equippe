@@ -22,7 +22,12 @@ const MapSelector = lazy(() => import('@/components/MapSelectorClient'));
 const FEATURES_OPTIONS = [
   'Ascensore', 'Wi-Fi', 'Aria condizionata', 'Riscaldamento',
   'Sala d\'attesa', 'Parcheggio', 'Accessibile disabili', 'Arredato',
-  'Insonorizzato', 'Bagno privato', 'Cucina/Angolo cottura',
+  'Insonorizzazione', 'Bagno privato', 'Cucina/Angolo cottura',
+];
+
+const DOTAZIONI_OPTIONS = [
+  'Lettino/poltrona inclusi', 'Lettino/poltrona da portare',
+  'Connessione internet', 'Climatizzazione',
 ];
 
 const ADMIN_EMAILS = ['admin@tuaequipe.it', 'jschenetti@gmail.com', 'udemyteam2025@gmail.com', 'martinamaccara@icloud.com', 'martinamaccarana@icloud.com'];
@@ -234,8 +239,7 @@ export default function MarketplaceCreatePage() {
                       className="input-field"
                     >
                       <option value="studio">Studio</option>
-                      <option value="ufficio">Ufficio</option>
-                      <option value="stanza">Stanza</option>
+                      <option value="locale_intero">Locale intero</option>
                     </select>
                   </Field>
                   <Field label="Area (m²)">
@@ -396,6 +400,25 @@ export default function MarketplaceCreatePage() {
             <Section title="Caratteristiche">
               <div className="flex flex-wrap gap-2">
                 {FEATURES_OPTIONS.map(f => (
+                  <button
+                    key={f}
+                    type="button"
+                    onClick={() => toggleFeature(f)}
+                    className={`px-3 py-1.5 rounded-full text-sm border transition ${
+                      form.features.includes(f)
+                        ? 'bg-blue-50 border-blue-300 text-blue-700'
+                        : 'border-gray-300 text-gray-600 hover:border-gray-400'
+                    }`}
+                  >
+                    {f}
+                  </button>
+                ))}
+              </div>
+            </Section>
+
+            <Section title="Dotazioni e attrezzature">
+              <div className="flex flex-wrap gap-2">
+                {DOTAZIONI_OPTIONS.map(f => (
                   <button
                     key={f}
                     type="button"

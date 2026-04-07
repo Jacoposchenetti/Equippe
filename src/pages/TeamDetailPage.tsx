@@ -925,7 +925,7 @@ export default function TeamDetailPage() {
                           {isCurrentUser && <span className="bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded text-xs font-bold">Tu</span>}
                         </div>
                         <div className="flex flex-wrap gap-1 mb-1.5">
-                          {member.profile.specializzazioni.map((spec) => (
+                          {(member.profile.specializzazioni || []).map((spec) => (
                             <span key={spec} className="text-xs bg-green-50 text-green-700 border border-green-100 px-2 py-0.5 rounded-full">{spec}</span>
                           ))}
                         </div>

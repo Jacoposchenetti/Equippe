@@ -43,6 +43,7 @@ export default function TeamsPage() {
   const [receivedInvites, setReceivedInvites] = useState<InviteWithData[]>([]);
   const [sentInvites, setSentInvites] = useState<InviteWithData[]>([]);
   const [inviteTab, setInviteTab] = useState<'received' | 'sent'>('received');
+  const [inviteSort, setInviteSort] = useState<'desc' | 'asc'>('desc');
 
   // UI state
   const [activeTab, setActiveTab] = useState<'teams' | 'invites'>('teams');
@@ -229,7 +230,11 @@ export default function TeamsPage() {
     );
   }
 
-  const displayInvites = inviteTab === 'received' ? receivedInvites : sentInvites;
+  const displayInvites = [...(inviteTab === 'received' ? receivedInvites : sentInvites)].sort((a, b) => {
+    const tA = a.createdAt?.toDate?.().getTime() ?? 0;
+    const tB = b.createdAt?.toDate?.().getTime() ?? 0;
+    return inviteSort === 'desc' ? tB - tA : tA - tB;
+  });
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -385,7 +390,7 @@ export default function TeamsPage() {
           <>
             {/* Sub-tab ricevuti / inviati */}
             <div className="bg-white rounded-xl shadow-sm mb-6">
-              <div className="flex border-b border-gray-200">
+              <div className="flex items-center border-b border-gray-200">
                 <button
                   onClick={() => setInviteTab('received')}
                   className={`flex-1 px-6 py-4 font-medium transition relative ${
@@ -415,6 +420,14 @@ export default function TeamsPage() {
                       {sentInvites.length}
                     </span>
                   )}
+                </button>
+                {/* Ordina per data */}
+                <button
+                  onClick={() => setInviteSort(s => s === 'desc' ? 'asc' : 'desc')}
+                  className="ml-auto mr-3 flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition whitespace-nowrap flex-shrink-0"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12" /></svg>
+                  {inviteSort === 'desc' ? 'Più recente' : 'Meno recente'}
                 </button>
               </div>
             </div>

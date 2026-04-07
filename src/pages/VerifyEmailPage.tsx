@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import Header from '@/components/Header';
 import { auth, functions } from '@/lib/firebase';
 import { signOut } from 'firebase/auth';
 import { httpsCallable } from 'firebase/functions';
@@ -40,13 +39,20 @@ export default function VerifyEmailPage() {
     } catch (err: any) {
       console.error('Errore invio email di verifica:', err);
       
-      // Gestisci errori specifici
-      if (err.code === 'auth/too-many-requests') {
-        setError('Troppe richieste. Attendi qualche minuto prima di provare di nuovo.');
-      } else if (err.code === 'auth/user-not-found') {
+      // Gestisci errori specifici - httpsCallable wrappa il codice in functions/
+      const code = err?.code || '';
+      const message = err?.message || '';
+      
+      if (code === 'functions/resource-exhausted' || message.includes('Troppe richieste') || message.includes('TOO_MANY')) {
+        setCooldown(300); // 5 minuti
+        setError('Troppe richieste. Riprova tra 5 minuti.');
+      } else if (code === 'auth/too-many-requests') {
+        setCooldown(300);
+        setError('Troppe richieste. Riprova tra 5 minuti.');
+      } else if (code === 'auth/user-not-found') {
         setError('Utente non trovato. Riprova ad effettuare il login.');
         setTimeout(() => navigate('/login'), 2000);
-      } else if (err.code === 'auth/network-request-failed') {
+      } else if (code === 'auth/network-request-failed') {
         setError('Errore di connessione. Controlla la tua connessione internet.');
       } else {
         setError('Errore nell\'invio dell\'email. Riprova più tardi.');
@@ -62,12 +68,23 @@ export default function VerifyEmailPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Header />
-      <div className="max-w-2xl mx-auto px-6 py-12">
-        <div className="bg-white rounded-lg shadow p-8">
-          <h1 className="text-2xl font-bold mb-4">Verifica la tua email</h1>
-          <p className="mb-4 text-gray-700">Abbiamo inviato un'email di verifica a <strong>{user?.email}</strong>. Clicca sul link nella email per verificare il tuo account.</p>
+    <div className="min-h-screen bg-gray-50 flex flex-col">
+      {/* Logo header minimal, nessuna navigazione */}
+      <div className="py-6 flex justify-center">
+        <span className="text-2xl font-bold text-teal-600">tuaequipe</span>
+      </div>
+
+      <div className="flex-1 flex items-start justify-center px-6 pt-8">
+        <div className="w-full max-w-md bg-white rounded-xl shadow-sm p-8">
+          {/* Step indicator */}
+          <div className="flex items-center justify-center gap-2 mb-6">
+            <div className="h-1.5 w-10 rounded-full bg-teal-600" />
+            <div className="h-1.5 w-10 rounded-full bg-teal-600" />
+            <div className="h-1.5 w-10 rounded-full bg-teal-600" />
+          </div>
+
+          <h1 className="text-2xl font-bold mb-2 text-center">Verifica la tua email</h1>
+          <p className="mb-6 text-gray-600 text-center text-sm">Abbiamo inviato un link di verifica a <strong>{user?.email}</strong>. Clicca sul link per attivare il tuo account.</p>
 
           <div className="space-y-4">
             {error && (
@@ -80,32 +97,28 @@ export default function VerifyEmailPage() {
               <button
                 onClick={handleResend}
                 disabled={loading || sent || cooldown > 0}
-                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed"
+                className="w-full px-4 py-3 bg-teal-600 text-white rounded-lg hover:bg-teal-700 disabled:opacity-60 disabled:cursor-not-allowed font-medium text-sm"
               >
-                {loading ? 'Invio...' : cooldown > 0 ? `Attendi ${cooldown}s` : 'Rimanda email di verifica'}
+                {loading ? 'Invio...' : cooldown > 0 ? `Attendi ${Math.floor(cooldown / 60)}:${(cooldown % 60).toString().padStart(2, '0')}` : 'Rimanda email di verifica'}
               </button>
               {sent && <span className="ml-3 text-sm text-green-600">✓ Email inviata! Controlla la tua casella di posta</span>}
               {cooldown > 0 && !sent && (
                 <div className="mt-2 text-sm text-gray-600">
-                  Puoi inviare un'altra email tra {cooldown} secondi
+                  Puoi inviare un'altra email tra {Math.floor(cooldown / 60)}:{(cooldown % 60).toString().padStart(2, '0')}
                 </div>
               )}
             </div>
 
-            <div>
-              <button
-                onClick={() => navigate('/')}
-                className="px-4 py-2 bg-gray-100 text-gray-800 rounded-md mr-3"
-              >Torna alla home</button>
+            <div className="flex gap-3">
               <button
                 onClick={handleLogout}
-                className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
+                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 text-sm"
               >Esci</button>
             </div>
 
-            <div className="text-sm text-gray-500">
-              Se non ricevi l'email controlla la cartella spam o attendi qualche minuto. Se il problema persiste, contatta il supporto.
-            </div>
+            <p className="text-xs text-gray-400 text-center">
+              Non hai ricevuto l'email? Controlla la cartella spam o attendi qualche minuto.
+            </p>
           </div>
         </div>
       </div>

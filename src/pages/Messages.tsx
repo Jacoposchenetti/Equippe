@@ -70,10 +70,44 @@ export default function MessagesPage() {
   const [mentionQuery, setMentionQuery] = useState<string | null>(null);
   const [mentionStartPos, setMentionStartPos] = useState(0);
   const [mentionHighlightIdx, setMentionHighlightIdx] = useState(0);
+  // Delete-for-me state
+  const [deletedMessages, setDeletedMessages] = useState<Set<string>>(new Set());
+  const [contextMenu, setContextMenu] = useState<{ messageId: string; x: number; y: number } | null>(null);
+  const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messageInputRef = useRef<HTMLInputElement>(null);
+
+  // Load deleted messages from localStorage
+  useEffect(() => {
+    if (!user?.uid) return;
+    try {
+      const stored = localStorage.getItem(`deletedMessages_${user.uid}`);
+      if (stored) {
+        setDeletedMessages(new Set(JSON.parse(stored)));
+      }
+    } catch {}
+  }, [user?.uid]);
+
+  const deleteMessageForMe = (messageId: string) => {
+    if (!user?.uid) return;
+    setDeletedMessages(prev => {
+      const next = new Set(prev);
+      next.add(messageId);
+      localStorage.setItem(`deletedMessages_${user.uid}`, JSON.stringify([...next]));
+      return next;
+    });
+    setContextMenu(null);
+  };
+
+  // Close context menu on outside click
+  useEffect(() => {
+    if (!contextMenu) return;
+    const handleClick = () => setContextMenu(null);
+    window.addEventListener('click', handleClick);
+    return () => window.removeEventListener('click', handleClick);
+  }, [contextMenu]);
 
   useEffect(() => {
     if (!user?.uid || !userProfile) {
@@ -1010,7 +1044,7 @@ export default function MessagesPage() {
                   <div ref={messagesContainerRef} className="flex-1 overflow-y-auto px-4 py-4 bg-white">
                     {(() => {
                       let lastDateKey = '';
-                      return messages.map((msg) => {
+                      return messages.filter(msg => !deletedMessages.has(msg.id)).map((msg) => {
                         const isMine = msg.senderId === user?.uid;
                         const isTeamChat = selectedConvData?.type === 'team';
                         const msgDate = msg.createdAt.toDate();
@@ -1028,7 +1062,31 @@ export default function MessagesPage() {
                                 </span>
                               </div>
                             )}
-                            <div className={`flex ${isMine ? 'justify-end' : 'justify-start'} mb-2`}>
+                            <div
+                              className={`flex ${isMine ? 'justify-end' : 'justify-start'} mb-2 relative`}
+                              onContextMenu={(e) => {
+                                e.preventDefault();
+                                setContextMenu({ messageId: msg.id, x: e.clientX, y: e.clientY });
+                              }}
+                              onTouchStart={(e) => {
+                                const touch = e.touches[0];
+                                longPressTimerRef.current = setTimeout(() => {
+                                  setContextMenu({ messageId: msg.id, x: touch.clientX, y: touch.clientY });
+                                }, 500);
+                              }}
+                              onTouchEnd={() => {
+                                if (longPressTimerRef.current) {
+                                  clearTimeout(longPressTimerRef.current);
+                                  longPressTimerRef.current = null;
+                                }
+                              }}
+                              onTouchMove={() => {
+                                if (longPressTimerRef.current) {
+                                  clearTimeout(longPressTimerRef.current);
+                                  longPressTimerRef.current = null;
+                                }
+                              }}
+                            >
                               <div className="flex items-end gap-2 max-w-[80%]">
                                 {!isMine && isTeamChat && (
                                   <div 
@@ -1277,6 +1335,28 @@ export default function MessagesPage() {
       <div className="hidden md:block">
         <Footer />
       </div>
+
+      {/* Context menu elimina messaggio per me */}
+      {contextMenu && (
+        <div
+          className="fixed z-[110] bg-white rounded-xl shadow-lg border border-gray-200 py-1 min-w-[180px]"
+          style={{
+            left: Math.min(contextMenu.x, window.innerWidth - 200),
+            top: Math.min(contextMenu.y, window.innerHeight - 60),
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <button
+            className="w-full flex items-center gap-3 px-4 py-2.5 text-left text-[14px] text-red-600 hover:bg-red-50 transition"
+            onClick={() => deleteMessageForMe(contextMenu.messageId)}
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
+            Elimina per me
+          </button>
+        </div>
+      )}
 
       {/* Lightbox immagine */}
       {lightboxUrl && (

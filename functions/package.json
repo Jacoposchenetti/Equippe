@@ -18,11 +18,14 @@
     "equippe-mvp": "file:..",
     "firebase-admin": "^13.0.0",
     "firebase-functions": "^6.0.0",
-    "resend": "^6.8.0"
+    "pdfkit": "^0.15.0",
+    "resend": "^6.8.0",
+    "xmlbuilder2": "^3.1.1"
   },
   "devDependencies": {
     "@types/cheerio": "^0.22.35",
     "@types/node": "^20.10.6",
+    "@types/pdfkit": "^0.13.5",
     "typescript": "^5.3.3"
   },
   "private": true

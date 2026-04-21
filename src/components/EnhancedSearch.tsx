@@ -16,6 +16,8 @@ export interface SearchFilters {
   raggioKm?: number;
   indirizzo?: string;
   remoto: boolean;
+  lingua?: string;
+  anniEsperienzaMin?: number;
 }
 
 interface EnhancedSearchProps {
@@ -34,6 +36,8 @@ export default function EnhancedSearch({ onSearch, availableSpecializations = []
   const [raggioKm, setRaggioKm] = useState<number>(5);
   const [indirizzo, setIndirizzo] = useState<string>(initialAddress || '');
   const [remoto, setRemoto] = useState<boolean>(false);
+  const [lingua, setLingua] = useState<string>('');
+  const [anniEsperienzaMin, setAnniEsperienzaMin] = useState<number>(0);
 
   // Reset area interesse quando cambia specializzazione
   useEffect(() => {
@@ -50,8 +54,10 @@ export default function EnhancedSearch({ onSearch, availableSpecializations = []
       raggioKm,
       indirizzo: indirizzo || undefined,
       remoto,
+      lingua: lingua || undefined,
+      anniEsperienzaMin: anniEsperienzaMin > 0 ? anniEsperienzaMin : undefined,
     });
-  }, [searchType, specializzazione, areaInteresse, coordinate, raggioKm, indirizzo, remoto]);
+  }, [searchType, specializzazione, areaInteresse, coordinate, raggioKm, indirizzo, remoto, lingua, anniEsperienzaMin]);
 
   // Specializzazioni per professionisti
   const professionistaSpecs = [
@@ -203,12 +209,60 @@ export default function EnhancedSearch({ onSearch, availableSpecializations = []
               <span>50 km</span>
             </div>
           </div>
+          {/* Lingua parlata */}
+          {searchType === 'professionista' && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Lingua parlata
+              </label>
+              <select
+                value={lingua}
+                onChange={(e) => setLingua(e.target.value)}
+                className="w-full border border-gray-300 rounded-lg px-3 py-3 text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">Tutte le lingue</option>
+                {[
+                  'Italiano', 'Inglese', 'Francese', 'Spagnolo', 'Tedesco', 'Portoghese',
+                  'Russo', 'Cinese', 'Giapponese', 'Arabo', 'Olandese', 'Polacco',
+                  'Rumeno', 'Greco', 'Turco', 'Hindi', 'Coreano', 'Svedese', 'Norvegese',
+                  'Danese', 'Finlandese', 'Ungherese', 'Ceco', 'Slovacco', 'Croato',
+                  'Serbo', 'Bulgaro', 'Ucraino', 'Ebraico', 'Persiano', 'LIS', 'Altro'
+                ].map(l => (
+                  <option key={l} value={l}>{l}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {/* Anni di esperienza minimi */}
+          {searchType === 'professionista' && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Esperienza minima: <strong>{anniEsperienzaMin > 0 ? `${anniEsperienzaMin} anni` : 'qualsiasi'}</strong>
+              </label>
+              <input
+                type="range"
+                min="0"
+                max="30"
+                step="1"
+                value={anniEsperienzaMin}
+                onChange={(e) => setAnniEsperienzaMin(Number(e.target.value))}
+                className="w-full"
+              />
+              <div className="flex justify-between text-xs text-gray-500 mt-1">
+                <span>Qualsiasi</span>
+                <span>15 anni</span>
+                <span>30+ anni</span>
+              </div>
+            </div>
+          )}
+
         </div>
 
         {/* Right: map (only when a location is selected) */}
         {coordinate && (
           <div className="lg:w-1/2">
-            <div className="h-full min-h-[280px] rounded-lg overflow-hidden border">
+            <div className="h-[280px] lg:h-full rounded-lg overflow-hidden border">
               <MapSelector
                 coordinate={coordinate}
                 raggioKm={raggioKm}

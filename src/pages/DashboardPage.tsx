@@ -259,12 +259,41 @@ export default function DashboardPage() {
         }
       }
 
-      // Se non ha posizioni nel raggio, escludi — includi solo se ha remoto E la checkbox è attiva
-      if (!hasLocationInRange) {
+      // Se non ha nessuna coordinata GPS valida, includi comunque (non possiamo calcolare distanza)
+      const hasAnyLocationData = (p.profile.studi && p.profile.studi.length > 0 && p.profile.studi.some(s =>
+        s.coordinate && s.coordinate.lat !== 0 && s.coordinate.lng !== 0
+      )) || (p.profile.location && p.profile.location.lat && p.profile.location.lat !== 0 && p.profile.location.lng && p.profile.location.lng !== 0);
+
+      if (!hasLocationInRange && hasAnyLocationData) {
+        // Ha dati di location ma non è nel raggio — includi solo se lavora da remoto e il filtro lo prevede
         const hasRemoto = p.profile.studi?.some(s => s.remoto);
         if (!hasRemoto || !currentFilters.remoto) {
           return false;
         }
+      }
+      // Se non ha nessun dato location, lascialo passare comunque
+    }
+
+    // Lingua parlata
+    if (currentFilters.lingua) {
+      const lingue = (p.profile as any).lingue as Array<{ lingua: string; livello: string }> | undefined;
+      if (!lingue || !lingue.some(l => l.lingua === currentFilters.lingua)) {
+        return false;
+      }
+    }
+
+    // Anni di esperienza minimi (basato sul campo anniEsperienza delle professioni)
+    if (currentFilters.anniEsperienzaMin && currentFilters.anniEsperienzaMin > 0) {
+      const profCoct = [
+        ...(p.profile.professioniConDocumenti || []),
+        ...(p.profile.professioniPending || []),
+      ];
+      const maxAnni = profCoct.reduce((max, prof) => {
+        const anni = parseInt(prof.anniEsperienza || '0', 10);
+        return isNaN(anni) ? max : Math.max(max, anni);
+      }, 0);
+      if (maxAnni < currentFilters.anniEsperienzaMin) {
+        return false;
       }
     }
 
@@ -418,21 +447,17 @@ export default function DashboardPage() {
               </div>
             ) : (
               filteredProfessionisti.map((p, index) => (
-                <div key={p.uid} className="bg-white rounded-xl shadow-sm hover:shadow-md transition overflow-hidden">
+                <div key={p.uid} className="bg-white rounded-xl shadow-sm hover:shadow-md transition overflow-hidden relative">
                   <div className="p-6">
-                    {/* Badge verifica documentazione */}
+                    {/* Badge verifica documentazione - icona con tooltip */}
                     {p.profile.verificationInfo?.status !== 'approved' && (
-                      <div className="mb-3 px-3 py-2 bg-yellow-50 border border-yellow-200 rounded-lg flex items-start gap-2">
-                        <svg className="w-4 h-4 text-yellow-600 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                      <div className="absolute top-3 right-3 group">
+                        <svg className="w-5 h-5 text-yellow-500 cursor-help" fill="currentColor" viewBox="0 0 20 20">
                           <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
                         </svg>
-                        <div className="flex-1">
-                          <p className="text-xs font-medium text-yellow-800">
-                            Documentazione in verifica
-                          </p>
-                          <p className="text-xs text-yellow-700 mt-0.5">
-                            Profilo visibile ma non ancora validato
-                          </p>
+                        <div className="invisible group-hover:visible absolute right-0 top-7 z-10 w-48 px-3 py-2 bg-yellow-50 border border-yellow-200 rounded-lg shadow-lg text-xs">
+                          <p className="font-medium text-yellow-800">Documentazione in verifica</p>
+                          <p className="text-yellow-700 mt-0.5">Profilo visibile ma non ancora validato</p>
                         </div>
                       </div>
                     )}

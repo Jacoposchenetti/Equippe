@@ -433,6 +433,26 @@ export default function ProfilePage() {
           </div>
         )}
 
+        {/* Lingue Parlate */}
+        {profileUser.profile.lingue && profileUser.profile.lingue.length > 0 && (
+          <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+            <h2 className="text-xl font-bold text-gray-900 mb-4">Lingue Parlate</h2>
+            <div className="flex flex-wrap gap-2">
+              {profileUser.profile.lingue.map((lingua, index) => (
+                <span
+                  key={index}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 border border-indigo-200 text-indigo-800 rounded-full text-sm font-medium"
+                >
+                  {lingua.lingua}
+                  <span className="px-1.5 py-0.5 bg-indigo-200 text-indigo-700 rounded-full text-xs font-semibold">
+                    {lingua.livello}
+                  </span>
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Studi e Sedi di Lavoro */}
         {profileUser.profile.studi && profileUser.profile.studi.length > 0 && (
           <div className="bg-white rounded-lg shadow-md p-6 mb-6">

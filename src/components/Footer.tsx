@@ -24,7 +24,7 @@ export default function Footer() {
           <div>
             <h4 className="font-semibold mb-4">Servizi</h4>
             <ul className="space-y-3 text-sm">
-              <li><Link to="/dashboard" className="text-gray-400 hover:text-white transition">Cerca Professionisti</Link></li>
+              <li><Link to="/trova" className="text-gray-400 hover:text-white transition">Trova un Professionista</Link></li>
               <li><Link to="/teams" className="text-gray-400 hover:text-white transition">Le Mie equipe</Link></li>
               <li><Link to="/messages" className="text-gray-400 hover:text-white transition">Messaggi</Link></li>
               <li><Link to="/referrals" className="text-gray-400 hover:text-white transition">Pazienti</Link></li>

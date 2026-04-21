@@ -400,7 +400,7 @@ export default function WaitlistPage() {
           <Brand />
           <button onClick={scrollToForm}
             className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-md transition-colors">
-            Iscriviti gratis
+            Iscriviti ora
           </button>
         </div>
       </nav>
@@ -419,13 +419,9 @@ export default function WaitlistPage() {
                 <span className="text-blue-600">Costruisci la tua rete professionale</span> sanitaria.
               </h1>
               <p className="text-lg text-gray-600 mb-6 max-w-lg">
-                La prima piattaforma italiana dove psicologi, psichiatri, nutrizionisti e altri professionisti sanitari collaborano e rafforzano la propria attività clinica — gratuitamente.
+                La prima piattaforma italiana dove psicologi, psichiatri, nutrizionisti e altri professionisti sanitari collaborano e rafforzano la propria attività clinica.
               </p>
               <div className="flex flex-wrap gap-4 text-sm text-gray-500 mb-8">
-                <span className="flex items-center gap-1.5">
-                  <svg className="w-5 h-5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
-                  100% gratuito
-                </span>
                 <span className="flex items-center gap-1.5">
                   <svg className="w-5 h-5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
                   Solo professionisti verificati
@@ -437,7 +433,7 @@ export default function WaitlistPage() {
               </div>
               <button onClick={scrollToForm}
                 className="inline-flex items-center gap-2 px-8 py-3.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg shadow-lg transition-colors text-lg">
-                Iscriviti gratis alla waiting list
+                Iscriviti alla waiting list
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
                 </svg>
@@ -645,7 +641,7 @@ export default function WaitlistPage() {
         <div className="max-w-3xl mx-auto px-4 sm:px-6 text-center">
           <h2 className="text-2xl sm:text-3xl font-bold text-white mb-4">Non restare fuori dalla rete</h2>
           <p className="text-blue-100 mb-8 max-w-lg mx-auto">
-            I posti nella waiting list sono limitati. Iscriviti ora e sarai tra i primi a usare la piattaforma — gratis.
+            I posti nella waiting list sono limitati. Iscriviti ora e sarai tra i primi a usare la piattaforma.
           </p>
           <button onClick={scrollToForm}
             className="inline-flex items-center gap-2 px-8 py-3.5 bg-white text-blue-700 font-bold rounded-lg shadow-lg hover:bg-gray-50 transition-colors text-lg">

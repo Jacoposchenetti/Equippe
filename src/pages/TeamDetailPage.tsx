@@ -11,6 +11,7 @@ import MapSelector from '@/components/MapSelector';
 import { notifyTeamRequest, notifyTeamRequestAccepted, notifyTeamRemoval, notifyTeamAdminPromotion, notifyTeamMemberLeft, notifyTeamInviteReceived } from '@/lib/notifications';
 import { occupyPositions, freePositions } from '@/lib/teamPositions';
 import { useCanInteract } from '@/hooks/useCanInteract';
+import { uploadTeamPhoto, updateTeamPhoto, validateTeamPhoto } from '@/lib/teamPhotoUpload';
 
 export default function TeamDetailPage() {
   const { user, userProfile } = useAuth();
@@ -33,6 +34,8 @@ export default function TeamDetailPage() {
   const [inviteSearch, setInviteSearch] = useState('');
   const [pendingRequests, setPendingRequests] = useState<any[]>([]);
   const [teamConversation, setTeamConversation] = useState<Conversation | null>(null);
+  const photoInputRef = useRef<HTMLInputElement>(null);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
 
   // Stati per editing inline
   const [editingField, setEditingField] = useState<string | null>(null);
@@ -592,6 +595,32 @@ export default function TeamDetailPage() {
     }
   };
 
+  // Funzione per upload foto equipe
+  const handlePhotoSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !team) return;
+
+    const validationError = validateTeamPhoto(file);
+    if (validationError) {
+      showToast(validationError, 'error');
+      return;
+    }
+
+    setUploadingPhoto(true);
+    try {
+      const photoURL = await uploadTeamPhoto(file, teamId);
+      await updateTeamPhoto(teamId, photoURL, team.photoURL);
+      setTeam(prev => prev ? { ...prev, photoURL } : prev);
+      showToast('Foto aggiornata!', 'success');
+    } catch (error) {
+      console.error('Errore upload foto:', error);
+      showToast('Errore durante il caricamento della foto', 'error');
+    } finally {
+      setUploadingPhoto(false);
+      if (photoInputRef.current) photoInputRef.current.value = '';
+    }
+  };
+
   // Funzioni per editing inline
   const startEditing = (field: string, currentValue: string | any[]) => {
     setEditingField(field);
@@ -706,15 +735,28 @@ export default function TeamDetailPage() {
           <div className="p-6 sm:p-8">
             <div className="flex flex-col sm:flex-row gap-5 items-start">
               {/* Avatar */}
-              {team.photoURL ? (
-                <img src={team.photoURL} alt={team.name} className="w-20 h-20 rounded-xl object-cover flex-shrink-0 shadow" />
-              ) : (
-                <div className="w-20 h-20 rounded-xl bg-amber-100 flex items-center justify-center flex-shrink-0">
-                  <svg className="w-10 h-10 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                  </svg>
-                </div>
-              )}
+              <input type="file" ref={photoInputRef} accept="image/jpeg,image/png,image/gif,image/webp" className="hidden" onChange={handlePhotoSelect} />
+              <div className={`relative flex-shrink-0 ${isAdmin ? 'cursor-pointer group/avatar' : ''}`} onClick={() => isAdmin && !uploadingPhoto && photoInputRef.current?.click()}>
+                {team.photoURL ? (
+                  <img src={team.photoURL} alt={team.name} className="w-20 h-20 rounded-xl object-cover shadow" />
+                ) : (
+                  <div className="w-20 h-20 rounded-xl bg-amber-100 flex items-center justify-center">
+                    <svg className="w-10 h-10 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                    </svg>
+                  </div>
+                )}
+                {isAdmin && (
+                  <div className="absolute inset-0 bg-black/0 group-hover/avatar:bg-black/40 rounded-xl flex items-center justify-center transition-all">
+                    <svg className="w-6 h-6 text-white opacity-0 group-hover/avatar:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                  </div>
+                )}
+                {uploadingPhoto && (
+                  <div className="absolute inset-0 bg-black/50 rounded-xl flex items-center justify-center">
+                    <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  </div>
+                )}
+              </div>
               <div className="flex-1 min-w-0">
                 {/* Nome – editabile admin */}
                 {isAdmin && editingField === 'name' ? (
@@ -734,12 +776,11 @@ export default function TeamDetailPage() {
                   </div>
                 ) : (
                   <div className="flex items-center gap-2 mb-2">
-                    <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">{team.name}</h1>
-                    {isAdmin && (
-                      <button onClick={() => startEditing('name', team.name || '')} className="p-1 text-gray-400 hover:text-amber-500 transition rounded" title="Modifica nome">
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
-                      </button>
-                    )}
+                    <h1
+                      className={`text-2xl sm:text-3xl font-bold text-gray-900 ${isAdmin ? 'cursor-pointer hover:text-amber-700 transition-colors border-b border-transparent hover:border-amber-300' : ''}`}
+                      onClick={() => isAdmin && startEditing('name', team.name || '')}
+                      title={isAdmin ? 'Clicca per modificare' : undefined}
+                    >{team.name}</h1>
                   </div>
                 )}
                 {/* Descrizione – editabile admin */}
@@ -761,12 +802,11 @@ export default function TeamDetailPage() {
                   </div>
                 ) : (
                   <div className="flex items-start gap-2 mb-4">
-                    <p className="text-gray-600 flex-1">{team.description || <span className="italic text-gray-400">Nessuna descrizione</span>}</p>
-                    {isAdmin && (
-                      <button onClick={() => startEditing('description', team.description || '')} className="p-1 text-gray-400 hover:text-amber-500 transition rounded flex-shrink-0 mt-0.5" title="Modifica descrizione">
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
-                      </button>
-                    )}
+                    <p
+                      className={`text-gray-600 flex-1 ${isAdmin ? 'cursor-pointer hover:text-amber-700 transition-colors border-b border-transparent hover:border-amber-300' : ''}`}
+                      onClick={() => isAdmin && startEditing('description', team.description || '')}
+                      title={isAdmin ? 'Clicca per modificare' : undefined}
+                    >{team.description || <span className="italic text-gray-400">{isAdmin ? 'Clicca per aggiungere una descrizione' : 'Nessuna descrizione'}</span>}</p>
                   </div>
                 )}
                 {/* Stats */}
@@ -798,19 +838,6 @@ export default function TeamDetailPage() {
                 </div>
               </div>
             </div>
-            {/* Specializzazioni del team */}
-            {(() => {
-              const allSpec = members.flatMap(m => m.profile?.specializzazioni || []);
-              const profMap: Record<string, string> = { 'Psicologo': 'Psicologia', 'Psicoterapeuta': 'Psicoterapia', 'Psichiatra': 'Psichiatria', 'Nutrizionista': 'Nutrizione', 'Dietologo': 'Dietetica', 'Logopedista': 'Logopedia', 'Neuropsicomotricista': 'Neuropsicomotricità' };
-              const discs = [...new Set(allSpec.map(s => profMap[s] || s))];
-              return discs.length > 0 ? (
-                <div className="mt-5 pt-4 border-t border-gray-100 flex flex-wrap gap-2">
-                  {discs.map(d => (
-                    <span key={d} className="bg-amber-50 text-amber-700 border border-amber-200 px-3 py-1 rounded-full text-sm font-medium">{d}</span>
-                  ))}
-                </div>
-              ) : null;
-            })()}
             {/* Azioni */}
             <div className="mt-5 pt-4 border-t border-gray-100 flex flex-wrap gap-2.5">
               {isMember && (
@@ -961,8 +988,7 @@ export default function TeamDetailPage() {
                 <p className="text-xs text-gray-500 mt-0.5">Professionisti cercati per il team</p>
               </div>
               {isAdmin && editingField !== 'positions' && (
-                <button onClick={() => startEditing('positions', team.ruoliCercati || [])} className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-amber-700 bg-amber-50 hover:bg-amber-100 rounded-lg transition">
-                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                <button onClick={() => startEditing('positions', team.ruoliCercati || [])} className="px-3 py-1.5 text-sm font-medium text-amber-700 bg-amber-50 hover:bg-amber-100 rounded-lg transition">
                   Modifica
                 </button>
               )}
@@ -1169,8 +1195,7 @@ export default function TeamDetailPage() {
                 </p>
               </div>
               {isAdmin && editingField !== 'location' && (
-                <button onClick={() => startEditing('location', [])} className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-amber-700 bg-amber-50 hover:bg-amber-100 rounded-lg transition">
-                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                <button onClick={() => startEditing('location', [])} className="px-3 py-1.5 text-sm font-medium text-amber-700 bg-amber-50 hover:bg-amber-100 rounded-lg transition">
                   Modifica
                 </button>
               )}

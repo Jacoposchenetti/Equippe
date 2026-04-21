@@ -45,6 +45,22 @@ import MarketplaceCreatePage from './pages/MarketplaceCreatePage'
 import MarketplaceDetailPage from './pages/MarketplaceDetailPage'
 import MarketplaceMyPage from './pages/MarketplaceMyPage'
 import MarketplaceEditPage from './pages/MarketplaceEditPage'
+import AvailabilityPage from './pages/AvailabilityPage'
+import AppointmentsPage from './pages/AppointmentsPage'
+import PublicProfilePage from './pages/PublicProfilePage'
+import CancelAppointmentPage from './pages/CancelAppointmentPage'
+import TrovaPage from './pages/TrovaPage'
+import PazienteLoginPage from './pages/PazienteLoginPage'
+import PazienteRegistratiPage from './pages/PazienteRegistratiPage'
+import PazienteAppuntamentiPage from './pages/PazienteAppuntamentiPage'
+import PatientRoute from './components/PatientRoute'
+
+// Fatturazione
+import ElencoFatturePage from './pages/ElencoFatturePage'
+import FatturazioneSetupPage from './pages/FatturazioneSetupPage'
+import ClientiPage from './pages/ClientiPage'
+import NuovaFatturaPage from './pages/NuovaFatturaPage'
+import ReportPage from './pages/ReportPage'
 
 // Protected Route Component
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -79,6 +95,28 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
     return <Navigate to="/verify-email" replace />
   }
   
+  return <>{children}</>
+}
+
+// Admin emails (same list as AdminVerificationsPage)
+const ADMIN_EMAILS = ['admin@tuaequipe.it', 'jschenetti@gmail.com', 'udemyteam2025@gmail.com', 'martinamaccara@icloud.com', 'martinamaccarana@icloud.com'];
+
+// Admin-only Route: redirects non-admins to dashboard
+function AdminRoute({ children }: { children: React.ReactNode }) {
+  const { user, loading } = useAuth()
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-xl">Caricamento...</div>
+      </div>
+    )
+  }
+
+  if (!user || !user.email || !ADMIN_EMAILS.includes(user.email)) {
+    return <Navigate to="/dashboard" replace />
+  }
+
   return <>{children}</>
 }
 
@@ -198,6 +236,33 @@ function App() {
           </ProtectedRoute>
         } />
         
+        {/* Fatturazione Routes - admin only */}
+        <Route path="/fatturazione" element={
+          <AdminRoute>
+            <ElencoFatturePage />
+          </AdminRoute>
+        } />
+        <Route path="/fatturazione/setup" element={
+          <AdminRoute>
+            <FatturazioneSetupPage />
+          </AdminRoute>
+        } />
+        <Route path="/fatturazione/clienti" element={
+          <AdminRoute>
+            <ClientiPage />
+          </AdminRoute>
+        } />
+        <Route path="/fatturazione/nuova" element={
+          <AdminRoute>
+            <NuovaFatturaPage />
+          </AdminRoute>
+        } />
+        <Route path="/fatturazione/report" element={
+          <AdminRoute>
+            <ReportPage />
+          </AdminRoute>
+        } />
+        
         {/* Marketplace Routes */}
         <Route path="/marketplace" element={
           <ProtectedRoute>
@@ -242,6 +307,34 @@ function App() {
           </ProtectedRoute>
         } />
         
+        {/* Public professional profile (no auth required) */}
+        <Route path="/p/:uid" element={<PublicProfilePage />} />
+
+        {/* Patient appointment cancellation (no auth required) */}
+        <Route path="/cancella" element={<CancelAppointmentPage />} />
+
+        {/* Patient-facing directory and area riservata */}
+        <Route path="/trova" element={<TrovaPage />} />
+        <Route path="/paziente/login" element={<PazienteLoginPage />} />
+        <Route path="/paziente/registrati" element={<PazienteRegistratiPage />} />
+        <Route path="/paziente/appuntamenti" element={
+          <PatientRoute>
+            <PazienteAppuntamentiPage />
+          </PatientRoute>
+        } />
+
+        {/* Booking / Agenda Routes */}
+        <Route path="/disponibilita" element={
+          <ProtectedRoute>
+            <AvailabilityPage />
+          </ProtectedRoute>
+        } />
+        <Route path="/appuntamenti" element={
+          <ProtectedRoute>
+            <AppointmentsPage />
+          </ProtectedRoute>
+        } />
+
         {/* Waitlist / Default redirect */}
         <Route path="/" element={
           WAITLIST_MODE ? <WaitlistPage /> : <Navigate to="/dashboard" replace />

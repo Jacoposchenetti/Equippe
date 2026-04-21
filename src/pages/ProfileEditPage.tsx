@@ -12,7 +12,7 @@ import Header from '@/components/Header';
 import LocationAutocomplete from '@/components/LocationAutocomplete';
 import DocumentiProfessioneForm from '@/components/DocumentiProfessioneForm';
 import { CurriculumEditor } from '@/components/CurriculumSection';
-import { ProfessioneConDocumenti, EsperienzaProfessionale, Formazione, Certificazione } from '@/types/equippe';
+import { ProfessioneConDocumenti, EsperienzaProfessionale, Formazione, Certificazione, LinguaParlata, LivelloLingua } from '@/types/equippe';
 import { getConfigurazioneProfessione } from '@/lib/professioni';
 
 const SPECIALIZZAZIONI = [
@@ -24,6 +24,16 @@ const SPECIALIZZAZIONI = [
   'Logopedista',
   
 ];
+
+const LINGUE_DISPONIBILI = [
+  'Italiano', 'Inglese', 'Francese', 'Spagnolo', 'Tedesco', 'Portoghese',
+  'Russo', 'Cinese', 'Giapponese', 'Arabo', 'Olandese', 'Polacco',
+  'Rumeno', 'Greco', 'Turco', 'Hindi', 'Coreano', 'Svedese', 'Norvegese',
+  'Danese', 'Finlandese', 'Ungherese', 'Ceco', 'Slovacco', 'Croato',
+  'Serbo', 'Bulgaro', 'Ucraino', 'Ebraico', 'Persiano', 'LIS', 'Altro'
+];
+
+const LIVELLI_LINGUA: LivelloLingua[] = ['Madrelingua', 'A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
 
 const TEMATICHE = [
   'Disturbi d\'ansia',
@@ -131,6 +141,9 @@ export default function EditProfilePage() {
   const [formazione, setFormazione] = useState<Formazione[]>([]);
   const [certificazioni, setCertificazioni] = useState<Certificazione[]>([]);
 
+  // Lingue parlate
+  const [lingue, setLingue] = useState<LinguaParlata[]>([{ lingua: 'Italiano', livello: 'Madrelingua' }]);
+
   // Auto-save
   const [autoSaveStatus, setAutoSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const isInitializedRef = useRef(false);
@@ -214,6 +227,13 @@ export default function EditProfilePage() {
       setEsperienze(userProfile.profile.esperienze || []);
       setFormazione(userProfile.profile.formazione || []);
       setCertificazioni(userProfile.profile.certificazioni || []);
+      
+      // Carica lingue parlate (default: Italiano Madrelingua)
+      setLingue(
+        userProfile.profile.lingue && userProfile.profile.lingue.length > 0
+          ? userProfile.profile.lingue
+          : [{ lingua: 'Italiano', livello: 'Madrelingua' }]
+      );
       
       // Carica professioni approvate e pending
       if (userProfile.profile.professioniConDocumenti && userProfile.profile.professioniConDocumenti.length > 0) {
@@ -541,6 +561,7 @@ export default function EditProfilePage() {
         'profile.esperienze': esperienze,
         'profile.formazione': formazione,
         'profile.certificazioni': certificazioni,
+        'profile.lingue': lingue,
         updatedAt: new Date()
       };
 
@@ -1140,6 +1161,78 @@ export default function EditProfilePage() {
               }
             }}
           />
+          </CollapsibleSection>
+
+          {/* Lingue Parlate */}
+          <CollapsibleSection title="Lingue Parlate" subtitle={lingue.map(l => `${l.lingua} (${l.livello})`).join(', ') || 'Nessuna lingua'}>
+            <p className="text-gray-600 mb-4">
+              Indica le lingue che parli e il tuo livello (scala CEFR). L'italiano è impostato come madrelingua di default.
+            </p>
+
+            <div className="space-y-3 mb-4">
+              {lingue.map((lingua, index) => (
+                <div key={index} className="flex items-center gap-3 p-3 border border-gray-200 rounded-lg">
+                  <div className="flex-1">
+                    <select
+                      value={lingua.lingua}
+                      onChange={(e) => {
+                        const updated = lingue.map((l, i) => i === index ? { ...l, lingua: e.target.value } : l);
+                        setLingue(updated);
+                      }}
+                      onBlur={triggerSave}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    >
+                      {LINGUE_DISPONIBILI.map(l => (
+                        <option key={l} value={l}>{l}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="w-40">
+                    <select
+                      value={lingua.livello}
+                      onChange={(e) => {
+                        const updated = lingue.map((l, i) => i === index ? { ...l, livello: e.target.value as LivelloLingua } : l);
+                        setLingue(updated);
+                      }}
+                      onBlur={triggerSave}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    >
+                      {LIVELLI_LINGUA.map(liv => (
+                        <option key={liv} value={liv}>{liv}</option>
+                      ))}
+                    </select>
+                  </div>
+                  {lingue.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const updated = lingue.filter((_, i) => i !== index);
+                        setLingue(updated);
+                        setTimeout(() => triggerSave(), 0);
+                      }}
+                      className="text-red-500 hover:text-red-700 p-1 flex-shrink-0"
+                      title="Rimuovi lingua"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                const alreadyUsed = new Set(lingue.map(l => l.lingua));
+                const next = LINGUE_DISPONIBILI.find(l => !alreadyUsed.has(l)) || 'Inglese';
+                setLingue([...lingue, { lingua: next, livello: 'B2' }]);
+              }}
+              className="w-full sm:w-auto px-4 py-2 border-2 border-dashed border-gray-300 text-gray-600 rounded-lg hover:border-blue-400 hover:text-blue-600 transition text-sm font-medium"
+            >
+              + Aggiungi Lingua
+            </button>
           </CollapsibleSection>
 
           {/* Link social */}

@@ -139,6 +139,10 @@ export default function NotificationBell() {
       case 'marketplace_offer_rejected':
         navigate('/marketplace/my');
         break;
+      case 'new_appointment':
+      case 'appointment_cancelled':
+        navigate('/appuntamenti');
+        break;
     }
   };
 
@@ -173,6 +177,10 @@ export default function NotificationBell() {
       case 'marketplace_offer_accepted':
         return '✅';
       case 'marketplace_offer_rejected':
+        return '❌';
+      case 'new_appointment':
+        return '📅';
+      case 'appointment_cancelled':
         return '❌';
       default:
         return '🔔';

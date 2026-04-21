@@ -7,6 +7,11 @@ import { Resend } from 'resend';
 export { getECMDropdownValues, getECMDisciplines, getECMEventDetail, downloadECMProgramma, searchECMLive } from './ecm';
 export { syncECMAutomatic, triggerECMSync, cleanupECMStaleEvents } from './ecmSync';
 
+// Fatturazione elettronica
+export { emettiFattura, rigeneraDownloadUrls, exportSTS, exportCommercialistaCSV,
+  creaFatturaBozza, segnaComePagata, inviaFatturaEmail,
+  anteprimaFatturaPDF, exportSTSTracked, resetInvioSTS } from './fatturazione';
+
 admin.initializeApp();
 
 // Lazy initialization di Resend per evitare errori durante il deploy
@@ -360,7 +365,7 @@ function wrapEmailTemplate(bodyHtml: string): string {
       <!-- Header con logo -->
       <div style="text-align: center; padding: 24px 0 16px 0; border-bottom: 2px solid #0066cc;">
         <a href="https://tuaequipe.it" target="_blank">
-          <img src="https://tuaequipe.it/logo-equipe.png" alt="tuaequipe.it" style="height: 48px; width: auto;" />
+          <img src="https://tuaequipe.it/logo-equipe.png" alt="tuaequipe.it" style="height: 180px; width: auto;" />
         </a>
       </div>
       <!-- Body -->
@@ -1353,7 +1358,7 @@ export const onWaitlistSignup = functions
   .document('waitlist/{docId}')
   .onCreate(async (snapshot) => {
     const data = snapshot.data();
-    const { nome, cognome, email, professione, citta } = data;
+    const { nome, cognome, email, professione, citta, telefono } = data;
 
     // 1. Email di conferma all'utente
     await sendEmail(
@@ -1393,6 +1398,7 @@ export const onWaitlistSignup = functions
             <table style="width: 100%; border-collapse: collapse; margin: 16px 0;">
               <tr><td style="padding: 8px; border-bottom: 1px solid #eee; color: #666;">Nome</td><td style="padding: 8px; border-bottom: 1px solid #eee;"><strong>${nome} ${cognome}</strong></td></tr>
               <tr><td style="padding: 8px; border-bottom: 1px solid #eee; color: #666;">Email</td><td style="padding: 8px; border-bottom: 1px solid #eee;"><strong>${email}</strong></td></tr>
+              <tr><td style="padding: 8px; border-bottom: 1px solid #eee; color: #666;">Telefono</td><td style="padding: 8px; border-bottom: 1px solid #eee;"><strong>${telefono || '—'}</strong></td></tr>
               <tr><td style="padding: 8px; border-bottom: 1px solid #eee; color: #666;">Professione</td><td style="padding: 8px; border-bottom: 1px solid #eee;"><strong>${professione}</strong></td></tr>
               <tr><td style="padding: 8px; color: #666;">Città</td><td style="padding: 8px;"><strong>${citta}</strong></td></tr>
             </table>
@@ -1408,7 +1414,73 @@ export const onWaitlistSignup = functions
       { merge: true }
     );
 
+    // 4. Segna per invio email di followup (dopo qualche minuto)
+    await snapshot.ref.update({ followupEmailPending: true });
+
     console.log(`✅ Waitlist: ${nome} ${cognome} (${email}) - conferma e notifica inviate`);
+    return null;
+  });
+
+/**
+ * Scheduled function: ogni 5 minuti controlla se ci sono iscritti alla waitlist
+ * che devono ricevere l'email di followup (invito a call Calendly).
+ * Invia l'email solo se sono passati almeno 5 minuti dall'iscrizione.
+ */
+export const sendWaitlistFollowupEmails = functions
+  .region('europe-west1')
+  .pubsub.schedule('every 5 minutes')
+  .timeZone('Europe/Rome')
+  .onRun(async () => {
+    const fiveMinutesAgo = admin.firestore.Timestamp.fromMillis(Date.now() - 5 * 60 * 1000);
+
+    const pending = await admin.firestore()
+      .collection('waitlist')
+      .where('followupEmailPending', '==', true)
+      .where('createdAt', '<=', fiveMinutesAgo)
+      .limit(50)
+      .get();
+
+    if (pending.empty) return null;
+
+    console.log(`📬 Followup waitlist: ${pending.size} email da inviare`);
+
+    for (const doc of pending.docs) {
+      const data = doc.data();
+      const { nome, email } = data;
+      try {
+        await sendEmail(
+          email,
+          'Ti faccio vedere tuaequipe.it in anteprima?',
+          `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; line-height: 1.6;">
+              <p>Ciao ${nome},</p>
+              <p>Grazie per aver aderito alla waiting list di <a href="https://www.tuaequipe.it">www.tuaequipe.it</a>!</p>
+              <p>Ho una proposta per te: ti faccio vedere la piattaforma <strong>in anteprima</strong> &mdash; nessuno l'ha ancora vista &mdash; e mi racconti un po' del tuo lavoro.<br>
+              Questo mi aiuterebbe molto nel capire se stiamo risolvendo al meglio <strong>i tuoi problemi</strong> e se davvero possiamo fare al caso tuo!</p>
+              <p><strong>Durata:</strong> 20 minuti, su Google Meet.<br>
+              <strong>Scegli tu giorno e orario:</strong></p>
+              <p style="margin: 20px 0;">
+                <a href="https://calendly.com/jschenetti/tuaequipe-it"
+                   style="background-color: #0066cc; color: white; padding: 12px 24px;
+                          text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">
+                  Prenota la call
+                </a>
+              </p>
+              <p>Se non hai tempo in questo periodo, nessun problema — ti aggiornerò comunque al lancio.</p>
+              <p>Grazie,<br>
+              Jacopo<br>
+              <a href="https://www.tuaequipe.it">tuaequipe.it</a></p>
+            </div>
+          `,
+          EMAIL_FROM.info
+        );
+        await doc.ref.update({ followupEmailPending: false, followupEmailSentAt: admin.firestore.Timestamp.now() });
+        console.log(`✅ Followup inviato a ${email}`);
+      } catch (error) {
+        console.error(`❌ Errore followup a ${email}:`, error);
+      }
+    }
+
     return null;
   });
 
@@ -1834,4 +1906,326 @@ export const onMarketplaceOfferUpdated = functions
     } catch (error) {
       console.error('\u274c onMarketplaceOfferUpdated:', error);
     }
+  });
+
+// ─── Booking / Appointment Email Notifications ────────────────────────────────
+
+/**
+ * Sends confirmation emails when a new appointment is created.
+ * - Patient: booking confirmation
+ * - Professional: new booking notification
+ */
+export const onAppointmentCreated = functions
+  .region('europe-west1')
+  .firestore
+  .document('appointments/{appointmentId}')
+  .onCreate(async (snapshot) => {
+    const appt = snapshot.data();
+    if (!appt) return null;
+
+    const {
+      professionalUid,
+      professionalName,
+      patientName,
+      patientEmail,
+      date,
+      startTime,
+      endTime,
+      tipoVisita,
+      notes,
+      locazioneTipo,
+      locazioneDettaglio,
+      cancellationToken,
+    } = appt;
+
+    if (!patientEmail || !date || !startTime) return null;
+
+    const appointmentId = snapshot.id;
+
+    // Format date in Italian
+    const dateObj = new Date(date + 'T00:00:00');
+    const dateFormatted = dateObj.toLocaleDateString('it-IT', {
+      weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+    });
+
+    // Build location block for emails
+    let locationBlockPatient = '';
+    if (locazioneTipo === 'presenziale') {
+      locationBlockPatient = `<p style="margin: 4px 0;"><strong>Modalità:</strong> 🏥 In presenza${locazioneDettaglio ? ` — ${locazioneDettaglio}` : ''}</p>`;
+    } else if (locazioneTipo === 'online') {
+      locationBlockPatient = `<p style="margin: 4px 0;"><strong>Modalità:</strong> 💻 Online${locazioneDettaglio ? ` — <a href="${locazioneDettaglio}">${locazioneDettaglio}</a>` : ''}</p>`;
+    }
+
+    const cancelLink = cancellationToken
+      ? `<p style="text-align: center; margin: 20px 0;"><a href="https://tuaequipe.it/cancella?token=${cancellationToken}" style="color: #6b7280; font-size: 13px; text-decoration: underline;">Vuoi annullare l'appuntamento? Clicca qui</a></p>`
+      : '';
+
+    // 1. Email to patient (confirmation)
+    try {
+      await sendEmail(
+        patientEmail,
+        `Appuntamento confermato con ${professionalName}`,
+        `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2 style="color: #2563eb;">Prenotazione confermata ✓</h2>
+            <p>Ciao <strong>${patientName}</strong>,</p>
+            <p>Il tuo appuntamento è stato confermato con successo.</p>
+            <div style="background: #f0f9ff; border-left: 4px solid #2563eb; padding: 16px; margin: 20px 0; border-radius: 4px;">
+              <p style="margin: 4px 0;"><strong>Professionista:</strong> ${professionalName}</p>
+              <p style="margin: 4px 0;"><strong>Tipo visita:</strong> ${tipoVisita}</p>
+              <p style="margin: 4px 0;"><strong>Data:</strong> ${dateFormatted}</p>
+              <p style="margin: 4px 0;"><strong>Orario:</strong> ${startTime} – ${endTime}</p>
+              ${locationBlockPatient}
+              ${notes ? `<p style="margin: 4px 0;"><strong>Note:</strong> ${notes}</p>` : ''}
+            </div>
+            ${cancelLink}
+            <br>
+            <p style="color: #6b7280; font-size: 12px;">Prenotazione gestita tramite TuaEquipe.it</p>
+          </div>
+        `,
+        EMAIL_FROM.noreply
+      );
+    } catch (err) {
+      console.error('❌ onAppointmentCreated: errore email paziente', err);
+    }
+
+    // 2. Email + in-app notification to the professional
+    try {
+      const userSnap = await admin.firestore().collection('users').doc(professionalUid).get();
+      const professionalEmail = userSnap.exists ? userSnap.data()?.email : null;
+
+      let locationBlockPro = '';
+      if (locazioneTipo === 'presenziale') {
+        locationBlockPro = `<p style="margin: 4px 0;"><strong>Modalità:</strong> 🏥 In presenza${locazioneDettaglio ? ` — ${locazioneDettaglio}` : ''}</p>`;
+      } else if (locazioneTipo === 'online') {
+        locationBlockPro = `<p style="margin: 4px 0;"><strong>Modalità:</strong> 💻 Online${locazioneDettaglio ? ` — ${locazioneDettaglio}` : ''}</p>`;
+      }
+
+      if (professionalEmail) {
+        await sendEmail(
+          professionalEmail,
+          `Nuova prenotazione: ${patientName} — ${dateFormatted} ${startTime}`,
+          `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+              <h2 style="color: #059669;">Nuova prenotazione ricevuta 📅</h2>
+              <p>Hai ricevuto una nuova prenotazione sul tuo profilo TuaEquipe.</p>
+              <div style="background: #f0fdf4; border-left: 4px solid #059669; padding: 16px; margin: 20px 0; border-radius: 4px;">
+                <p style="margin: 4px 0;"><strong>Paziente:</strong> ${patientName}</p>
+                <p style="margin: 4px 0;"><strong>Email:</strong> ${patientEmail}</p>
+                <p style="margin: 4px 0;"><strong>Tipo visita:</strong> ${tipoVisita}</p>
+                <p style="margin: 4px 0;"><strong>Data:</strong> ${dateFormatted}</p>
+                <p style="margin: 4px 0;"><strong>Orario:</strong> ${startTime} – ${endTime}</p>
+                ${locationBlockPro}
+                ${notes ? `<p style="margin: 4px 0;"><strong>Note paziente:</strong> ${notes}</p>` : ''}
+              </div>
+              <p style="text-align: center; margin: 30px 0;">
+                <a href="https://tuaequipe.it/appuntamenti"
+                   style="background-color: #059669; color: white; padding: 12px 24px;
+                          text-decoration: none; border-radius: 5px; display: inline-block;">
+                  Gestisci appuntamenti
+                </a>
+              </p>
+              <br>
+              <p style="color: #6b7280; font-size: 12px;">TuaEquipe.it — La rete dei professionisti della salute</p>
+            </div>
+          `,
+          EMAIL_FROM.info
+        );
+      }
+
+      // In-app notification for professional
+      await createInternalNotification({
+        userId: professionalUid,
+        type: 'new_appointment',
+        title: 'Nuova prenotazione',
+        message: `${patientName} ha prenotato una visita per ${dateFormatted} alle ${startTime}`,
+        appointmentId,
+      });
+    } catch (err) {
+      console.error('❌ onAppointmentCreated: errore email professionista', err);
+    }
+
+    return null;
+  });
+
+/**
+ * Callable function: il paziente cancella un appuntamento tramite il token ricevuto via email.
+ */
+export const cancelAppointmentByToken = functions
+  .region('europe-west1')
+  .https.onCall(async (data) => {
+    const { token, action } = data as { token?: string; action?: 'get' | 'cancel' };
+
+    if (!token || typeof token !== 'string' || token.length < 10) {
+      throw new functions.https.HttpsError('invalid-argument', 'Token non valido');
+    }
+    if (action !== 'get' && action !== 'cancel') {
+      throw new functions.https.HttpsError('invalid-argument', 'Azione non valida');
+    }
+
+    const snap = await admin.firestore()
+      .collection('appointments')
+      .where('cancellationToken', '==', token)
+      .limit(1)
+      .get();
+
+    if (snap.empty) {
+      throw new functions.https.HttpsError('not-found', 'Appuntamento non trovato');
+    }
+
+    const docSnap = snap.docs[0];
+    const appt = docSnap.data();
+    const appointmentId = docSnap.id;
+
+    const safeInfo = {
+      date: appt.date,
+      startTime: appt.startTime,
+      endTime: appt.endTime,
+      professionalName: appt.professionalName,
+      tipoVisita: appt.tipoVisita,
+      patientName: appt.patientName,
+      locazioneTipo: appt.locazioneTipo,
+      locazioneDettaglio: appt.locazioneTipo === 'online' ? appt.locazioneDettaglio : undefined,
+      status: appt.status,
+    };
+
+    if (action === 'get') {
+      if (appt.status === 'cancelled') {
+        return { alreadyCancelled: true, appointment: safeInfo };
+      }
+      return { appointment: safeInfo };
+    }
+
+    // action === 'cancel'
+    if (appt.status === 'cancelled') {
+      throw new functions.https.HttpsError('already-exists', 'Appuntamento già annullato');
+    }
+
+    await docSnap.ref.update({
+      status: 'cancelled',
+      cancelledBy: 'patient',
+      cancelledAt: admin.firestore.Timestamp.now(),
+    });
+
+    const { professionalUid, patientName, date, startTime, endTime, tipoVisita } = appt;
+
+    const dateObj = new Date(date + 'T00:00:00');
+    const dateFormatted = dateObj.toLocaleDateString('it-IT', {
+      weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+    });
+
+    // Email to professional
+    try {
+      const userSnap = await admin.firestore().collection('users').doc(professionalUid).get();
+      const professionalEmail = userSnap.exists ? userSnap.data()?.email : null;
+      if (professionalEmail) {
+        await sendEmail(
+          professionalEmail,
+          `Appuntamento annullato: ${patientName} — ${dateFormatted} ${startTime}`,
+          `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+              <h2 style="color: #dc2626;">Appuntamento annullato ❌</h2>
+              <p>Il paziente ha annullato il seguente appuntamento.</p>
+              <div style="background: #fef2f2; border-left: 4px solid #dc2626; padding: 16px; margin: 20px 0; border-radius: 4px;">
+                <p style="margin: 4px 0;"><strong>Paziente:</strong> ${patientName}</p>
+                <p style="margin: 4px 0;"><strong>Tipo visita:</strong> ${tipoVisita}</p>
+                <p style="margin: 4px 0;"><strong>Data:</strong> ${dateFormatted}</p>
+                <p style="margin: 4px 0;"><strong>Orario:</strong> ${startTime} – ${endTime}</p>
+              </div>
+              <p style="text-align: center; margin: 30px 0;">
+                <a href="https://tuaequipe.it/appuntamenti"
+                   style="background-color: #dc2626; color: white; padding: 12px 24px;
+                          text-decoration: none; border-radius: 5px; display: inline-block;">
+                  Visualizza agenda
+                </a>
+              </p>
+              <br>
+              <p style="color: #6b7280; font-size: 12px;">TuaEquipe.it — La rete dei professionisti della salute</p>
+            </div>
+          `,
+          EMAIL_FROM.noreply
+        );
+      }
+    } catch (err) {
+      console.error('❌ cancelAppointmentByToken: errore email professionista', err);
+    }
+
+    // In-app notification for professional
+    await createInternalNotification({
+      userId: professionalUid,
+      type: 'appointment_cancelled',
+      title: 'Appuntamento annullato',
+      message: `${patientName} ha annullato la visita del ${dateFormatted} alle ${startTime}`,
+      appointmentId,
+    });
+
+    return { success: true };
+  });
+
+/**
+ * Scheduled function: ogni giorno alle 09:00 Europe/Rome invia un reminder
+ * al paziente per gli appuntamenti confermati del giorno seguente.
+ */
+export const sendAppointmentReminders = functions
+  .region('europe-west1')
+  .pubsub.schedule('every day 09:00')
+  .timeZone('Europe/Rome')
+  .onRun(async () => {
+    // Calcola la data di domani in formato YYYY-MM-DD
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const tomorrowStr = tomorrow.toISOString().split('T')[0]; // es. "2026-04-22"
+
+    const snap = await admin.firestore()
+      .collection('appointments')
+      .where('date', '==', tomorrowStr)
+      .where('status', '==', 'confirmed')
+      .get();
+
+    if (snap.empty) {
+      console.log(`📅 Reminder: nessun appuntamento per ${tomorrowStr}`);
+      return null;
+    }
+
+    console.log(`📅 Reminder: ${snap.size} appuntamenti per ${tomorrowStr}`);
+
+    const dateFormatted = tomorrow.toLocaleDateString('it-IT', {
+      weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+    });
+
+    for (const doc of snap.docs) {
+      const appt = doc.data();
+      const { patientEmail, patientName, professionalName, startTime, endTime, tipoVisita } = appt;
+
+      if (!patientEmail) continue;
+
+      try {
+        await sendEmail(
+          patientEmail,
+          `Reminder: appuntamento domani con ${professionalName}`,
+          `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+              <h2 style="color: #d97706;">⏰ Promemoria appuntamento</h2>
+              <p>Ciao <strong>${patientName}</strong>,</p>
+              <p>Ti ricordiamo che hai un appuntamento <strong>domani</strong>.</p>
+              <div style="background: #fffbeb; border-left: 4px solid #d97706; padding: 16px; margin: 20px 0; border-radius: 4px;">
+                <p style="margin: 4px 0;"><strong>Professionista:</strong> ${professionalName}</p>
+                <p style="margin: 4px 0;"><strong>Tipo visita:</strong> ${tipoVisita}</p>
+                <p style="margin: 4px 0;"><strong>Data:</strong> ${dateFormatted}</p>
+                <p style="margin: 4px 0;"><strong>Orario:</strong> ${startTime} – ${endTime}</p>
+              </div>
+              <p>Per cancellare o modificare l'appuntamento contatta direttamente il professionista.</p>
+              <br>
+              <p style="color: #6b7280; font-size: 12px;">TuaEquipe.it — La rete dei professionisti della salute</p>
+            </div>
+          `,
+          EMAIL_FROM.noreply
+        );
+        console.log(`✅ Reminder inviato a ${patientEmail} per appuntamento ${doc.id}`);
+      } catch (err) {
+        console.error(`❌ Reminder fallito per ${doc.id}:`, err);
+      }
+    }
+
+    return null;
   });

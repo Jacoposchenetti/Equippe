@@ -1,155 +1,153 @@
 rules_version = '2';
+// Updated: 2026-04-21
 service cloud.firestore {
   match /databases/{database}/documents {
-    
+
     function isAuthenticated() {
       return request.auth != null;
     }
-    
     function isOwner(uid) {
-      return request.auth.uid == uid;
+      return isAuthenticated() && request.auth.uid == uid;
     }
-    
-    function isAdmin() {
-      return request.auth.token.email == 'jschenetti@gmail.com';
-    }
-    
-    // Funzione per verificare se l'utente pu√≤ interagire
-    // Deve avere email verificata E status approvato
-    function canInteract() {
-      let userData = get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
-      return isAuthenticated() 
-        && request.auth.token.email_verified == true
-        && userData.profile.verificationInfo.status == 'approved';
-    }
-    
-    // Versione semplificata per operazioni write (crea nuovi documenti)
-    // Non pu√≤ fare get() durante la creazione, quindi controlla solo email_verified
-    function canWrite() {
-      return isAuthenticated() && request.auth.token.email_verified == true;
-    }
-    
+
+    // Users ó public read for patient-facing directory
     match /users/{userId} {
-      allow read: if isAuthenticated();
-      // Permetti la creazione del proprio profilo durante la registrazione (anche senza email verificata)
-      // Permetti aggiornamento solo se proprietario o admin
-      allow create: if isAuthenticated() && isOwner(userId);
-      allow update, delete: if isAuthenticated() && (isOwner(userId) || isAdmin());
+      allow read: if true;
+      allow write: if isOwner(userId);
+
+      match /fatturazione_config/{docId} {
+        allow read, write: if isOwner(userId);
+      }
+      match /clienti/{clienteId} {
+        allow read, write: if isOwner(userId);
+      }
+      match /fatture/{fatturaId} {
+        allow read, write: if isOwner(userId);
+      }
     }
-    
+
+    // Teams
     match /teams/{teamId} {
       allow read: if isAuthenticated();
-      // Solo utenti verificati possono creare/modificare team
-      allow create: if canWrite();
-      allow update, delete: if canInteract();
-    }
-    
-    match /referrals/{refId} {
-      allow read: if isAuthenticated() && (request.auth.uid == resource.data.senderUid || request.auth.uid == resource.data.receiverUid);
-      // Solo utenti verificati possono creare/modificare referral
-      allow create: if canWrite();
-      allow update: if canInteract() && (request.auth.uid == resource.data.senderUid || request.auth.uid == resource.data.receiverUid);
-      allow delete: if canInteract() && request.auth.uid == resource.data.senderUid;
-    }
-    
-    match /teamInvites/{inviteId} {
-      allow list: if isAuthenticated();
-      allow get: if isAuthenticated() && (request.auth.uid == resource.data.fromUserId || request.auth.uid == resource.data.toUserId);
-      // Solo utenti verificati possono inviare inviti
-      allow create: if canWrite() && request.auth.uid == request.resource.data.fromUserId;
-      allow update: if isAuthenticated() && (request.auth.uid == resource.data.fromUserId || request.auth.uid == resource.data.toUserId);
-      allow delete: if isAuthenticated() && request.auth.uid == resource.data.fromUserId;
-    }
-
-    match /teamRequests/{requestId} {
-      allow read: if isAuthenticated();
-      // Solo utenti verificati possono creare richieste
-      allow create: if canWrite() && request.auth.uid == request.resource.data.userId;
-      allow update: if isAuthenticated();
-      allow delete: if isAuthenticated();
-    }
-
-    match /notifications/{notificationId} {
-      allow read: if isAuthenticated() && request.auth.uid == resource.data.userId;
       allow create: if isAuthenticated();
-      allow update: if isAuthenticated() && request.auth.uid == resource.data.userId;
-      allow delete: if isAuthenticated() && request.auth.uid == resource.data.userId;
+      allow update, delete: if isAuthenticated() &&
+        resource.data.adminUid == request.auth.uid;
     }
 
-    match /conversations/{conversationId} {
-      // Solo utenti verificati possono creare/modificare conversazioni
+    // Referrals
+    match /referrals/{refId} {
+      allow read: if isAuthenticated() &&
+        (resource.data.senderUid == request.auth.uid ||
+         resource.data.receiverUid == request.auth.uid);
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() &&
+        (resource.data.senderUid == request.auth.uid ||
+         resource.data.receiverUid == request.auth.uid);
+    }
+
+    // Conversations (subcollection messages kept for compatibility)
+    match /conversations/{convId} {
       allow read: if isAuthenticated();
-      allow create: if canWrite();
-      allow update, delete: if canInteract();
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated();
+      match /messages/{msgId} {
+        allow read, write: if isAuthenticated();
+      }
     }
 
-    match /messages/{messageId} {
-      // Solo utenti verificati possono creare/leggere messaggi
-      allow read: if canInteract();
-      allow create: if canWrite();
-      allow update, delete: if canInteract();
-    }
-
-    // ECM Events: lettura per utenti autenticati, scrittura solo server (admin SDK)
-    match /ecmEvents/{eventId} {
+    // Messages ó top-level collection used by Messages.tsx
+    match /messages/{msgId} {
       allow read: if isAuthenticated();
-    }
-    match /ecmSyncStatus/{profId} {
-      allow read: if isAuthenticated();
-    }
-    // Cache risultati ricerca live ECM (24h TTL, solo server-side)
-    match /ecmLiveCache/{cacheKey} {
-      allow read, write: if false;
-    }
-
-    // Counter document aggiornato dalle Cloud Functions (admin SDK)
-    match /config/{docId} {
-      allow read: if true;
-      allow write: if false; // solo admin SDK via Cloud Functions
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() &&
+        (resource.data.senderId == request.auth.uid ||
+         resource.data.receiverId == request.auth.uid);
+      allow delete: if isAuthenticated() &&
+        resource.data.senderId == request.auth.uid;
     }
 
-    // Rate limits gestiti solo server-side (admin SDK via Cloud Functions)
-    match /rateLimits/{docId} {
-      allow read, write: if false;
+    // Team Invites
+    match /teamInvites/{inviteId} {
+      allow read: if isAuthenticated() &&
+        (resource.data.fromUserId == request.auth.uid ||
+         resource.data.toUserId == request.auth.uid);
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() &&
+        (resource.data.fromUserId == request.auth.uid ||
+         resource.data.toUserId == request.auth.uid);
     }
 
-    match /waitlist/{docId} {
-      // Chiunque pu√≤ iscriversi (anche non autenticato), ma solo creare se il doc non esiste
-      allow create: if request.resource.data.keys().hasAll(['nome', 'cognome', 'email', 'professione', 'citta', 'gdprConsent', 'createdAt'])
-                    && request.resource.data.nome is string
-                    && request.resource.data.cognome is string
-                    && request.resource.data.email is string
-                    && request.resource.data.email.size() > 0
-                    && request.resource.data.gdprConsent == true;
-      // Lettura solo per admin (il check duplicati usa il docId = email sanitizzata,
-      // quindi setDoc sovrascriver√† se esiste, evitando il bisogno di get pubblica)
-      allow get: if isAuthenticated() && isAdmin();
-      allow list: if isAuthenticated() && isAdmin();
-      allow update, delete: if isAuthenticated() && isAdmin();
-    }
-
-    match /waitlist_email_history/{docId} {
-      allow read: if isAuthenticated() && isAdmin();
-      allow write: if false; // solo admin SDK via Cloud Functions
+    // Notifications
+    match /notifications/{notifId} {
+      allow read, write: if isAuthenticated() &&
+        resource.data.userId == request.auth.uid;
+      allow create: if isAuthenticated();
     }
 
     // Marketplace listings
     match /marketplace_listings/{listingId} {
       allow read: if isAuthenticated();
-      allow create: if canWrite() && request.auth.uid == request.resource.data.authorId;
-      allow update: if isAuthenticated() && request.auth.uid == resource.data.authorId;
-      allow delete: if isAuthenticated() && (request.auth.uid == resource.data.authorId || isAdmin());
+      allow create: if isAuthenticated();
+      allow update, delete: if isAuthenticated() &&
+        resource.data.authorUid == request.auth.uid;
     }
 
     // Marketplace offers
     match /marketplace_offers/{offerId} {
-      allow read: if isAuthenticated() 
-        && (request.auth.uid == resource.data.offererId || request.auth.uid == resource.data.authorId);
-      allow list: if isAuthenticated();
-      allow create: if canWrite() && request.auth.uid == request.resource.data.offererId;
-      allow update: if isAuthenticated() 
-        && (request.auth.uid == resource.data.offererId || request.auth.uid == resource.data.authorId);
-      allow delete: if isAuthenticated() && request.auth.uid == resource.data.offererId;
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update, delete: if isAuthenticated() &&
+        resource.data.creatorUid == request.auth.uid;
+    }
+
+    // ECM
+    match /ecm_events/{eventId} {
+      allow read: if isAuthenticated();
+    }
+    match /ecmEvents/{eventId} {
+      allow read: if isAuthenticated();
+    }
+    match /ecm_sync_state/{docId} {
+      allow read: if isAuthenticated();
+    }
+    match /ecmSyncStatus/{docId} {
+      allow read: if isAuthenticated();
+    }
+
+    // Availability ó public read for patient directory
+    match /availability/{uid} {
+      allow read: if true;
+      allow write: if isOwner(uid);
+    }
+
+    // Appointments
+    match /appointments/{appointmentId} {
+      allow create: if true;
+      allow read: if isAuthenticated() &&
+        (resource.data.professionalUid == request.auth.uid ||
+         resource.data.patientEmail == request.auth.token.email);
+      allow update: if isAuthenticated() &&
+        resource.data.professionalUid == request.auth.uid;
+    }
+
+    // Patients (B2C accounts)
+    match /patients/{patientId} {
+      allow read, write: if isOwner(patientId);
+    }
+
+    // Metadata
+    match /metadata/{docId} {
+      allow read: if true;
+      allow write: if isAuthenticated();
+    }
+
+    // Waitlist
+    match /waitlist/{docId} {
+      allow create: if true;
+      allow read: if isAuthenticated();
     }
   }
 }
+
+
+

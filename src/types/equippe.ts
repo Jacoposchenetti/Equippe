@@ -77,6 +77,13 @@ export interface ProfessioneConDocumenti {
   anniEsperienza?: string; // Anni di esperienza in questa professione
 }
 
+export type LivelloLingua = 'Madrelingua' | 'A1' | 'A2' | 'B1' | 'B2' | 'C1' | 'C2';
+
+export interface LinguaParlata {
+  lingua: string;
+  livello: LivelloLingua;
+}
+
 export interface UserProfile {
   nome: string;
   albo: string; // @deprecated - mantenuto per retrocompatibilità
@@ -99,12 +106,81 @@ export interface UserProfile {
   esperienze?: EsperienzaProfessionale[];
   formazione?: Formazione[];
   certificazioni?: Certificazione[];
+  lingue?: LinguaParlata[];
 }
 
 export interface UserStats {
   referralsSent: number;
   referralsReceived: number;
   referralsCompleted?: number;
+}
+
+// ─── Booking / Calendar ────────────────────────────────────────────────────
+
+export interface TimeRange {
+  start: string; // "HH:MM"
+  end: string;   // "HH:MM"
+}
+
+export interface WeeklySchedule {
+  lun: TimeRange[];
+  mar: TimeRange[];
+  mer: TimeRange[];
+  gio: TimeRange[];
+  ven: TimeRange[];
+  sab: TimeRange[];
+  dom: TimeRange[];
+}
+
+export interface TipoVisita {
+  id: string;
+  nome: string;          // "Prima visita", "Visita di controllo"
+  durata: number;        // minuti
+  prezzo?: number;       // EUR, opzionale
+  descrizione?: string;
+}
+
+export type TipoLocazione = 'presenziale' | 'online' | 'entrambi';
+
+export interface LocationVisita {
+  tipo: TipoLocazione;
+  indirizzo?: string;   // per presenziale / entrambi
+  linkOnline?: string;  // per online / entrambi (es. link Meet/Zoom)
+}
+
+export interface Availability {
+  uid: string;
+  isPublic: boolean;                  // opt-in visibilità paziente
+  slotDurationMinutes: number;        // 30 | 45 | 60
+  bufferMinutes: number;              // pausa tra slot: 0 | 10 | 15
+  bookingWindowDays: number;          // quanti giorni avanti: 14 | 30 | 60 | 90
+  schedule: WeeklySchedule;
+  tipiVisita: TipoVisita[];
+  exceptDates?: string[];             // YYYY-MM-DD date bloccate
+  locationVisita?: LocationVisita;    // dove avviene la visita
+  updatedAt: Timestamp;
+}
+
+export type AppointmentStatus = 'confirmed' | 'cancelled' | 'completed';
+
+export interface Appointment {
+  id?: string;
+  professionalUid: string;
+  professionalName: string;
+  patientName: string;
+  patientEmail: string;
+  patientPhone?: string;
+  date: string;           // YYYY-MM-DD
+  startTime: string;      // HH:MM
+  endTime: string;        // HH:MM
+  tipoVisita: string;
+  status: AppointmentStatus;
+  notes?: string;
+  locazioneTipo?: 'presenziale' | 'online'; // modalità scelta dal paziente
+  locazioneDettaglio?: string;              // indirizzo o link
+  cancellationToken?: string;              // UUID per link di annullamento
+  pazienteUid?: string;                    // UID paziente se ha un account su tuaequipe.it
+  createdAt: Timestamp;
 }
 
 export interface User {
@@ -306,7 +382,11 @@ export type NotificationType =
   | 'marketplace_offer_received'  // Nuova offerta ricevuta sul proprio annuncio
   | 'marketplace_offer_accepted'  // La tua offerta è stata accettata
   | 'marketplace_offer_rejected'  // La tua offerta è stata rifiutata
-  | 'mention';                    // Qualcuno ti ha menzionato in una chat
+  | 'mention'                     // Qualcuno ti ha menzionato in una chat
+  | 'soglia_forfettario_80'        // Fatturato al 80% del limite €85.000
+  | 'soglia_forfettario_100'       // Fatturato ha superato il limite €85.000
+  | 'new_appointment'              // Nuova prenotazione da paziente
+  | 'appointment_cancelled';       // Appuntamento annullato dal paziente
 
 export interface Notification {
   id: string;

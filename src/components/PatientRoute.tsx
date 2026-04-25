@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { onAuthStateChanged } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, Timestamp } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 
 type Status = 'loading' | 'patient' | 'not-auth' | 'not-patient';
@@ -16,7 +16,28 @@ export default function PatientRoute({ children }: { children: React.ReactNode }
         return;
       }
       const patSnap = await getDoc(doc(db, 'patients', user.uid));
-      setStatus(patSnap.exists() ? 'patient' : 'not-patient');
+      if (patSnap.exists()) {
+        setStatus('patient');
+        return;
+      }
+      // Dual-role: se è un professionista, auto-crea il doc paziente
+      const profSnap = await getDoc(doc(db, 'users', user.uid));
+      if (profSnap.exists()) {
+        const profData = profSnap.data();
+        const nomeCompleto = (profData.profile?.nome ?? user.displayName ?? '').trim();
+        const parts = nomeCompleto.split(' ');
+        await setDoc(doc(db, 'patients', user.uid), {
+          uid: user.uid,
+          nome: parts[0] ?? '',
+          cognome: parts.slice(1).join(' '),
+          email: user.email?.toLowerCase() ?? '',
+          createdAt: Timestamp.now(),
+          linkedProfessional: true,
+        });
+        setStatus('patient');
+      } else {
+        setStatus('not-patient');
+      }
     });
     return unsub;
   }, []);
@@ -29,7 +50,7 @@ export default function PatientRoute({ children }: { children: React.ReactNode }
     );
   }
   if (status === 'not-auth') return <Navigate to="/paziente/login" replace />;
-  // If logged in as a professional, redirect to their dashboard
-  if (status === 'not-patient') return <Navigate to="/dashboard" replace />;
+  // If logged in as a professional (no patients doc), send to patient login
+  if (status === 'not-patient') return <Navigate to="/paziente/login" replace />;
   return <>{children}</>;
 }

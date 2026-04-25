@@ -18,6 +18,7 @@
     "equippe-mvp": "file:..",
     "firebase-admin": "^13.0.0",
     "firebase-functions": "^6.0.0",
+    "googleapis": "^171.4.0",
     "pdfkit": "^0.15.0",
     "resend": "^6.8.0",
     "xmlbuilder2": "^3.1.1"

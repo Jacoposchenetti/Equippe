@@ -123,7 +123,8 @@ export default function EditProfilePage() {
   const [telefono, setTelefono] = useState('');
   const [indirizzo, setIndirizzo] = useState('');
   const [coordinate, setCoordinate] = useState<{ lat: number; lng: number } | null>(null);
-  const [studi, setStudi] = useState<Array<{indirizzo: string; coordinate?: {lat: number; lng: number}; remoto: boolean}>>([]);
+  const [studi, setStudi] = useState<Array<{indirizzo: string; coordinate?: {lat: number; lng: number}}>>([]);
+  const [lavoraOnline, setLavoraOnline] = useState(false);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string>('');
   const [notificationEnabled, setNotificationEnabled] = useState(false);
@@ -210,15 +211,16 @@ export default function EditProfilePage() {
         setStudi(userProfile.profile.studi.map(studio => ({
           indirizzo: studio.indirizzo,
           coordinate: studio.coordinate,
-          remoto: studio.remoto || false
         })));
+        // Migrazione: se qualche studio vecchio aveva remoto:true, trasferire a lavoraOnline
+        setLavoraOnline(userProfile.profile.lavoraOnline ?? userProfile.profile.studi.some(s => s.remoto) ?? false);
       } else if (userProfile.profile.location?.indirizzo) {
         // Migra il vecchio indirizzo a studio singolo
         setStudi([{
           indirizzo: userProfile.profile.location.indirizzo,
           coordinate: coordinate || undefined,
-          remoto: false
         }]);
+        setLavoraOnline(userProfile.profile.lavoraOnline ?? false);
       }
       setPhotoPreview(userProfile.profile.photoURL || '');
       setDataNascita(userProfile.profile.dataNascita || '');
@@ -304,7 +306,7 @@ export default function EditProfilePage() {
   };
 
   const addStudio = () => {
-    setStudi([...studi, { indirizzo: '', remoto: false }]);
+    setStudi([...studi, { indirizzo: '' }]);
     setTimeout(() => triggerSave(), 0);
   };
 
@@ -512,7 +514,6 @@ export default function EditProfilePage() {
           indirizzo: studio.indirizzo.trim(),
           città: città || '',
           provincia: provincia || '',
-          remoto: studio.remoto || false,
           coordinate: {
             lat: studio.coordinate?.lat || 0,
             lng: studio.coordinate?.lng || 0
@@ -558,6 +559,7 @@ export default function EditProfilePage() {
         'profile.location.lat': mainLocation.lat,
         'profile.location.lng': mainLocation.lng,
         'profile.studi': studiData,
+        'profile.lavoraOnline': lavoraOnline,
         'profile.esperienze': esperienze,
         'profile.formazione': formazione,
         'profile.certificazioni': certificazioni,
@@ -814,7 +816,6 @@ export default function EditProfilePage() {
                           setStudi([{
                             indirizzo: indirizzo,
                             coordinate: coordinate || undefined,
-                            remoto: false
                           }]);
                           setIndirizzo('');
                           setCoordinate(null);
@@ -860,18 +861,6 @@ export default function EditProfilePage() {
                         placeholder="Via, Città, Zona..."
                         label={`Indirizzo Studio ${index + 1} *`}
                       />
-                      
-                      <div className="flex items-center">
-                        <label className="flex items-center gap-2 cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={studio.remoto}
-                            onChange={(e) => updateStudio(index, 'remoto', e.target.checked)}
-                            className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
-                          />
-                          <span className="text-sm text-gray-700">Lavoro da remoto disponibile</span>
-                        </label>
-                      </div>
                     </div>
                   </div>
                 ))}
@@ -890,6 +879,25 @@ export default function EditProfilePage() {
                 </button>
               </div>
             )}
+
+            {/* Online toggle */}
+            <div className="mt-4 flex items-center justify-between p-4 border border-gray-200 rounded-lg bg-gray-50">
+              <div>
+                <p className="text-sm font-medium text-gray-900">Ricevo anche online</p>
+                <p className="text-xs text-gray-500 mt-0.5">Il paziente potrà prenotare visite a distanza</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => { setLavoraOnline(!lavoraOnline); setTimeout(() => triggerSave(), 0); }}
+                className={`relative w-11 h-6 rounded-full transition-colors duration-200 flex-shrink-0 ${
+                  lavoraOnline ? 'bg-blue-500' : 'bg-gray-300'
+                }`}
+              >
+                <div className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ${
+                  lavoraOnline ? 'translate-x-5' : ''
+                }`} />
+              </button>
+            </div>
           </CollapsibleSection>
 
           {/* Gestione Professioni */}

@@ -203,37 +203,107 @@ export default function PublicProfilePage() {
             )}
 
             {/* Card: Dove riceve */}
-            {profile.studi && profile.studi.length > 0 && (
+            {availability?.sedi && availability.sedi.length > 0 ? (
               <div className="bg-white rounded-xl shadow-sm p-6">
                 <h2 className="text-lg font-semibold text-gray-900 mb-4">Dove riceve</h2>
                 <div className="space-y-3">
-                  {profile.studi.map((studio, i) => (
-                    <div key={i} className="flex items-start gap-3">
-                      <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0 mt-0.5">
-                        {studio.remoto ? (
-                          <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  {availability.sedi.map(sede => (
+                    <div key={sede.id} className="flex items-start gap-3">
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 ${sede.tipo === 'online' ? 'bg-purple-100' : 'bg-blue-100'}`}>
+                        {sede.tipo === 'online' ? (
+                          <svg className="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                               d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                           </svg>
                         ) : (
-                          <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                               d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                           </svg>
                         )}
                       </div>
                       <div>
-                        {studio.remoto ? (
-                          <p className="text-sm text-gray-700">Online / Telematico</p>
-                        ) : (
-                          <p className="text-sm text-gray-700">{studio.indirizzo}, {studio.città} ({studio.provincia})</p>
+                        <p className="text-sm font-medium text-gray-800">{sede.nome}</p>
+                        {sede.tipo === 'presenziale' && sede.indirizzo && (
+                          <p className="text-sm text-gray-500">{sede.indirizzo}</p>
+                        )}
+                        {sede.tipo === 'online' && (
+                          <p className="text-sm text-gray-500">Visita online</p>
                         )}
                       </div>
                     </div>
                   ))}
                 </div>
               </div>
-            )}
+            ) : availability?.locationVisita ? (
+              <div className="bg-white rounded-xl shadow-sm p-6">
+                <h2 className="text-lg font-semibold text-gray-900 mb-4">Dove riceve</h2>
+                <div className="space-y-3">
+                  {(availability.locationVisita.tipo === 'presenziale' || availability.locationVisita.tipo === 'entrambi') && (
+                    <div className="flex items-start gap-3">
+                      <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                        <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                            d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                        </svg>
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-gray-800">In presenza</p>
+                        {availability.locationVisita.indirizzo && (
+                          <p className="text-sm text-gray-500">{availability.locationVisita.indirizzo}</p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                  {(availability.locationVisita.tipo === 'online' || availability.locationVisita.tipo === 'entrambi') && (
+                    <div className="flex items-start gap-3">
+                      <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                        <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                            d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                        </svg>
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-gray-800">Online</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : profile.studi && profile.studi.length > 0 ? (
+              <div className="bg-white rounded-xl shadow-sm p-6">
+                <h2 className="text-lg font-semibold text-gray-900 mb-4">Dove riceve</h2>
+                <div className="space-y-3">
+                  {profile.studi.map((studio, i) => (
+                    <div key={i} className="flex items-start gap-3">
+                      <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                        <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                            d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                        </svg>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-700">{studio.indirizzo}, {studio.città} ({studio.provincia})</p>
+                      </div>
+                    </div>
+                  ))}
+                  {(profile.lavoraOnline ?? profile.studi.some(s => s.remoto)) && (
+                    <div className="flex items-start gap-3">
+                      <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                        <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                            d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                        </svg>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-700">Online</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : null}
 
             {/* Card: Formazione */}
             {profile.formazione && profile.formazione.length > 0 && (

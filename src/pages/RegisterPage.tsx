@@ -31,9 +31,9 @@ export default function RegisterPage() {
     indirizzo: '',
     città: '',
     provincia: '',
-    remoto: false,
     coordinate: undefined,
   });
+  const [lavoraOnline, setLavoraOnline] = useState(false);
   
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -72,7 +72,6 @@ export default function RegisterPage() {
       indirizzo: '',
       città: '',
       provincia: '',
-      remoto: false,
       coordinate: undefined
     });
     setError('');
@@ -183,7 +182,7 @@ export default function RegisterPage() {
           esperienza: '',
           location: { lat: 0, lng: 0, città: 'Italia' }, // Legacy
           studi: formData.studi,
-          disponibilità: '',
+          lavoraOnline: lavoraOnline,
           telefono: formData.telefono.trim(),
           verified: false,
           verificationInfo: {
@@ -521,7 +520,6 @@ export default function RegisterPage() {
                               📍 Geo: {studio.coordinate.lat.toFixed(4)}, {studio.coordinate.lng.toFixed(4)}
                             </div>
                           )}
-                          {studio.remoto && <div className="text-blue-600">Lavoro da remoto</div>}
                         </div>
                         <button
                           type="button"
@@ -557,14 +555,19 @@ export default function RegisterPage() {
                     </p>
                   </div>
 
-                  <label className="flex items-center">
-                    <input
-                      type="checkbox"
-                      checked={currentStudio.remoto}
-                      onChange={(e) => setCurrentStudio({ ...currentStudio, remoto: e.target.checked })}
-                      className="mr-2"
-                    />
-                    <span className="text-sm">Lavoro da remoto disponibile</span>
+                  <label className="flex items-center justify-between p-3 border border-gray-200 rounded-lg bg-gray-50">
+                    <span className="text-sm font-medium text-gray-800">Ricevo anche online</span>
+                    <button
+                      type="button"
+                      onClick={() => setLavoraOnline(!lavoraOnline)}
+                      className={`relative w-10 h-5 rounded-full transition-colors duration-200 flex-shrink-0 ${
+                        lavoraOnline ? 'bg-blue-500' : 'bg-gray-300'
+                      }`}
+                    >
+                      <div className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform duration-200 ${
+                        lavoraOnline ? 'translate-x-5' : ''
+                      }`} />
+                    </button>
                   </label>
 
                   <button

@@ -36,6 +36,7 @@ import LegalPage from './pages/LegalPage'
 import PrivacyPolicyPage from './pages/PrivacyPolicyPage'
 import TerminiServizioPage from './pages/TerminiServizioPage'
 import CookiePolicyPage from './pages/CookiePolicyPage'
+import AbbonamentoPage from './pages/AbbonamentoPage'
 import AdminVerificationsPage from './pages/AdminVerificationsPage'
 import AdminMailingListPage from './pages/AdminMailingListPage'
 import AdminWaitlistEmailPage from './pages/AdminWaitlistEmailPage'
@@ -212,6 +213,11 @@ function App() {
             <ProfileEditPage />
           </ProtectedRoute>
         } />
+        <Route path="/abbonamento" element={
+          <ProtectedRoute>
+            <AbbonamentoPage />
+          </ProtectedRoute>
+        } />
         <Route path="/invites" element={<Navigate to="/teams" replace />} />
         <Route path="/referrals" element={
           <ProtectedRoute>
@@ -236,31 +242,31 @@ function App() {
           </ProtectedRoute>
         } />
         
-        {/* Fatturazione Routes - admin only */}
+        {/* Fatturazione Routes */}
         <Route path="/fatturazione" element={
-          <AdminRoute>
+          <ProtectedRoute>
             <ElencoFatturePage />
-          </AdminRoute>
+          </ProtectedRoute>
         } />
         <Route path="/fatturazione/setup" element={
-          <AdminRoute>
+          <ProtectedRoute>
             <FatturazioneSetupPage />
-          </AdminRoute>
+          </ProtectedRoute>
         } />
         <Route path="/fatturazione/clienti" element={
-          <AdminRoute>
+          <ProtectedRoute>
             <ClientiPage />
-          </AdminRoute>
+          </ProtectedRoute>
         } />
         <Route path="/fatturazione/nuova" element={
-          <AdminRoute>
+          <ProtectedRoute>
             <NuovaFatturaPage />
-          </AdminRoute>
+          </ProtectedRoute>
         } />
         <Route path="/fatturazione/report" element={
-          <AdminRoute>
+          <ProtectedRoute>
             <ReportPage />
-          </AdminRoute>
+          </ProtectedRoute>
         } />
         
         {/* Marketplace Routes */}

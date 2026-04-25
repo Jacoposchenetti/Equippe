@@ -79,8 +79,8 @@ export default function TrovaPage() {
 
         const studi = profile.studi ?? [];
         const città = studi[0]?.città ?? profile.location?.città ?? undefined;
-        const remoto = studi.some(s => s.remoto);
-        const presenziale = studi.some(s => !s.remoto);
+        const remoto = profile.lavoraOnline ?? studi.some(s => s.remoto) ?? false;
+        const presenziale = studi.length > 0;
 
         result.push({
           uid,

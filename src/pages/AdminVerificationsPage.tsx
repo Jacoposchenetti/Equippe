@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { collection, query, where, getDocs, doc, updateDoc, Timestamp, orderBy } from 'firebase/firestore';
+import { collection, query, where, getDocs, getDoc, setDoc, doc, updateDoc, Timestamp, orderBy } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { User, VerificationStatus, VerificationInfo } from '@/types/equippe';
 import Header from '@/components/Header';
@@ -23,6 +23,8 @@ export default function AdminVerificationsPage() {
   const [rejectionReason, setRejectionReason] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
   const [filterStatus, setFilterStatus] = useState<VerificationStatus | 'all' | 'with-pending-professions'>('pending');
+  const [visibilityMap, setVisibilityMap] = useState<Record<string, boolean>>({});
+  const [visibilityLoading, setVisibilityLoading] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     if (!user) {
@@ -84,11 +86,42 @@ export default function AdminVerificationsPage() {
       }
 
       setPendingUsers(users);
+
+      // Carica isPublic da availability/{uid} per ogni utente
+      const visMap: Record<string, boolean> = {};
+      await Promise.all(
+        users.map(async (u) => {
+          try {
+            const avDoc = await getDoc(doc(db, 'availability', u.id));
+            visMap[u.id] = avDoc.exists() ? (avDoc.data()?.isPublic ?? false) : false;
+          } catch {
+            visMap[u.id] = false;
+          }
+        })
+      );
+      setVisibilityMap(visMap);
     } catch (error) {
       console.error('Errore caricamento utenti:', error);
       showToast('Errore nel caricamento degli utenti', 'error');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleToggleVisibility = async (userId: string, newValue: boolean) => {
+    setVisibilityLoading(prev => ({ ...prev, [userId]: true }));
+    try {
+      await setDoc(doc(db, 'availability', userId), { isPublic: newValue }, { merge: true });
+      setVisibilityMap(prev => ({ ...prev, [userId]: newValue }));
+      showToast(
+        newValue ? 'Profilo reso visibile ai pazienti' : 'Profilo nascosto ai pazienti',
+        'success'
+      );
+    } catch (error) {
+      console.error('Errore aggiornamento visibilità:', error);
+      showToast('Errore durante l\'aggiornamento', 'error');
+    } finally {
+      setVisibilityLoading(prev => ({ ...prev, [userId]: false }));
     }
   };
 
@@ -444,14 +477,33 @@ export default function AdminVerificationsPage() {
                       </p>
                     </div>
                     
-                    {selectedUser?.id !== pendingUser.id && (
-                      <button
-                        onClick={() => setSelectedUser(pendingUser)}
-                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
-                      >
-                        Visualizza dettagli
-                      </button>
-                    )}
+                    <div className="flex flex-col items-end gap-2">
+                      {/* Visibilità pazienti */}
+                      <label className="flex items-center gap-2 cursor-pointer select-none">
+                        <span className="text-xs text-gray-500 font-medium">Visibile ai pazienti</span>
+                        <button
+                          onClick={() => handleToggleVisibility(pendingUser.id, !visibilityMap[pendingUser.id])}
+                          disabled={visibilityLoading[pendingUser.id]}
+                          className={`relative w-10 h-6 rounded-full transition-colors duration-200 focus:outline-none
+                            ${visibilityMap[pendingUser.id] ? 'bg-green-500' : 'bg-gray-300'}
+                            ${visibilityLoading[pendingUser.id] ? 'opacity-50 cursor-wait' : ''}`}
+                          aria-label="Toggle visibilità pazienti"
+                        >
+                          <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200
+                            ${visibilityMap[pendingUser.id] ? 'translate-x-4' : ''}`}
+                          />
+                        </button>
+                      </label>
+
+                      {selectedUser?.id !== pendingUser.id && (
+                        <button
+                          onClick={() => setSelectedUser(pendingUser)}
+                          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
+                        >
+                          Visualizza dettagli
+                        </button>
+                      )}
+                    </div>
                   </div>
 
                   {/* Professioni */}

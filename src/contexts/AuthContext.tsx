@@ -17,12 +17,13 @@ import {
 } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
-import { User } from '@/types/equippe';
+import { User, SubscriptionPlan } from '@/types/equippe';
 
 interface AuthContextType {
   user: FirebaseUser | null;
   userProfile: User | null;
   loading: boolean;
+  currentPlan: SubscriptionPlan;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string, displayName: string) => Promise<FirebaseUser>;
   signInWithGoogle: () => Promise<{ user: FirebaseUser; isNewUser: boolean }>;
@@ -123,10 +124,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const currentPlan: SubscriptionPlan = userProfile?.plan ?? 'base';
+
   const value = {
     user,
     userProfile,
     loading,
+    currentPlan,
     signIn,
     signUp,
     signInWithGoogle,

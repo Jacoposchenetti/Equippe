@@ -209,7 +209,7 @@ export default function ProfilePage() {
       const snapshot = await getDocs(q);
       const existingConversation = snapshot.docs.find(doc => {
         const data = doc.data();
-        return data.participants.includes(profileUser.uid);
+        return data.participants.includes(profileUser.uid) && (!data.type || data.type === 'private');
       });
 
       if (existingConversation) {
@@ -475,13 +475,6 @@ export default function ProfilePage() {
                           )}
                         </div>
                       </div>
-                    </div>
-                    <div className="flex items-center gap-2 ml-4">
-                      {studio.remoto && (
-                        <span className="px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs font-medium">
-                          Remoto
-                        </span>
-                      )}
                     </div>
                   </div>
                 </div>

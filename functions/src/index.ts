@@ -2229,3 +2229,386 @@ export const sendAppointmentReminders = functions
 
     return null;
   });
+
+/**
+ * iCal feed per il professionista — genera un file .ics con tutti gli appuntamenti confermati.
+ * Protetto da token segreto (UUID) memorizzato in availability/{uid}.icalToken.
+ * Endpoint: GET /appointmentsIcal?uid=X&token=Y
+ * I professionisti lo aggiungono come "Abbonamento calendario" in Google/Apple/Outlook.
+ */
+export const appointmentsIcal = functions
+  .region('europe-west1')
+  .https.onRequest(async (req, res) => {
+    const { uid, token } = req.query as Record<string, string>;
+
+    if (!uid || !token) {
+      res.status(400).send('Missing uid or token');
+      return;
+    }
+
+    // Valida il token confrontandolo con availability/{uid}.icalToken
+    const availDoc = await admin.firestore().doc(`availability/${uid}`).get();
+    if (!availDoc.exists) {
+      res.status(404).send('Not found');
+      return;
+    }
+    const availData = availDoc.data()!;
+    if (!availData.icalToken || availData.icalToken !== token) {
+      res.status(401).send('Invalid token');
+      return;
+    }
+
+    // Carica gli appuntamenti confermati del professionista
+    const snap = await admin.firestore()
+      .collection('appointments')
+      .where('professionalUid', '==', uid)
+      .where('status', '==', 'confirmed')
+      .get();
+
+    const now = new Date();
+    const stamp = now.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+
+    function toIcalDate(dateStr: string, timeStr: string): string {
+      // dateStr: "YYYY-MM-DD", timeStr: "HH:MM"
+      return dateStr.replace(/-/g, '') + 'T' + timeStr.replace(':', '') + '00';
+    }
+
+    function escapeIcal(s: string): string {
+      return (s || '').replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\n/g, '\\n');
+    }
+
+    const events = snap.docs.map(d => {
+      const a = d.data();
+      const dtStart = toIcalDate(a.date, a.startTime);
+      const dtEnd = toIcalDate(a.date, a.endTime);
+      const summary = escapeIcal(`${a.tipoVisita || 'Visita'} – ${a.patientName || ''}`);
+      const description = escapeIcal(`Paziente: ${a.patientName || ''}\nEmail: ${a.patientEmail || ''}\nTipo: ${a.tipoVisita || ''}`);
+      return [
+        'BEGIN:VEVENT',
+        `UID:${d.id}@tuaequipe.it`,
+        `DTSTAMP:${stamp}`,
+        `DTSTART:${dtStart}`,
+        `DTEND:${dtEnd}`,
+        `SUMMARY:${summary}`,
+        `DESCRIPTION:${description}`,
+        'STATUS:CONFIRMED',
+        'END:VEVENT',
+      ].join('\r\n');
+    });
+
+    const ics = [
+      'BEGIN:VCALENDAR',
+      'VERSION:2.0',
+      'PRODID:-//TuaEquipe//Appuntamenti//IT',
+      'CALSCALE:GREGORIAN',
+      'METHOD:PUBLISH',
+      'X-WR-CALNAME:Appuntamenti TuaEquipe',
+      'X-WR-TIMEZONE:Europe/Rome',
+      ...events,
+      'END:VCALENDAR',
+    ].join('\r\n');
+
+    res.setHeader('Content-Type', 'text/calendar; charset=utf-8');
+    res.setHeader('Content-Disposition', 'attachment; filename="tuaequipe.ics"');
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.status(200).send(ics);
+  });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// GOOGLE CALENDAR OAUTH — two-way sync
+// Legge gli eventi del professionista da Google Calendar e blocca gli slot occupati
+// nel BookingWidget in modo che i pazienti non possano prenotare orari già impegnati.
+//
+// Flusso:
+//  1. Frontend chiama googleCalendarAuthUrl → ottiene URL → redirect Google OAuth
+//  2. Google redirige a googleCalendarCallback con ?code=... → scambia con token → salva
+//  3. BookingWidget chiama getGoogleCalendarBusySlots → ottiene slot occupati del giorno
+// ─────────────────────────────────────────────────────────────────────────────
+
+import { google } from 'googleapis';
+
+function getOAuthClient() {
+  return new google.auth.OAuth2(
+    process.env.GOOGLE_CLIENT_ID,
+    process.env.GOOGLE_CLIENT_SECRET,
+    process.env.GOOGLE_REDIRECT_URI, // es. https://europe-west1-equippe-271f5.cloudfunctions.net/googleCalendarCallback
+  );
+}
+
+/**
+ * Callable: restituisce l'URL OAuth da aprire nel browser del professionista.
+ * Il frontend mostra questo URL in un popup o redirect.
+ */
+export const googleCalendarAuthUrl = functions
+  .region('europe-west1')
+  .https.onCall(async (_data, context) => {
+    if (!context.auth) throw new functions.https.HttpsError('unauthenticated', 'Non autenticato');
+
+    const oauth2 = getOAuthClient();
+    const url = oauth2.generateAuthUrl({
+      access_type: 'offline',
+      prompt: 'consent', // forza refresh_token anche se già autorizzato in passato
+      scope: [
+        'https://www.googleapis.com/auth/calendar.events',
+        'https://www.googleapis.com/auth/calendar.readonly',
+      ],
+      state: context.auth.uid, // passiamo l'uid per recuperarlo nel callback
+    });
+
+    return { url };
+  });
+
+/**
+ * HTTP: Callback OAuth di Google. Riceve ?code=...&state=uid
+ * Scambia il codice con access_token + refresh_token e salva in users/{uid}/integrations/google
+ */
+export const googleCalendarCallback = functions
+  .region('europe-west1')
+  .https.onRequest(async (req, res) => {
+    const code = req.query.code as string;
+    const uid = req.query.state as string;
+
+    if (!code || !uid) {
+      res.status(400).send('Parametri mancanti');
+      return;
+    }
+
+    try {
+      const oauth2 = getOAuthClient();
+      const { tokens } = await oauth2.getToken(code);
+
+      if (!tokens.refresh_token) {
+        // Se non c'è refresh_token l'utente aveva già autorizzato — forza revoca e riprova
+        res.redirect(`https://tuaequipe.it/disponibilita?gcal=error&reason=no_refresh_token`);
+        return;
+      }
+
+      // Salva i token in Firestore sotto users/{uid}/integrations/google
+      await admin.firestore()
+        .doc(`users/${uid}/integrations/google`)
+        .set({
+          accessToken: tokens.access_token,
+          refreshToken: tokens.refresh_token,
+          expiryDate: tokens.expiry_date,
+          scope: tokens.scope,
+          connectedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+
+      res.redirect(`https://tuaequipe.it/disponibilita?gcal=success`);
+    } catch (err) {
+      console.error('googleCalendarCallback error:', err);
+      res.redirect(`https://tuaequipe.it/disponibilita?gcal=error&reason=exchange_failed`);
+    }
+  });
+
+/**
+ * Callable: restituisce gli slot già occupati da eventi Google Calendar
+ * per un dato professionista e una data specifica.
+ * Usato dal BookingWidget per nascondere slot non disponibili.
+ *
+ * Input: { professionalUid: string, date: string (YYYY-MM-DD) }
+ * Output: { busyTimes: Array<{ start: string, end: string }> } (orari HH:MM)
+ */
+export const getGoogleCalendarBusySlots = functions
+  .region('europe-west1')
+  .https.onCall(async (data) => {
+    const { professionalUid, date } = data as { professionalUid: string; date: string };
+
+    if (!professionalUid || !date) {
+      throw new functions.https.HttpsError('invalid-argument', 'professionalUid e date obbligatori');
+    }
+
+    // Leggi i token dal Firestore
+    const integrationDoc = await admin.firestore()
+      .doc(`users/${professionalUid}/integrations/google`)
+      .get();
+
+    if (!integrationDoc.exists) {
+      return { busyTimes: [] }; // nessuna integrazione attiva
+    }
+
+    const { refreshToken } = integrationDoc.data()!;
+    if (!refreshToken) return { busyTimes: [] };
+
+    try {
+      const oauth2 = getOAuthClient();
+      oauth2.setCredentials({ refresh_token: refreshToken });
+
+      // Aggiorna access_token se scaduto
+      const { credentials } = await oauth2.refreshAccessToken();
+      oauth2.setCredentials(credentials);
+
+      // Salva il nuovo access_token se aggiornato
+      if (credentials.access_token) {
+        await admin.firestore()
+          .doc(`users/${professionalUid}/integrations/google`)
+          .update({
+            accessToken: credentials.access_token,
+            expiryDate: credentials.expiry_date,
+          });
+      }
+
+      const calendar = google.calendar({ version: 'v3', auth: oauth2 });
+
+      // Finestra: tutta la giornata richiesta (fuso orario Roma)
+      const timeMin = new Date(`${date}T00:00:00+02:00`).toISOString();
+      const timeMax = new Date(`${date}T23:59:59+02:00`).toISOString();
+
+      // Recupera tutti i calendari dell'utente per includerli nella query freebusy
+      // Fallback su ['primary'] se lo scope calendar.readonly non è ancora presente
+      let calIds: string[] = ['primary'];
+      try {
+        const calListRes = await calendar.calendarList.list({ minAccessRole: 'freeBusyReader' });
+        const ids = (calListRes.data.items ?? []).map((c: any) => c.id as string).filter(Boolean);
+        if (ids.length > 0) {
+          calIds = ids;
+          if (!calIds.includes('primary')) calIds.push('primary');
+        }
+      } catch {
+        // scope insufficiente o errore temporaneo — usa solo primary
+      }
+
+      const freeBusyRes = await calendar.freebusy.query({
+        requestBody: {
+          timeMin,
+          timeMax,
+          timeZone: 'Europe/Rome',
+          items: calIds.map(id => ({ id })),
+        },
+      });
+
+      // Unisce i busy di tutti i calendari
+      const allBusy: Array<{ start: string; end: string }> = [];
+      for (const calId of calIds) {
+        const slots = freeBusyRes.data.calendars?.[calId]?.busy ?? [];
+        for (const b of slots) {
+          if (b.start && b.end) allBusy.push({ start: b.start, end: b.end });
+        }
+      }
+
+      // Converti in HH:MM
+      const busyTimes = allBusy.map((b) => ({
+        start: new Date(b.start).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Rome' }),
+        end: new Date(b.end).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Rome' }),
+      }));
+
+      return { busyTimes };
+    } catch (err: any) {
+      console.error('getGoogleCalendarBusySlots error:', err);
+      // Se il token è revocato, elimina l'integrazione
+      if (err?.code === 401 || err?.message?.includes('invalid_grant')) {
+        await admin.firestore().doc(`users/${professionalUid}/integrations/google`).delete();
+      }
+      return { busyTimes: [] };
+    }
+  });
+
+/**
+ * Callable: disconnette Google Calendar (elimina token).
+ */
+export const disconnectGoogleCalendar = functions
+  .region('europe-west1')
+  .https.onCall(async (_data, context) => {
+    if (!context.auth) throw new functions.https.HttpsError('unauthenticated', 'Non autenticato');
+    await admin.firestore().doc(`users/${context.auth.uid}/integrations/google`).delete();
+    return { ok: true };
+  });
+
+/**
+ * Firestore trigger: quando viene creato un appuntamento confermato, crea l'evento su Google
+ * Calendar del professionista (se ha l'integrazione attiva). Salva il googleEventId
+ * sull'appuntamento in modo da poterlo cancellare in seguito.
+ */
+export const syncAppointmentToGcal = functions
+  .region('europe-west1')
+  .firestore.document('appointments/{appointmentId}')
+  .onCreate(async (snap) => {
+    const appt = snap.data();
+    if (appt.status !== 'confirmed') return null;
+
+    const intDoc = await admin.firestore()
+      .doc(`users/${appt.professionalUid}/integrations/google`)
+      .get();
+    if (!intDoc.exists) return null;
+
+    const { refreshToken } = intDoc.data()!;
+    if (!refreshToken) return null;
+
+    try {
+      const oauth2 = getOAuthClient();
+      oauth2.setCredentials({ refresh_token: refreshToken });
+      const { credentials } = await oauth2.refreshAccessToken();
+      oauth2.setCredentials(credentials);
+
+      const calendar = google.calendar({ version: 'v3', auth: oauth2 });
+      const event = await calendar.events.insert({
+        calendarId: 'primary',
+        requestBody: {
+          summary: `${appt.tipoVisita || 'Visita'} – ${appt.patientName || ''}`,
+          description: [
+            `Paziente: ${appt.patientName || ''}`,
+            `Email: ${appt.patientEmail || ''}`,
+            appt.patientPhone ? `Tel: ${appt.patientPhone}` : '',
+            appt.notes ? `Note: ${appt.notes}` : '',
+          ].filter(Boolean).join('\n'),
+          start: { dateTime: `${appt.date}T${appt.startTime}:00`, timeZone: 'Europe/Rome' },
+          end:   { dateTime: `${appt.date}T${appt.endTime}:00`,   timeZone: 'Europe/Rome' },
+        },
+      });
+
+      await snap.ref.update({ googleEventId: event.data.id });
+      console.log(`✅ GCal event created for appointment ${snap.id}: ${event.data.id}`);
+    } catch (err: any) {
+      console.error(`❌ syncAppointmentToGcal failed for ${snap.id}:`, err);
+      if (err?.code === 401 || err?.message?.includes('invalid_grant')) {
+        await admin.firestore()
+          .doc(`users/${appt.professionalUid}/integrations/google`)
+          .delete();
+      }
+    }
+    return null;
+  });
+
+/**
+ * Firestore trigger: quando un appuntamento viene annullato, elimina l'evento corrispondente
+ * da Google Calendar (se il googleEventId è presente e l'integrazione è attiva).
+ */
+export const cancelAppointmentOnGcal = functions
+  .region('europe-west1')
+  .firestore.document('appointments/{appointmentId}')
+  .onUpdate(async (change) => {
+    const before = change.before.data();
+    const after  = change.after.data();
+    if (before.status === after.status || after.status !== 'cancelled') return null;
+    if (!after.googleEventId) return null;
+
+    const intDoc = await admin.firestore()
+      .doc(`users/${after.professionalUid}/integrations/google`)
+      .get();
+    if (!intDoc.exists) return null;
+
+    const { refreshToken } = intDoc.data()!;
+    if (!refreshToken) return null;
+
+    try {
+      const oauth2 = getOAuthClient();
+      oauth2.setCredentials({ refresh_token: refreshToken });
+      const { credentials } = await oauth2.refreshAccessToken();
+      oauth2.setCredentials(credentials);
+
+      const calendar = google.calendar({ version: 'v3', auth: oauth2 });
+      await calendar.events.delete({
+        calendarId: 'primary',
+        eventId: after.googleEventId,
+      });
+      console.log(`✅ GCal event deleted for appointment ${change.after.id}`);
+    } catch (err: any) {
+      console.error(`❌ cancelAppointmentOnGcal failed for ${change.after.id}:`, err);
+      if (err?.code === 401 || err?.message?.includes('invalid_grant')) {
+        await admin.firestore()
+          .doc(`users/${after.professionalUid}/integrations/google`)
+          .delete();
+      }
+    }
+    return null;
+  });

@@ -62,10 +62,8 @@ export default function Header() {
     { href: '/messages', label: 'Messaggi', badge: unreadMessages },
     { href: '/appuntamenti', label: 'Agenda', badge: 0 },
     { href: '/ecm', label: 'ECM', badge: 0 },
-    ...(isAdmin ? [
-      { href: '/fatturazione', label: 'Fatture', badge: 0 },
-      { href: '/marketplace', label: 'Marketplace', badge: 0 },
-    ] : []),
+    { href: '/fatturazione', label: 'Fatture', badge: 0 },
+    { href: '/marketplace', label: 'Marketplace', badge: 0 },
   ];
 
   // Icons for bottom nav
@@ -239,6 +237,13 @@ export default function Header() {
                       >
                         Il Mio Profilo
                       </Link>
+                      <Link
+                        to="/abbonamento"
+                        onClick={() => setShowDropdown(false)}
+                        className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition"
+                      >
+                        Abbonamento
+                      </Link>
                       <button
                         onClick={handleLogout}
                         className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition"
@@ -291,6 +296,16 @@ export default function Header() {
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                         </svg>
                         Il Mio Profilo
+                      </Link>
+                      <Link
+                        to="/abbonamento"
+                        onClick={() => setShowMobileProfileMenu(false)}
+                        className="flex items-center gap-2 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
+                        </svg>
+                        Abbonamento
                       </Link>
                       {isAdmin && (
                         <>

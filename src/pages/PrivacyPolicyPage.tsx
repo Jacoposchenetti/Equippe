@@ -42,9 +42,27 @@ export default function PrivacyPolicy() {
                 <li>Log di accesso e utilizzo della piattaforma</li>
               </ul>
 
-              <p className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-sm">
-                <strong>Importante:</strong> tuaequipe.it NON tratta dati sanitari di pazienti. 
-                È severamente vietato condividere informazioni sui pazienti attraverso la piattaforma.
+              <h3 className="text-lg font-semibold mb-3">2.3 Dati Sanitari dei Pazienti (Sistema Referral)</h3>
+              <p className="mb-3">
+                Attraverso il sistema di referral clinico, i professionisti possono inserire dati relativi a pazienti 
+                terzi, tra cui:
+              </p>
+              <ul className="list-disc list-inside space-y-2 mb-4">
+                <li>Quesito clinico e informazioni diagnostiche</li>
+                <li>Livello di urgenza clinica</li>
+                <li>Dati identificativi del paziente (PHI — Protected Health Information)</li>
+                <li>Allegati clinici</li>
+              </ul>
+              <p className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm mb-3">
+                <strong>Protezione PHI:</strong> I dati sanitari dei pazienti sono cifrati lato client prima 
+                dell'invio, tramite Web Crypto API (AES-GCM 256-bit). tuaequipe.it non ha accesso in chiaro 
+                a tali dati. Solo il mittente e il destinatario del referral possono decifrarli.
+              </p>
+              <p className="text-sm text-gray-600">
+                Il professionista che inserisce il referral agisce come <strong>titolare autonomo</strong> del trattamento 
+                verso il proprio paziente, ed è responsabile di aver acquisito il consenso informato del paziente 
+                prima dell'inserimento. tuaequipe.it agisce come <strong>responsabile del trattamento</strong> ai sensi 
+                dell'art. 28 GDPR, fornendo l'infrastruttura tecnica per il trasferimento sicuro delle informazioni.
               </p>
             </section>
 
@@ -66,7 +84,16 @@ export default function PrivacyPolicy() {
                 <li>Prevenzione frodi e abusi</li>
               </ul>
 
-              <h3 className="text-lg font-semibold mb-3">3.3 Obbligo Legale (Art. 6.1.c GDPR)</h3>
+              <h3 className="text-lg font-semibold mb-3">3.3 Finalità di Cura e Tutela della Salute (Art. 9.2.h GDPR)</h3>
+              <p className="mb-3 text-sm text-gray-700">
+                Il trattamento di dati sanitari di pazienti terzi attraverso il sistema referral avviene 
+                esclusivamente per finalità di medicina preventiva, diagnosi, assistenza o terapia sanitaria, 
+                ai sensi dell'art. 9, par. 2, lett. h) del GDPR e dell'art. 2-sexies del D.Lgs. 196/2003 
+                (Codice Privacy italiano). Il trattamento è effettuato sotto la responsabilità professionale 
+                del sanitario che inserisce il referral, soggetto al segreto professionale.
+              </p>
+
+              <h3 className="text-lg font-semibold mb-3">3.4 Obbligo Legale (Art. 6.1.c GDPR)</h3>
               <ul className="list-disc list-inside space-y-2">
                 <li>Conservazione dati per obblighi fiscali</li>
                 <li>Risposta a richieste autorità competenti</li>
@@ -80,6 +107,7 @@ export default function PrivacyPolicy() {
                 <li><strong>Dopo cancellazione:</strong> 10 anni per obblighi legali e fiscali</li>
                 <li><strong>Dati marketing:</strong> Fino a revoca del consenso</li>
                 <li><strong>Log accessi:</strong> 24 mesi per sicurezza</li>
+                <li><strong>Dati referral (PHI):</strong> Per tutta la durata del rapporto contrattuale con il professionista; eliminati entro 30 giorni dalla chiusura dell'account o su richiesta esplicita. I dati cifrati lato client non sono accessibili a tuaequipe.it in forma intellegibile.</li>
               </ul>
             </section>
 
@@ -91,10 +119,11 @@ export default function PrivacyPolicy() {
                 la formazione di equipe e la collaborazione professionale.
               </p>
 
-              <h3 className="text-lg font-semibold mb-3">5.2 Fornitori di Servizi</h3>
+              <h3 className="text-lg font-semibold mb-3">5.2 Fornitori di Servizi (Sub-Responsabili art. 28 GDPR)</h3>
               <ul className="list-disc list-inside space-y-2">
-                <li>Google Firebase (hosting e database) - Server UE</li>
-                <li>Provider email per comunicazioni di servizio</li>
+                <li><strong>Google Firebase / Google Cloud</strong> (hosting, database, autenticazione) — server region <code>europe-west1</code>, UE. DPA: <a href="https://cloud.google.com/terms/data-processing-addendum" className="text-blue-600 hover:underline" target="_blank" rel="noreferrer">Google Cloud DPA</a></li>
+                <li><strong>Resend</strong> (invio email transazionali) — solo indirizzo email e contenuto notifica</li>
+                <li><strong>Lemon Squeezy</strong> (gestione abbonamenti e pagamenti) — Lemon Squeezy agisce come <em>Merchant of Record</em>: è il venditore legale verso l'utente finale, emette le fatture e gestisce i pagamenti in autonomia. I dati trasmessi includono nome, email e importo dell'abbonamento. Privacy policy Lemon Squeezy: <a href="https://www.lemonsqueezy.com/privacy" className="text-blue-600 hover:underline" target="_blank" rel="noreferrer">lemonsqueezy.com/privacy</a></li>
                 <li>Servizi di analitiche anonimizzate</li>
               </ul>
             </section>

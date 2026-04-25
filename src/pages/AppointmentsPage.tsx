@@ -76,13 +76,13 @@ export default function AppointmentsPage() {
     <div className="min-h-screen bg-gray-50">
       <Header />
       <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 pb-24">
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 gap-3">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Appuntamenti</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Appuntamenti</h1>
             <p className="text-gray-600 mt-1">Gestisci le prenotazioni ricevute dai pazienti</p>
           </div>
           <button onClick={() => navigate('/disponibilita')}
-            className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
+            className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition self-start sm:self-auto whitespace-nowrap">
             Gestisci disponibilità
           </button>
         </div>
@@ -114,7 +114,7 @@ export default function AppointmentsPage() {
               </button>
             ))}
           </div>
-          <div className="flex gap-1 bg-white rounded-lg p-1 shadow-sm border border-gray-200">
+          <div className="flex flex-wrap gap-1 bg-white rounded-lg p-1 shadow-sm border border-gray-200">
             {(['all', 'confirmed', 'cancelled', 'completed'] as FilterStatus[]).map(sf => (
               <button key={sf} onClick={() => setStatusFilter(sf)}
                 className={`px-3 py-1.5 rounded-md text-sm font-medium transition

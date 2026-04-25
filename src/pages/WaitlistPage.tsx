@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { collection, doc, setDoc, getDoc, serverTimestamp, getCountFromServer } from 'firebase/firestore';
+import { collection, doc, setDoc, getDoc, serverTimestamp, getCountFromServer, Timestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { PROFESSIONI_DISPONIBILI } from '@/lib/professioni';
 import { Link } from 'react-router-dom';
@@ -118,6 +118,14 @@ export default function WaitlistPage() {
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
   const [website, setWebsite] = useState(''); // honeypot anti-bot
+
+  // Step 2 — qualificazione facoltativa
+  const [step2Done, setStep2Done] = useState(false);
+  const [step2Loading, setStep2Loading] = useState(false);
+  const [zonaRoma, setZonaRoma] = useState('');
+  const [modalitaLavoro, setModalitaLavoro] = useState('');
+  const [alboAttivo, setAlboAttivo] = useState('');
+  const [telefono, setTelefono] = useState('');
   const [navSolid, setNavSolid] = useState(false);
   const [spotsLeft, setSpotsLeft] = useState<number | null>(() => {
     // Mostra subito il valore dalla cache se disponibile e fresco (< 1 ora)
@@ -197,7 +205,7 @@ export default function WaitlistPage() {
       return;
     }
 
-    if (!nome.trim() || !cognome.trim() || !email.trim() || !professione || !citta.trim()) {
+    if (!nome.trim() || !cognome.trim() || !email.trim() || !telefono.trim() || !professione || !citta.trim()) {
       setError('Tutti i campi sono obbligatori.');
       return;
     }
@@ -221,6 +229,7 @@ export default function WaitlistPage() {
         nome: nome.trim(),
         cognome: cognome.trim(),
         email: email.trim().toLowerCase(),
+        telefono: telefono.trim(),
         professione,
         citta: citta.trim(),
         gdprConsent: true,
@@ -242,6 +251,30 @@ export default function WaitlistPage() {
       }
     } finally {
       setLoading(false);
+    }
+  };
+
+  /* ─── Step 2: salva profilo facoltativo ─── */
+  const handleStep2Submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setStep2Loading(true);
+    try {
+      const docId = sanitizeEmailAsId(email);
+      await setDoc(doc(collection(db, 'waitlist_profiles'), docId), {
+        email: email.trim().toLowerCase(),
+        zonaRoma: zonaRoma || null,
+        modalitaLavoro: modalitaLavoro || null,
+        alboAttivo: alboAttivo || null,
+        telefono: telefono.trim() || null,
+        createdAt: Timestamp.now(),
+      });
+      setStep2Done(true);
+    } catch (err) {
+      console.error('Errore salvataggio profilo extra:', err);
+      // Non bloccare l'utente, mostra comunque il successo
+      setStep2Done(true);
+    } finally {
+      setStep2Loading(false);
     }
   };
 
@@ -279,13 +312,23 @@ export default function WaitlistPage() {
         </div>
       </div>
 
-      <div>
-        <label htmlFor={`email-${id}`} className="block text-sm font-medium text-gray-700">
-          Email <span className="text-red-500">*</span>
-        </label>
-        <input id={`email-${id}`} type="email" required value={email} onChange={(e) => setEmail(e.target.value)}
-          className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-400 text-gray-900 text-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-          placeholder="La tua email" />
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label htmlFor={`email-${id}`} className="block text-sm font-medium text-gray-700">
+            Email <span className="text-red-500">*</span>
+          </label>
+          <input id={`email-${id}`} type="email" required value={email} onChange={(e) => setEmail(e.target.value)}
+            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-400 text-gray-900 text-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+            placeholder="La tua email" />
+        </div>
+        <div>
+          <label htmlFor={`telefono-${id}`} className="block text-sm font-medium text-gray-700">
+            Telefono <span className="text-red-500">*</span>
+          </label>
+          <input id={`telefono-${id}`} type="tel" required value={telefono} onChange={(e) => setTelefono(e.target.value)}
+            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-400 text-gray-900 text-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+            placeholder="Es. 333 1234567" />
+        </div>
       </div>
 
       <div className="grid grid-cols-2 gap-3">
@@ -356,32 +399,174 @@ export default function WaitlistPage() {
   );
 
   /* ════════════════════════════════════════════════
-     SUCCESS STATE — full-page confirmation
+     SUCCESS STATE — step 1 confirmation + optional step 2
      ════════════════════════════════════════════════ */
   if (success) {
-    return (
-      <div className="min-h-screen bg-white flex items-center justify-center px-4">
-        <div className="max-w-lg w-full text-center">
-          <div className="mx-auto w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mb-6">
-            <svg className="w-10 h-10 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-            </svg>
-          </div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-3">Iscrizione confermata!</h1>
-          <p className="text-gray-600 mb-2 text-lg">
-            Grazie, <span className="font-semibold">{nome}</span>. Sei nella lista.
-          </p>
-          <p className="text-gray-500 mb-8">
-            Ti contatteremo a <span className="font-medium">{email}</span> quando la piattaforma sarà pronta per te.
-          </p>
-          <div className="border border-gray-200 rounded-lg p-5 bg-gray-50 mb-6">
-            <p className="text-gray-500 text-sm">
-              📬 Ti abbiamo inviato un'email di conferma. Controlla anche la cartella spam.
+    // Step 2 completato (o saltato)
+    if (step2Done) {
+      return (
+        <div className="min-h-screen bg-white flex items-center justify-center px-4">
+          <div className="max-w-lg w-full text-center">
+            <div className="mx-auto w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mb-6">
+              <svg className="w-10 h-10 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <h1 className="text-3xl font-bold text-gray-900 mb-3">Profilo completato!</h1>
+            <p className="text-gray-600 mb-2 text-lg">
+              Grazie, <span className="font-semibold">{nome}</span>. Hai accesso prioritario.
+            </p>
+            <p className="text-gray-500 mb-8">
+              Ti contatteremo a <span className="font-medium">{email}</span> tra i primi quando apriremo nella tua zona.
+            </p>
+            <div className="border border-gray-200 rounded-lg p-5 bg-gray-50 mb-6">
+              <p className="text-gray-500 text-sm">
+                📬 Ti abbiamo inviato un'email di conferma. Controlla anche la cartella spam.
+              </p>
+            </div>
+            <p className="text-sm text-gray-400">
+              Hai domande? Scrivici a{' '}
+              <a href="mailto:info@tuaequipe.it" className="text-blue-600 hover:underline">info@tuaequipe.it</a>
             </p>
           </div>
-          <p className="text-sm text-gray-400">
-            Hai domande? Scrivici a{' '}
-            <a href="mailto:info@tuaequipe.it" className="text-blue-600 hover:underline">info@tuaequipe.it</a>
+        </div>
+      );
+    }
+
+    // Step 2 — form facoltativo di qualificazione
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center px-4">
+        <div className="max-w-lg w-full">
+          {/* Conferma step 1 */}
+          <div className="text-center mb-8">
+            <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
+              <svg className="w-8 h-8 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <h1 className="text-2xl font-bold text-gray-900 mb-2">Sei nella lista, {nome}!</h1>
+            <p className="text-gray-500 text-sm">Ti abbiamo inviato una conferma a <span className="font-medium">{email}</span></p>
+          </div>
+
+          {/* Card step 2 */}
+          <div className="bg-white border border-blue-200 rounded-2xl shadow-lg p-6 sm:p-8">
+            <div className="flex items-center gap-2 mb-1">
+              <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-blue-600 text-white text-xs font-bold">★</span>
+              <h2 className="text-lg font-bold text-gray-900">Vuoi accesso prioritario?</h2>
+            </div>
+            <p className="text-sm text-gray-500 mb-5">
+              Completa questi dati facoltativi e sarai tra i primi a essere contattato nella tua zona.
+            </p>
+
+            <form onSubmit={handleStep2Submit} className="space-y-4">
+              {/* Zona di Roma */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Dove lavori principalmente?
+                </label>
+                <select
+                  value={zonaRoma}
+                  onChange={(e) => setZonaRoma(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-900 text-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="">Seleziona zona...</option>
+                  <option value="Roma Centro">Roma Centro</option>
+                  <option value="Roma Nord">Roma Nord</option>
+                  <option value="Roma Sud">Roma Sud</option>
+                  <option value="Roma Est">Roma Est</option>
+                  <option value="Roma Ovest">Roma Ovest</option>
+                  <option value="Provincia di Roma">Provincia di Roma</option>
+                  <option value="Altra città Lazio">Altra città del Lazio</option>
+                  <option value="Fuori Lazio">Fuori Lazio</option>
+                </select>
+              </div>
+
+              {/* Modalità di lavoro */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  Come lavori?
+                </label>
+                <div className="flex flex-wrap gap-3">
+                  {[
+                    { value: 'studio', label: 'In studio' },
+                    { value: 'remoto', label: 'Da remoto' },
+                    { value: 'entrambi', label: 'Entrambi' },
+                  ].map((opt) => (
+                    <label key={opt.value} className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="modalita"
+                        value={opt.value}
+                        checked={modalitaLavoro === opt.value}
+                        onChange={() => setModalitaLavoro(opt.value)}
+                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
+                      />
+                      <span className="text-sm text-gray-700">{opt.label}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              {/* Iscrizione all'albo */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  Hai un'iscrizione attiva a un albo professionale?
+                </label>
+                <div className="flex gap-6">
+                  {[
+                    { value: 'si', label: 'Sì' },
+                    { value: 'no', label: 'No' },
+                  ].map((opt) => (
+                    <label key={opt.value} className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="albo"
+                        value={opt.value}
+                        checked={alboAttivo === opt.value}
+                        onChange={() => setAlboAttivo(opt.value)}
+                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
+                      />
+                      <span className="text-sm text-gray-700">{opt.label}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              {/* Telefono */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Telefono <span className="text-gray-400 font-normal">(facoltativo)</span>
+                </label>
+                <input
+                  type="tel"
+                  value={telefono}
+                  onChange={(e) => setTelefono(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-400 text-gray-900 text-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="es. 333 1234567"
+                />
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="submit"
+                  disabled={step2Loading}
+                  className="flex-1 py-2.5 px-4 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                >
+                  {step2Loading ? 'Salvataggio...' : 'Completa per accesso prioritario'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setStep2Done(true)}
+                  className="px-4 py-2.5 text-gray-500 hover:text-gray-700 text-sm font-medium transition-colors"
+                >
+                  Salta
+                </button>
+              </div>
+            </form>
+          </div>
+
+          <p className="text-center text-xs text-gray-400 mt-6">
+            Questi dati ci aiutano a costruire la rete nella tua zona. Non verranno condivisi con terzi.
           </p>
         </div>
       </div>
@@ -507,7 +692,6 @@ export default function WaitlistPage() {
               <div className="mb-8 text-center lg:text-left">
                 <p className="text-sm font-semibold text-blue-600 uppercase tracking-wider mb-2">Come funziona</p>
                 <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">Tre passi per entrare nella rete</h2>
-                <p className="text-gray-500">Nessun impegno, nessun costo.</p>
               </div>
 
               <div className="space-y-6">

@@ -266,7 +266,7 @@ export default function DashboardPage() {
 
       if (!hasLocationInRange && hasAnyLocationData) {
         // Ha dati di location ma non è nel raggio — includi solo se lavora da remoto e il filtro lo prevede
-        const hasRemoto = p.profile.studi?.some(s => s.remoto);
+        const hasRemoto = p.profile.lavoraOnline ?? p.profile.studi?.some(s => s.remoto) ?? false;
         if (!hasRemoto || !currentFilters.remoto) {
           return false;
         }
@@ -527,9 +527,6 @@ export default function DashboardPage() {
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                                 </svg>
                                 <span className="truncate">{studio.indirizzo}</span>
-                                {studio.remoto && (
-                                  <span className="text-green-600 text-xs">• Remoto</span>
-                                )}
                               </div>
                             );
                           })}

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { signInWithEmailAndPassword } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, Timestamp } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 
 export default function PazienteLoginPage() {
@@ -19,12 +19,27 @@ export default function PazienteLoginPage() {
     setLoading(true);
     try {
       const cred = await signInWithEmailAndPassword(auth, email.trim().toLowerCase(), password);
-      // Verify it's a patient account, not a professional
+      // Dual-role: se non esiste il doc paziente, crealo dai dati professionista (o errore se account sconosciuto)
       const patSnap = await getDoc(doc(db, 'patients', cred.user.uid));
       if (!patSnap.exists()) {
-        await auth.signOut();
-        setError('Questo account appartiene a un professionista. Usa il login professionale.');
-        return;
+        const profSnap = await getDoc(doc(db, 'users', cred.user.uid));
+        if (profSnap.exists()) {
+          const profData = profSnap.data();
+          const nomeCompleto = (profData.profile?.nome ?? cred.user.displayName ?? '').trim();
+          const parts = nomeCompleto.split(' ');
+          await setDoc(doc(db, 'patients', cred.user.uid), {
+            uid: cred.user.uid,
+            nome: parts[0] ?? '',
+            cognome: parts.slice(1).join(' '),
+            email: cred.user.email?.toLowerCase() ?? '',
+            createdAt: Timestamp.now(),
+            linkedProfessional: true,
+          });
+        } else {
+          await auth.signOut();
+          setError('Account non trovato. Registrati per continuare.');
+          return;
+        }
       }
       navigate('/paziente/appuntamenti');
     } catch (err: unknown) {

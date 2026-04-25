@@ -158,7 +158,7 @@ export default function ReferralsPage() {
                   : 'text-gray-600 hover:text-gray-900'
               }`}
             >
-              Ricevuti ({receivedReferrals.length})
+              Ricevuti
             </button>
             <button
               onClick={() => setTab('sent')}
@@ -168,7 +168,7 @@ export default function ReferralsPage() {
                   : 'text-gray-600 hover:text-gray-900'
               }`}
             >
-              Inviati ({sentReferrals.length})
+              Inviati
             </button>
           </div>
         </div>

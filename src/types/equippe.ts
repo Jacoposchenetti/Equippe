@@ -30,7 +30,8 @@ export interface Studio {
   indirizzo: string;
   città: string;
   provincia: string;
-  remoto: boolean;
+  /** @deprecated — usare UserProfile.lavoraOnline */
+  remoto?: boolean;
   coordinate?: { lat: number; lng: number }; // Coordinate geografiche dello studio
   raggioKm?: number; // Raggio di copertura in km
 }
@@ -94,6 +95,7 @@ export interface UserProfile {
   esperienza: string;
   location: Location; // Mantengo per compatibilità
   studi: Studio[]; // Nuovi studi multipli
+  lavoraOnline?: boolean; // Il professionista riceve anche online (ex Studio.remoto)
   disponibilità: string;
   verified: boolean; // @deprecated - usare verificationInfo.status === 'approved'
   verificationInfo?: VerificationInfo; // Sistema di verifica avanzato
@@ -148,16 +150,29 @@ export interface LocationVisita {
   linkOnline?: string;  // per online / entrambi (es. link Meet/Zoom)
 }
 
+// Una sede di lavoro con il proprio orario settimanale
+export interface SedeDisponibilita {
+  id: string;
+  nome: string;              // etichetta mostrata al paziente
+  tipo: 'presenziale' | 'online';
+  indirizzo?: string;        // per presenziale
+  linkOnline?: string;       // per online
+  schedule: WeeklySchedule;
+}
+
 export interface Availability {
   uid: string;
   isPublic: boolean;                  // opt-in visibilità paziente
-  slotDurationMinutes: number;        // 30 | 45 | 60
+  /** @deprecated — ogni TipoVisita ha la propria durata */
+  slotDurationMinutes?: number;
   bufferMinutes: number;              // pausa tra slot: 0 | 10 | 15
   bookingWindowDays: number;          // quanti giorni avanti: 14 | 30 | 60 | 90
+  minAdvanceHours: number;            // preavviso minimo in ore: 0 | 2 | 4 | 12 | 24 | 48
   schedule: WeeklySchedule;
   tipiVisita: TipoVisita[];
   exceptDates?: string[];             // YYYY-MM-DD date bloccate
-  locationVisita?: LocationVisita;    // dove avviene la visita
+  locationVisita?: LocationVisita;    // @deprecated — usare sedi
+  sedi?: SedeDisponibilita[];         // sedi di lavoro con orari dedicati
   updatedAt: Timestamp;
 }
 
@@ -169,19 +184,24 @@ export interface Appointment {
   professionalName: string;
   patientName: string;
   patientEmail: string;
-  patientPhone?: string;
+  patientPhone?: string | null;
   date: string;           // YYYY-MM-DD
   startTime: string;      // HH:MM
   endTime: string;        // HH:MM
   tipoVisita: string;
   status: AppointmentStatus;
-  notes?: string;
-  locazioneTipo?: 'presenziale' | 'online'; // modalità scelta dal paziente
-  locazioneDettaglio?: string;              // indirizzo o link
+  notes?: string | null;
+  locazioneTipo?: 'presenziale' | 'online' | null; // modalità scelta dal paziente
+  locazioneDettaglio?: string | null;              // indirizzo o link
+  sedeId?: string;                                 // ID della sede di lavoro
+  sedeName?: string;                               // nome della sede di lavoro
   cancellationToken?: string;              // UUID per link di annullamento
   pazienteUid?: string;                    // UID paziente se ha un account su tuaequipe.it
+  googleEventId?: string;                  // ID evento Google Calendar (se integrazione attiva)
   createdAt: Timestamp;
 }
+
+export type SubscriptionPlan = 'base' | 'pro' | 'best';
 
 export interface User {
   uid: string;
@@ -193,6 +213,8 @@ export interface User {
   updatedAt: Timestamp;
   fcmToken?: string;
   fcmTokenUpdatedAt?: Timestamp;
+  plan?: SubscriptionPlan;
+  planUpdatedAt?: Timestamp;
 }
 
 // Team Types

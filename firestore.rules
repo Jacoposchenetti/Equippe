@@ -1,0 +1,155 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isAuthenticated() { return request.auth != null; }
+    function isOwner(uid) { return isAuthenticated() && request.auth.uid == uid; }
+    function isAdmin() { return isAuthenticated() && request.auth.token.email in ['admin@tuaequipe.it', 'jschenetti@gmail.com', 'udemyteam2025@gmail.com', 'martinamaccara@icloud.com', 'martinamaccarana@icloud.com']; }
+
+    match /users/{userId} {
+      allow read: if true;
+      allow write: if isOwner(userId);
+      match /fatturazione_config/{docId} { allow read, write: if isOwner(userId); }
+      match /clienti/{clienteId} { allow read, write: if isOwner(userId); }
+      match /fatture/{fatturaId} { allow read, write: if isOwner(userId); }
+      match /integrations/{integId} { allow read, write: if isOwner(userId); }
+    }
+
+    match /teams/{teamId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update, delete: if isAuthenticated() && resource.data.adminUid == request.auth.uid;
+    }
+
+    match /referrals/{refId} {
+      allow read: if isAuthenticated() && (resource.data.senderUid == request.auth.uid || resource.data.receiverUid == request.auth.uid);
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() && (resource.data.senderUid == request.auth.uid || resource.data.receiverUid == request.auth.uid);
+    }
+
+    match /conversations/{convId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated();
+      match /messages/{msgId} { allow read, write: if isAuthenticated(); }
+    }
+
+    match /messages/{msgId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() && (resource.data.senderId == request.auth.uid || resource.data.receiverId == request.auth.uid);
+      allow delete: if isAuthenticated() && resource.data.senderId == request.auth.uid;
+    }
+
+    match /teamInvites/{inviteId} {
+      allow read: if isAuthenticated() && (resource.data.fromUserId == request.auth.uid || resource.data.toUserId == request.auth.uid);
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() && (resource.data.fromUserId == request.auth.uid || resource.data.toUserId == request.auth.uid);
+    }
+
+    match /notifications/{notifId} {
+      allow read, write: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow create: if isAuthenticated();
+    }
+
+    match /marketplace_listings/{listingId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update, delete: if isAuthenticated() && resource.data.authorUid == request.auth.uid;
+    }
+
+    match /marketplace_offers/{offerId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update, delete: if isAuthenticated() && resource.data.creatorUid == request.auth.uid;
+    }
+
+    match /ecm_events/{eventId} { allow read: if isAuthenticated(); }
+    match /ecmEvents/{eventId} { allow read: if isAuthenticated(); }
+    match /ecm_sync_state/{docId} { allow read: if isAuthenticated(); }
+    match /ecmSyncStatus/{docId} { allow read: if isAuthenticated(); }
+
+    match /availability/{uid} {
+      allow read: if true;
+      // Admin può fare tutto
+      allow write: if isAdmin();
+      // Il professionista può creare il proprio doc, ma isPublic deve essere false
+      allow create: if isOwner(uid) && request.resource.data.isPublic == false;
+      // Il professionista può aggiornare il proprio doc, ma non può cambiare isPublic
+      allow update: if isOwner(uid) && request.resource.data.isPublic == resource.data.isPublic;
+    }
+
+    match /appointments/{appointmentId} {
+      allow create: if true;
+      allow read: if isAuthenticated() && (resource.data.professionalUid == request.auth.uid || resource.data.patientEmail == request.auth.token.email);
+      allow update: if isAuthenticated() && (resource.data.professionalUid == request.auth.uid || resource.data.patientEmail == request.auth.token.email);
+    }
+
+    match /patients/{patientId} { allow read, write: if isOwner(patientId); }
+
+    match /metadata/{docId} {
+      allow read: if true;
+      allow write: if isAuthenticated();
+    }
+
+    match /waitlist/{docId} {
+      allow create: if true;
+      // Permette re-iscrizione solo se l'utente si era precedentemente disiscritta
+      allow update: if resource.data.unsubscribed == true;
+      allow read: if isAuthenticated();
+    }
+
+    match /waitlist_email_history/{docId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /waitlist_email_groups/{docId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /waitlist_email_templates/{docId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /connections/{connectionId} {
+      // Participants can read their connections; also allow reading non-existent docs
+      // (resource == null) so transactions can check before creating a new request
+      allow read: if isAuthenticated() &&
+        (resource == null || resource.data.userA == request.auth.uid || resource.data.userB == request.auth.uid);
+
+      // Requester creates the document; they must be one of the participants
+      // Also allow system auto-connect (requestedBy == 'system', status == 'accepted')
+      allow create: if isAuthenticated() &&
+        (request.resource.data.userA == request.auth.uid || request.resource.data.userB == request.auth.uid) &&
+        (
+          (request.resource.data.requestedBy == request.auth.uid && request.resource.data.status == 'pending') ||
+          (request.resource.data.requestedBy == 'system' && request.resource.data.status == 'accepted')
+        );
+
+      // Either participant can update (accept / reject / system auto-connects via update)
+      allow update: if isAuthenticated() &&
+        (resource.data.userA == request.auth.uid || resource.data.userB == request.auth.uid);
+
+      // Either participant can delete (revoke connection)
+      allow delete: if isAuthenticated() &&
+        (resource.data.userA == request.auth.uid || resource.data.userB == request.auth.uid);
+    }
+
+    match /dailyRewardClaims/{userId} {
+      // Only the owner can read their own claim record
+      allow read: if isOwner(userId);
+
+      // First-time create: no previous doc, always allowed (once per account creation)
+      allow create: if isOwner(userId);
+
+      // Subsequent updates: enforce the 20-hour server-side window.
+      // request.time is the Firestore server clock — cannot be manipulated by the client.
+      // resource.data.lastClaimedAt was written with serverTimestamp() so it's also server-set.
+      // 72000000 ms = 20 hours.
+      allow update: if isOwner(userId) &&
+        request.time.toMillis() - resource.data.lastClaimedAt.toMillis() >= 72000000;
+
+      allow delete: if false; // claim records are permanent
+    }
+  }
+}

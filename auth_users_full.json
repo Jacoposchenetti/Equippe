@@ -1,0 +1,23 @@
+{"users": [
+{
+  "localId": "0ktpbfTmAXeoNulm3Viu7MHg3W52",
+  "email": "martinamaccarana@icloud.com",
+  "emailVerified": true,
+  "passwordHash": "41Z167nxmCQIxwo28oTV0VhvOMmc6Do3kufFPTLfL6mr+Sf5vjwn+qPvCCebyMgnByw68U2WVwCF5J5Rl7KW8Q==",
+  "salt": "9ne3Y/2LX7zfFA==",
+  "displayName": "Martina Maccarana",
+  "lastSignedInAt": "1771349227243",
+  "createdAt": "1768069813442",
+  "providerUserInfo": []
+},
+{
+  "localId": "85g3YbGY2gPKN3mJRxyZFOlIBBg2",
+  "email": "jschenetti@gmail.com",
+  "emailVerified": true,
+  "passwordHash": "yMsCySBOa9vxYM736o3aAaeEevLg4h2QmCTesYdnyUW5HaVEnC/ChLOOGZSh4n9zSaY1xiu7pxJlMjxuqQVpvQ==",
+  "salt": "9jKHGDk2gOXYrw==",
+  "displayName": "Jacopo Schenetti",
+  "lastSignedInAt": "1772016675533",
+  "createdAt": "1768068148394",
+  "providerUserInfo": []
+}]}

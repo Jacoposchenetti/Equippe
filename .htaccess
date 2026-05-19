@@ -1,0 +1,47 @@
+# Forza HTTPS e redirect www → non-www in un solo passaggio (evita double redirect)
+RewriteEngine On
+RewriteCond %{HTTPS} off [OR]
+RewriteCond %{HTTP_HOST} ^www\.tuaequipe\.it [NC]
+RewriteRule ^(.*)$ https://tuaequipe.it/$1 [L,R=301]
+
+# SPA routing - reindirizza tutte le richieste non-file a index.html
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule . /index.html [L]
+
+# Configura cache headers per performance
+<IfModule mod_expires.c>
+  ExpiresActive On
+  ExpiresByType text/css "access plus 1 year"
+  ExpiresByType application/javascript "access plus 1 year"
+  ExpiresByType image/png "access plus 1 year"
+  ExpiresByType image/jpg "access plus 1 year"
+  ExpiresByType image/jpeg "access plus 1 year"
+  ExpiresByType image/gif "access plus 1 year"
+  ExpiresByType image/svg+xml "access plus 1 year"
+  ExpiresByType image/webp "access plus 1 year"
+  ExpiresByType font/woff "access plus 1 year"
+  ExpiresByType font/woff2 "access plus 1 year"
+</IfModule>
+
+# Sicurezza headers
+<IfModule mod_headers.c>
+  Header always set X-Frame-Options DENY
+  Header always set X-Content-Type-Options nosniff
+  Header always set Referrer-Policy "strict-origin-when-cross-origin"
+  # Disabilita risposte parziali (206) che i crawler interpretano come errore
+  Header set Accept-Ranges none
+</IfModule>
+
+# Compressione GZIP
+<IfModule mod_deflate.c>
+  AddOutputFilterByType DEFLATE text/plain
+  AddOutputFilterByType DEFLATE text/html
+  AddOutputFilterByType DEFLATE text/xml
+  AddOutputFilterByType DEFLATE text/css
+  AddOutputFilterByType DEFLATE application/xml
+  AddOutputFilterByType DEFLATE application/xhtml+xml
+  AddOutputFilterByType DEFLATE application/rss+xml
+  AddOutputFilterByType DEFLATE application/javascript
+  AddOutputFilterByType DEFLATE application/x-javascript
+</IfModule>

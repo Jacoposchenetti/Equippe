@@ -1,0 +1,114 @@
+@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+/* Miglioramenti per Mobile */
+/* Migliora il tap su mobile */
+button, a, [role="button"] {
+  -webkit-tap-highlight-color: rgba(59, 130, 246, 0.1);
+  touch-action: manipulation;
+}
+
+/* Migliora la visibilità del testo su mobile */
+@media (max-width: 640px) {
+  body {
+    font-size: 16px;
+    line-height: 1.5;
+  }
+}
+
+/* Migliora le form su mobile */
+input, select, textarea {
+  font-size: 16px; /* Previene lo zoom su iOS */
+}
+
+/* Ottimizza le immagini */
+img {
+  height: auto;
+  max-width: 100%;
+}
+
+/* Utility per testo che si interrompe su mobile */
+.line-clamp-2 {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+/* Utility per scroll orizzontale su mobile */
+.scroll-smooth-mobile {
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Utility per touch-friendly buttons */
+.touch-friendly {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+/* Utility per nascondere scroll bars mantenendo funzionalità */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* Animazioni ottimizzate per mobile */
+@media (prefers-reduced-motion: no-preference) {
+  .mobile-smooth {
+    transition-duration: 300ms;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  }
+}
+
+/* Hover states solo su desktop */
+@media (hover: hover) {
+  .hover-desktop:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+  }
+}
+
+/* Animazione per notifiche push */
+@keyframes slide-up {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.animate-slide-up {
+  animation: slide-up 0.3s ease-out;
+}

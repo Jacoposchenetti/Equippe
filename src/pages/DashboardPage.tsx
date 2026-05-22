@@ -299,8 +299,8 @@ export default function DashboardPage() {
     // Anni di esperienza minimi (basato sul campo anniEsperienza delle professioni)
     if (currentFilters.anniEsperienzaMin && currentFilters.anniEsperienzaMin > 0) {
       const profCoct = [
-        ...(p.profile.professioniConDocumenti || []),
-        ...(p.profile.professioniPending || []),
+        ...(Array.isArray(p.profile.professioniConDocumenti) ? p.profile.professioniConDocumenti : []),
+        ...(Array.isArray(p.profile.professioniPending) ? p.profile.professioniPending : []),
       ];
       const maxAnni = profCoct.reduce((max, prof) => {
         const anni = parseInt(prof.anniEsperienza || '0', 10);

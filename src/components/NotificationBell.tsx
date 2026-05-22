@@ -143,6 +143,12 @@ export default function NotificationBell() {
       case 'appointment_cancelled':
         navigate('/appuntamenti');
         break;
+      case 'connection_request':
+        navigate('/connections');
+        break;
+      case 'connection_accepted':
+        navigate('/connections');
+        break;
     }
   };
 
@@ -182,6 +188,10 @@ export default function NotificationBell() {
         return '📅';
       case 'appointment_cancelled':
         return '❌';
+      case 'connection_request':
+        return 'Conn';
+      case 'connection_accepted':
+        return 'OK';
       default:
         return '🔔';
     }

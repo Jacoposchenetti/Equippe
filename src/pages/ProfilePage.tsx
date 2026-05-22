@@ -169,6 +169,7 @@ export default function ProfilePage() {
       const existingInviteQuery = query(
         invitesRef,
         where('teamId', '==', selectedTeamId),
+        where('fromUserId', '==', currentUser.uid),
         where('toUserId', '==', profileUser.uid),
         where('status', '==', 'pending')
       );

@@ -118,6 +118,7 @@ export default function WaitlistPage() {
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
   const [website, setWebsite] = useState(''); // honeypot anti-bot
+  const [promoCode, setPromoCode] = useState('');
 
   // Step 2 — qualificazione facoltativa
   const [step2Done, setStep2Done] = useState(false);
@@ -234,6 +235,7 @@ export default function WaitlistPage() {
         citta: citta.trim(),
         gdprConsent: true,
         createdAt: serverTimestamp(),
+        ...(promoCode.trim() && { promoCode: promoCode.trim().toUpperCase() }),
         ...(professione === 'Psicoterapeuta' && { isPsichiatra: isPsichiatra === 'si' }),
       });
 
@@ -374,6 +376,15 @@ export default function WaitlistPage() {
           </div>
         </div>
       )}
+
+      <div>
+        <label htmlFor={`promoCode-${id}`} className="block text-sm font-medium text-gray-700">
+          Promo Code <span className="text-gray-400 font-normal">(opzionale)</span>
+        </label>
+        <input id={`promoCode-${id}`} type="text" value={promoCode} onChange={(e) => setPromoCode(e.target.value)}
+          className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-400 text-gray-900 text-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 uppercase"
+          placeholder="Es. AMICO2024" />
+      </div>
 
       <div className="flex items-start pt-1">
         <div className="flex items-center h-5">

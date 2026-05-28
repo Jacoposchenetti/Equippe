@@ -7,12 +7,12 @@ importScripts('https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging-comp
 
 // Configurazione Firebase (deve corrispondere a quella dell'app)
 firebase.initializeApp({
-  apiKey: "AIzaSyATt8ZmGZ9MFHjW3xAuGODu5LgA1L9rCZo",
+  apiKey: "AIzaSyAoc1gy01Wykf6wJ0IwSzHM5jUceZtPflE",
   authDomain: "equippe-271f5.firebaseapp.com",
   projectId: "equippe-271f5",
   storageBucket: "equippe-271f5.firebasestorage.app",
-  messagingSenderId: "956363253556",
-  appId: "1:956363253556:web:fa3dab3fa5fe881cae08e5"
+  messagingSenderId: "730568955288",
+  appId: "1:730568955288:web:2c0faa69ef76eff30847ed"
 });
 
 const messaging = firebase.messaging();

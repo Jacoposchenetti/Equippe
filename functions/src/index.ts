@@ -359,12 +359,17 @@ const ADMIN_EMAILS = ['admin@tuaequipe.it', 'jschenetti@gmail.com', 'martinamacc
 /**
  * Wraps email body HTML with branded header (logo) and footer
  */
-function wrapEmailTemplate(bodyHtml: string, unsubscribeUrl?: string): string {
+function wrapEmailTemplate(bodyHtml: string, unsubscribeUrl?: string, preheader?: string): string {
   const unsubscribeSection = unsubscribeUrl
     ? `<p style="margin: 8px 0;"><a href="${unsubscribeUrl}" style="color: #bbb; font-size: 11px;">Clicca qui per disiscriverti dalle comunicazioni</a></p>`
     : '';
+  // Span nascosto per il preheader (testo grigio sotto l'oggetto nei client email)
+  const preheaderSpan = preheader
+    ? `<span style="display:none;font-size:1px;color:#ffffff;max-height:0;overflow:hidden;opacity:0;">${preheader}&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;</span>`
+    : '';
   return `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff;">
+      ${preheaderSpan}
       <!-- Header con logo -->
       <div style="text-align: center; padding: 24px 0 16px 0; border-bottom: 2px solid #0066cc;">
         <a href="https://tuaequipe.it" target="_blank">
@@ -1614,6 +1619,7 @@ function getProfessioneArticles(professione: string): { un: string; del: string 
  *   - subject: string (oggetto email, supporta placeholder {nome}, {cognome}, {professione}, {un_professione}, {del_professione}, {citta})
  *   - bodyHtml: string (corpo HTML, supporta gli stessi placeholder)
  *   - fromAddress: 'info' | 'noreply' | 'admin' (default: 'info')
+ *   - preheader?: string (testo grigio sotto l'oggetto, supporta gli stessi placeholder)
  */
 export const sendBulkWaitlistEmail = functions
   .region('europe-west1')
@@ -1631,7 +1637,7 @@ export const sendBulkWaitlistEmail = functions
       throw new functions.https.HttpsError('permission-denied', 'Solo gli amministratori possono inviare email in blocco');
     }
 
-    const { recipients, subject, bodyHtml, fromAddress } = data;
+    const { recipients, subject, bodyHtml, fromAddress, preheader } = data;
 
     if (!recipients || !Array.isArray(recipients) || recipients.length === 0) {
       throw new functions.https.HttpsError('invalid-argument', 'Lista destinatari vuota');
@@ -1675,6 +1681,7 @@ export const sendBulkWaitlistEmail = functions
       const recipient = recipients[i];
       const personalizedSubject = replacePlaceholders(subject, recipient);
       const personalizedBody = replacePlaceholders(bodyHtml, recipient);
+      const personalizedPreheader = preheader ? replacePlaceholders(preheader, recipient) : undefined;
       let sent = false;
 
       const unsubscribeToken = Buffer.from(recipient.email).toString('base64url');
@@ -1686,7 +1693,7 @@ export const sendBulkWaitlistEmail = functions
             from,
             to: recipient.email,
             subject: personalizedSubject,
-            html: wrapEmailTemplate(personalizedBody, unsubscribeUrl),
+            html: wrapEmailTemplate(personalizedBody, unsubscribeUrl, personalizedPreheader),
             headers: {
               'List-Unsubscribe': `<${unsubscribeUrl}>`,
               'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
@@ -1742,6 +1749,7 @@ export const sendBulkWaitlistEmail = functions
         })),
         subject,
         bodyHtml,
+        preheader: preheader || '',
         fromAddress,
         result: results,
         failedRecipients,
@@ -1786,7 +1794,7 @@ export const resendFailedWaitlistEmail = functions
       throw new functions.https.HttpsError('failed-precondition', 'Nessun destinatario fallito da reinviare');
     }
 
-    const { subject, bodyHtml, fromAddress } = historyData;
+    const { subject, bodyHtml, preheader, fromAddress } = historyData;
     const from = EMAIL_FROM[fromAddress as keyof typeof EMAIL_FROM] || EMAIL_FROM.info;
     const results = { sent: 0, failed: 0, errors: [] as string[] };
     const stillFailed: any[] = [];
@@ -1817,6 +1825,7 @@ export const resendFailedWaitlistEmail = functions
       const recipient = failedRecipients[i];
       const personalizedSubject = replacePlaceholders(subject, recipient);
       const personalizedBody = replacePlaceholders(bodyHtml, recipient);
+      const personalizedPreheader = preheader ? replacePlaceholders(preheader, recipient) : undefined;
       let sent = false;
 
       const unsubscribeToken = Buffer.from(recipient.email).toString('base64url');
@@ -1828,7 +1837,7 @@ export const resendFailedWaitlistEmail = functions
             from,
             to: recipient.email,
             subject: personalizedSubject,
-            html: wrapEmailTemplate(personalizedBody, unsubscribeUrl),
+            html: wrapEmailTemplate(personalizedBody, unsubscribeUrl, personalizedPreheader),
             headers: {
               'List-Unsubscribe': `<${unsubscribeUrl}>`,
               'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
@@ -2976,4 +2985,88 @@ export const unsubscribeFromWaitlist = functions
     }
 
     res.status(200).json({ success: true });
+  });
+
+// =============================================================================
+// PROMO CODE EMAIL — inviata a chi completa il questionario di validazione
+// Chiamata da Google Apps Script (onFormSubmit trigger) via UrlFetchApp
+// Richiede header: x-internal-secret = process.env.PROMO_SECRET
+// =============================================================================
+
+export const sendPromoCodeEmail = functions
+  .region('europe-west1')
+  .https
+  .onRequest(async (req, res) => {
+    res.set('Access-Control-Allow-Origin', '*');
+    res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
+    res.set('Access-Control-Allow-Headers', 'Content-Type, x-internal-secret');
+    if (req.method === 'OPTIONS') {
+      res.status(204).send('');
+      return;
+    }
+
+    if (req.method !== 'POST') {
+      res.status(405).json({ success: false, error: 'Method not allowed' });
+      return;
+    }
+
+    // Validazione secret per prevenire abusi
+    const expectedSecret = process.env.PROMO_SECRET;
+    const receivedSecret = req.headers['x-internal-secret'];
+    if (!expectedSecret || receivedSecret !== expectedSecret) {
+      console.warn('sendPromoCodeEmail: accesso non autorizzato');
+      res.status(401).json({ success: false, error: 'Unauthorized' });
+      return;
+    }
+
+    const { email } = req.body || {};
+    if (!email || typeof email !== 'string' || !email.includes('@') || !email.includes('.')) {
+      res.status(400).json({ success: false, error: 'Email non valida' });
+      return;
+    }
+
+    const promoCode = 'SURVEY2026';
+
+    const bodyHtml = `
+      <p style="margin: 0 0 16px 0; line-height: 1.6;">
+        Grazie per aver partecipato alla nostra ricerca! Il tuo contributo ci aiuterà a costruire
+        uno strumento davvero utile per i professionisti sanitari italiani.
+      </p>
+      <p style="margin: 0 0 16px 0; line-height: 1.6;">
+        Come promesso, ecco il tuo codice promozionale per l'iscrizione a tuaequipe.it:
+      </p>
+      <div style="background: #f0f7ff; border: 2px solid #0066cc; border-radius: 8px; padding: 24px; text-align: center; margin: 24px 0;">
+        <p style="margin: 0 0 8px 0; font-size: 13px; color: #666; text-transform: uppercase; letter-spacing: 1px;">Il tuo codice promozionale</p>
+        <p style="margin: 0; font-size: 32px; font-weight: bold; letter-spacing: 6px; color: #0066cc; font-family: 'Courier New', monospace;">${promoCode}</p>
+      </div>
+      <p style="margin: 0 0 16px 0; line-height: 1.6;">
+        Usalo quando ti iscrivi su <a href="https://tuaequipe.it" style="color: #0066cc; font-weight: bold;">tuaequipe.it</a>
+        per ottenere l'accesso prioritario alla piattaforma.
+      </p>
+      <p style="margin: 0 0 16px 0; line-height: 1.6;">
+        Se hai domande o vuoi raccontarci la tua esperienza, rispondi pure a questa email.
+      </p>
+      <p style="margin: 0; line-height: 1.6;">
+        A presto,<br>
+        <strong>Il team di tuaequipe.it</strong>
+      </p>
+    `;
+
+    try {
+      await getResend().emails.send({
+        from: EMAIL_FROM.info,
+        to: email,
+        subject: `Il tuo codice promozionale: ${promoCode}`,
+        html: wrapEmailTemplate(
+          bodyHtml,
+          undefined,
+          `Codice promozionale ${promoCode} — grazie per aver partecipato alla ricerca!`
+        ),
+      });
+      console.log(`✅ Promo code inviato a ${email}`);
+      res.status(200).json({ success: true });
+    } catch (err: any) {
+      console.error(`❌ Errore invio promo code a ${email}:`, err);
+      res.status(500).json({ success: false, error: 'Errore invio email' });
+    }
   });

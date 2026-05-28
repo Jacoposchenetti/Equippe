@@ -112,6 +112,7 @@ export default function AdminWaitlistEmailPage() {
   // Email
   const [showEmailPanel, setShowEmailPanel] = useState(false);
   const [emailSubject, setEmailSubject] = useState('');
+  const [emailPreheader, setEmailPreheader] = useState('');
   const DEFAULT_EMAIL_BODY = `Ciao {nome}!\n\nSiamo felici di informarti che **tuaequipe.it** è finalmente online.\n\nCome {professione} a {citta}, sei tra i primi a poter accedere alla piattaforma.\n\n[Registrati ora](https://tuaequipe.it/register)\n\nConosci un collega che potrebbe essere interessato? Invitalo tramite il tuo link personale — puoi condividerlo via WhatsApp, email o Telegram in un clic:\n[Invita un collega →]({invite_page_url})\n\nA presto,\nIl team di tuaequipe.it\n\n---\nHai ricevuto questa email perché ti sei iscritto alla waitlist di tuaequipe.it.\n[Clicca qui per disiscriverti]({unsubscribe_url})`;
   const [emailBody, setEmailBody] = useState(DEFAULT_EMAIL_BODY);
   const [emailFrom, setEmailFrom] = useState<'info' | 'noreply' | 'admin'>('info');
@@ -349,6 +350,7 @@ export default function AdminWaitlistEmailPage() {
       await sendBulkEmail({
         recipients: [{ email: testEmail.trim(), nome: 'Test', cognome: 'Test', professione: 'Test', citta: 'Test' }],
         subject: emailSubject,
+        preheader: emailPreheader,
         bodyHtml: textToHtml(emailBody),
         fromAddress: emailFrom,
       });
@@ -388,6 +390,7 @@ export default function AdminWaitlistEmailPage() {
           citta: e.citta,
         })),
         subject: emailSubject,
+        preheader: emailPreheader,
         bodyHtml: textToHtml(emailBody),
         fromAddress: emailFrom,
       });
@@ -736,6 +739,27 @@ export default function AdminWaitlistEmailPage() {
                   placeholder="es. Ciao {nome}, tuaequipe.it è online!"
                   className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
+              </div>
+
+              {/* Preheader */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Preheader
+                  <span className="ml-2 text-xs font-normal text-gray-400">(testo grigio sotto l'oggetto — opzionale, supporta {'{nome}'} ecc.)</span>
+                </label>
+                <input
+                  type="text"
+                  value={emailPreheader}
+                  onChange={e => setEmailPreheader(e.target.value)}
+                  placeholder="es. Pochi minuti per raccontarci come gestisci i referral ai tuoi colleghi"
+                  maxLength={150}
+                  className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+                {emailPreheader && (
+                  <p className={`text-xs mt-1 ${emailPreheader.length > 120 ? 'text-orange-500' : 'text-gray-400'}`}>
+                    {emailPreheader.length}/150 caratteri{emailPreheader.length > 120 ? ' — potrebbe essere troncato su alcuni client' : ''}
+                  </p>
+                )}
               </div>
 
               {/* Corpo email */}

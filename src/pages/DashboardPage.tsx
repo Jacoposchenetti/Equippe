@@ -360,15 +360,6 @@ export default function DashboardPage() {
     return true;
   });
 
-  const visibleCount = currentFilters.type === 'professionista'
-    ? filteredProfessionisti.length
-    : filteredTeams.length;
-  const resultLabel = currentFilters.type === 'professionista' ? 'professionisti' : 'equipe';
-  const verifiedProfessionisti = filteredProfessionisti.filter(p => p.profile.verificationInfo?.status === 'approved').length;
-  const teamsWithOpenSpots = filteredTeams.filter(team =>
-    team.ruoliCercati?.some(ruolo => ruolo.occupati < ruolo.numero)
-  ).length;
-
   const getAvatarColor = (index: number) => {
     const colors = ['bg-green-300', 'bg-orange-300', 'bg-purple-300', 'bg-blue-300', 'bg-pink-300', 'bg-yellow-300'];
     return colors[index % colors.length];
@@ -404,47 +395,24 @@ export default function DashboardPage() {
       )}
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-0 pb-24 sm:pt-6 sm:pb-10">
-        <section className="surface-lifted mb-6 overflow-hidden rounded-3xl">
-          <div className="grid gap-6 p-5 sm:p-7 lg:grid-cols-[1.4fr_1fr] lg:items-center">
-            <div>
-              <div className="mb-4 flex flex-wrap items-center gap-2">
-                <span className="chip">Area professionisti</span>
-                <span className="chip">{visibleCount} {resultLabel} disponibili</span>
-              </div>
-              <h1 className="text-3xl font-extrabold tracking-normal text-slate-950 sm:text-4xl">
-                {currentFilters.type === 'professionista' ? 'Trova il collega giusto' : 'Scopri equipe con posti aperti'}
-              </h1>
-              <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600 sm:text-base">
-                {currentFilters.type === 'professionista'
-                  ? 'Filtra per competenza, area clinica e zona operativa per costruire collaborazioni mirate.'
-                  : 'Individua gruppi multidisciplinari compatibili con il tuo profilo e la tua area di lavoro.'}
-              </p>
-              <div className="mt-5 flex flex-wrap gap-3">
-                <button onClick={() => navigate('/teams/create')} className="btn-primary">
-                  Crea equipe
-                </button>
-                <button onClick={() => navigate('/profile/edit')} className="btn-secondary">
-                  Aggiorna profilo
-                </button>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 lg:grid-cols-1">
-              <div className="metric-card">
-                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Risultati</p>
-                <p className="mt-1 text-3xl font-extrabold text-slate-950">{visibleCount}</p>
-                <p className="text-sm text-slate-500">{resultLabel} in base ai filtri</p>
-              </div>
-              <div className="metric-card">
-                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Verificati</p>
-                <p className="mt-1 text-3xl font-extrabold text-green-700">{verifiedProfessionisti}</p>
-                <p className="text-sm text-slate-500">profili professionali validati</p>
-              </div>
-              <div className="metric-card">
-                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Equipe aperte</p>
-                <p className="mt-1 text-3xl font-extrabold text-orange-600">{teamsWithOpenSpots}</p>
-                <p className="text-sm text-slate-500">con ruoli ancora disponibili</p>
-              </div>
+        <section className="surface-lifted relative mb-6 overflow-hidden rounded-3xl">
+          <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-blue-700 via-green-600 to-orange-500" />
+          <div className="p-5 sm:p-7">
+            <h1 className="text-3xl font-extrabold tracking-normal text-slate-950 sm:text-4xl">
+              {currentFilters.type === 'professionista' ? 'Trova il collega giusto' : 'Scopri equipe con posti aperti'}
+            </h1>
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600 sm:text-base">
+              {currentFilters.type === 'professionista'
+                ? 'Filtra per competenza, area clinica e zona operativa per costruire collaborazioni mirate.'
+                : 'Individua gruppi multidisciplinari compatibili con il tuo profilo e la tua area di lavoro.'}
+            </p>
+            <div className="mt-5 flex flex-wrap gap-3">
+              <button onClick={() => navigate('/teams/create')} className="btn-primary">
+                Crea equipe
+              </button>
+              <button onClick={() => navigate('/profile/edit')} className="btn-secondary">
+                Aggiorna profilo
+              </button>
             </div>
           </div>
         </section>

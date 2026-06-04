@@ -1,6 +1,7 @@
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { useEffect } from 'react'
 import { useAuth } from './contexts/AuthContext'
+import { SidebarProvider, useSidebar } from './contexts/SidebarContext'
 import VerifyEmailPage from './pages/VerifyEmailPage'
 import PWAInstallPrompt from './components/PWAInstallPrompt'
 import WaitlistPage from './pages/WaitlistPage'
@@ -97,7 +98,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   // Se l'utente ha un profilo Firestore con status approved, lascialo passare
   // (backward compatibility con utenti creati prima del sistema di verifica email)
   if (userProfile?.profile?.verificationInfo?.status === 'approved') {
-    return <>{children}</>
+    return <SidebarWrapper>{children}</SidebarWrapper>
   }
 
   // Altrimenti, se l'email non è verificata, reindirizza alla pagina di verifica
@@ -106,7 +107,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
     return <Navigate to="/verify-email" replace />
   }
   
-  return <>{children}</>
+  return <SidebarWrapper>{children}</SidebarWrapper>
 }
 
 // Admin emails (same list as AdminVerificationsPage)
@@ -155,8 +156,14 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>
 }
 
+function SidebarWrapper({ children }: { children: React.ReactNode }) {
+  const { isOpen } = useSidebar();
+  return <div className={`transition-all duration-300 pt-14 lg:pt-0 ${isOpen ? 'lg:ml-72' : 'lg:ml-0'}`}>{children}</div>;
+}
+
 function App() {
   return (
+    <SidebarProvider>
     <div className="App">
       <ScrollToTop />
       <PWAInstallPrompt />
@@ -386,6 +393,7 @@ function App() {
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </div>
+    </SidebarProvider>
   )
 }
 

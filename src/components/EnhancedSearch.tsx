@@ -38,6 +38,7 @@ export default function EnhancedSearch({ onSearch, availableSpecializations = []
   const [remoto, setRemoto] = useState<boolean>(false);
   const [lingua, setLingua] = useState<string>('');
   const [anniEsperienzaMin, setAnniEsperienzaMin] = useState<number>(0);
+  const [showAdvanced, setShowAdvanced] = useState<boolean>(false);
 
   // Reset area interesse quando cambia specializzazione
   useEffect(() => {
@@ -87,8 +88,6 @@ export default function EnhancedSearch({ onSearch, availableSpecializations = []
 
   return (
     <div className="bg-white p-4 sm:p-6 rounded-lg shadow-md">
-      <h2 className="text-lg sm:text-xl font-bold mb-4">Ricerca Avanzata</h2>
-
       {/* Toggle Professionista/equipe */}
       <div className="flex flex-col sm:flex-row gap-2 mb-4">
         <button
@@ -209,54 +208,6 @@ export default function EnhancedSearch({ onSearch, availableSpecializations = []
               <span>50 km</span>
             </div>
           </div>
-          {/* Lingua parlata */}
-          {searchType === 'professionista' && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Lingua parlata
-              </label>
-              <select
-                value={lingua}
-                onChange={(e) => setLingua(e.target.value)}
-                className="w-full border border-gray-300 rounded-lg px-3 py-3 text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="">Tutte le lingue</option>
-                {[
-                  'Italiano', 'Inglese', 'Francese', 'Spagnolo', 'Tedesco', 'Portoghese',
-                  'Russo', 'Cinese', 'Giapponese', 'Arabo', 'Olandese', 'Polacco',
-                  'Rumeno', 'Greco', 'Turco', 'Hindi', 'Coreano', 'Svedese', 'Norvegese',
-                  'Danese', 'Finlandese', 'Ungherese', 'Ceco', 'Slovacco', 'Croato',
-                  'Serbo', 'Bulgaro', 'Ucraino', 'Ebraico', 'Persiano', 'LIS', 'Altro'
-                ].map(l => (
-                  <option key={l} value={l}>{l}</option>
-                ))}
-              </select>
-            </div>
-          )}
-
-          {/* Anni di esperienza minimi */}
-          {searchType === 'professionista' && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Esperienza minima: <strong>{anniEsperienzaMin > 0 ? `${anniEsperienzaMin} anni` : 'qualsiasi'}</strong>
-              </label>
-              <input
-                type="range"
-                min="0"
-                max="30"
-                step="1"
-                value={anniEsperienzaMin}
-                onChange={(e) => setAnniEsperienzaMin(Number(e.target.value))}
-                className="w-full"
-              />
-              <div className="flex justify-between text-xs text-gray-500 mt-1">
-                <span>Qualsiasi</span>
-                <span>15 anni</span>
-                <span>30+ anni</span>
-              </div>
-            </div>
-          )}
-
         </div>
 
         {/* Right: map (only when a location is selected) */}
@@ -275,19 +226,87 @@ export default function EnhancedSearch({ onSearch, availableSpecializations = []
         )}
       </div>
 
-      {/* Remoto */}
-      <div className="mb-6">
-        <label className="flex items-center">
-          <input
-            type="checkbox"
-            checked={remoto}
-            onChange={(e) => setRemoto(e.target.checked)}
-            className="mr-3 h-5 w-5 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-          />
-          <span className="text-sm sm:text-base font-medium text-gray-700">
-            Lavora da remoto
-          </span>
-        </label>
+      {/* Toggle Ricerca Avanzata */}
+      <div className="mt-2">
+        <button
+          onClick={() => setShowAdvanced(v => !v)}
+          className="flex items-center gap-2 text-sm font-medium text-blue-600 hover:text-blue-800 transition-colors"
+        >
+          <svg
+            className={`w-4 h-4 transition-transform ${showAdvanced ? 'rotate-180' : ''}`}
+            fill="none" stroke="currentColor" viewBox="0 0 24 24"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          </svg>
+          Ricerca avanzata
+        </button>
+
+        {showAdvanced && (
+          <div className="mt-4 space-y-4 border-t pt-4">
+            {/* Lingua parlata */}
+            {searchType === 'professionista' && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Lingua parlata
+                </label>
+                <select
+                  value={lingua}
+                  onChange={(e) => setLingua(e.target.value)}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-3 text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Tutte le lingue</option>
+                  {[
+                    'Italiano', 'Inglese', 'Francese', 'Spagnolo', 'Tedesco', 'Portoghese',
+                    'Russo', 'Cinese', 'Giapponese', 'Arabo', 'Olandese', 'Polacco',
+                    'Rumeno', 'Greco', 'Turco', 'Hindi', 'Coreano', 'Svedese', 'Norvegese',
+                    'Danese', 'Finlandese', 'Ungherese', 'Ceco', 'Slovacco', 'Croato',
+                    'Serbo', 'Bulgaro', 'Ucraino', 'Ebraico', 'Persiano', 'LIS', 'Altro'
+                  ].map(l => (
+                    <option key={l} value={l}>{l}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {/* Anni di esperienza minimi */}
+            {searchType === 'professionista' && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Esperienza minima: <strong>{anniEsperienzaMin > 0 ? `${anniEsperienzaMin} anni` : 'qualsiasi'}</strong>
+                </label>
+                <input
+                  type="range"
+                  min="0"
+                  max="30"
+                  step="1"
+                  value={anniEsperienzaMin}
+                  onChange={(e) => setAnniEsperienzaMin(Number(e.target.value))}
+                  className="w-full"
+                />
+                <div className="flex justify-between text-xs text-gray-500 mt-1">
+                  <span>Qualsiasi</span>
+                  <span>15 anni</span>
+                  <span>30+ anni</span>
+                </div>
+              </div>
+            )}
+
+            {/* Remoto */}
+            <div>
+              <label className="flex items-center">
+                <input
+                  type="checkbox"
+                  checked={remoto}
+                  onChange={(e) => setRemoto(e.target.checked)}
+                  className="mr-3 h-5 w-5 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                />
+                <span className="text-sm sm:text-base font-medium text-gray-700">
+                  Lavora da remoto
+                </span>
+              </label>
+            </div>
+          </div>
+        )}
       </div>
 
       {searchType === 'equipe' && (

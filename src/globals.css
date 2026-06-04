@@ -52,6 +52,24 @@ select {
   background: #94a3b8;
 }
 
+/* Scrollbar scura per sidebar */
+.sidebar-nav::-webkit-scrollbar {
+  width: 8px;
+}
+
+.sidebar-nav::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.sidebar-nav::-webkit-scrollbar-thumb {
+  background: #4b5563;
+  border-radius: 4px;
+}
+
+.sidebar-nav::-webkit-scrollbar-thumb:hover {
+  background: #6b7280;
+}
+
 /* Animazioni smooth */
 * {
   transition-property: color, background-color, border-color, text-decoration-color, fill, stroke;

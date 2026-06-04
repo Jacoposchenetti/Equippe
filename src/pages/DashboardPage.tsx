@@ -395,8 +395,14 @@ export default function DashboardPage() {
       )}
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-0 pb-24 sm:pt-4 sm:pb-8">
-        <h1 className="text-2xl sm:text-4xl font-bold text-gray-900 mb-3 sm:mb-8">
+        <h1 className="text-2xl sm:text-4xl font-bold text-gray-900 mb-3 sm:mb-8 flex items-baseline gap-3">
           {currentFilters.type === 'professionista' ? 'Professionisti' : 'Equipe'}
+          {currentFilters.type === 'equipe' && (
+            <span className="text-sm sm:text-base font-normal text-gray-400">Cerca equipe di lavoro a cui unirti nella tua zona</span>
+          )}
+          {currentFilters.type === 'professionista' && (
+            <span className="text-sm sm:text-base font-normal text-gray-400">Cerca il professionista perfetto con cui collaborare</span>
+          )}
         </h1>
         {!canInteract && (
           <div className="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-4">

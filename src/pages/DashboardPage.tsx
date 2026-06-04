@@ -360,6 +360,15 @@ export default function DashboardPage() {
     return true;
   });
 
+  const visibleCount = currentFilters.type === 'professionista'
+    ? filteredProfessionisti.length
+    : filteredTeams.length;
+  const resultLabel = currentFilters.type === 'professionista' ? 'professionisti' : 'equipe';
+  const verifiedProfessionisti = filteredProfessionisti.filter(p => p.profile.verificationInfo?.status === 'approved').length;
+  const teamsWithOpenSpots = filteredTeams.filter(team =>
+    team.ruoliCercati?.some(ruolo => ruolo.occupati < ruolo.numero)
+  ).length;
+
   const getAvatarColor = (index: number) => {
     const colors = ['bg-green-300', 'bg-orange-300', 'bg-purple-300', 'bg-blue-300', 'bg-pink-300', 'bg-yellow-300'];
     return colors[index % colors.length];
@@ -372,14 +381,14 @@ export default function DashboardPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center app-shell">
         <div className="text-xl text-gray-600">Caricamento...</div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen app-shell">
       <Header />
       <VerificationBanner />
       <ProfileCompletionBanner />
@@ -394,18 +403,53 @@ export default function DashboardPage() {
         />
       )}
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-0 pb-24 sm:pt-4 sm:pb-8">
-        <h1 className="text-2xl sm:text-4xl font-bold text-gray-900 mb-3 sm:mb-8 flex items-baseline gap-3">
-          {currentFilters.type === 'professionista' ? 'Professionisti' : 'Equipe'}
-          {currentFilters.type === 'equipe' && (
-            <span className="text-sm sm:text-base font-normal text-gray-400">Cerca equipe di lavoro a cui unirti nella tua zona</span>
-          )}
-          {currentFilters.type === 'professionista' && (
-            <span className="text-sm sm:text-base font-normal text-gray-400">Cerca il professionista perfetto con cui collaborare</span>
-          )}
-        </h1>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-0 pb-24 sm:pt-6 sm:pb-10">
+        <section className="surface-lifted mb-6 overflow-hidden rounded-3xl">
+          <div className="grid gap-6 p-5 sm:p-7 lg:grid-cols-[1.4fr_1fr] lg:items-center">
+            <div>
+              <div className="mb-4 flex flex-wrap items-center gap-2">
+                <span className="chip">Area professionisti</span>
+                <span className="chip">{visibleCount} {resultLabel} disponibili</span>
+              </div>
+              <h1 className="text-3xl font-extrabold tracking-normal text-slate-950 sm:text-4xl">
+                {currentFilters.type === 'professionista' ? 'Trova il collega giusto' : 'Scopri equipe con posti aperti'}
+              </h1>
+              <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600 sm:text-base">
+                {currentFilters.type === 'professionista'
+                  ? 'Filtra per competenza, area clinica e zona operativa per costruire collaborazioni mirate.'
+                  : 'Individua gruppi multidisciplinari compatibili con il tuo profilo e la tua area di lavoro.'}
+              </p>
+              <div className="mt-5 flex flex-wrap gap-3">
+                <button onClick={() => navigate('/teams/create')} className="btn-primary">
+                  Crea equipe
+                </button>
+                <button onClick={() => navigate('/profile/edit')} className="btn-secondary">
+                  Aggiorna profilo
+                </button>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 lg:grid-cols-1">
+              <div className="metric-card">
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Risultati</p>
+                <p className="mt-1 text-3xl font-extrabold text-slate-950">{visibleCount}</p>
+                <p className="text-sm text-slate-500">{resultLabel} in base ai filtri</p>
+              </div>
+              <div className="metric-card">
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Verificati</p>
+                <p className="mt-1 text-3xl font-extrabold text-green-700">{verifiedProfessionisti}</p>
+                <p className="text-sm text-slate-500">profili professionali validati</p>
+              </div>
+              <div className="metric-card">
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Equipe aperte</p>
+                <p className="mt-1 text-3xl font-extrabold text-orange-600">{teamsWithOpenSpots}</p>
+                <p className="text-sm text-slate-500">con ruoli ancora disponibili</p>
+              </div>
+            </div>
+          </div>
+        </section>
         {!canInteract && (
-          <div className="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <div className="mb-6 rounded-2xl border border-blue-200 bg-blue-50/90 p-4 shadow-sm">
             <p className="text-sm text-blue-700">
               ℹ️ Puoi navigare il sito, ma dovrai completare la verifica per poter interagire con altri professionisti
             </p>
@@ -455,11 +499,11 @@ export default function DashboardPage() {
         {/* Risultati */}
         {currentFilters.type === 'professionista' ? (
           // Lista Professionisti
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
             {filteredProfessionisti.length === 0 ? (
-              <div className="col-span-full text-center py-12 text-gray-500">
-                <div className="mb-4 text-6xl">?</div>
-                <h3 className="text-xl font-semibold mb-2">Nessun professionista trovato</h3>
+              <div className="surface col-span-full rounded-3xl px-6 py-14 text-center text-slate-500">
+                <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-50 text-2xl font-bold text-blue-700">0</div>
+                <h3 className="text-xl font-semibold text-slate-900 mb-2">Nessun professionista trovato</h3>
                 <div className="text-sm text-gray-400 space-y-1">
                   {currentFilters.specializzazione && (
                     <p>• Specializzazione: {currentFilters.specializzazione}</p>
@@ -471,13 +515,13 @@ export default function DashboardPage() {
                     <p>• Include lavoro da remoto</p>
                   )}
                 </div>
-                <p className="text-xs text-gray-400 mt-4">
+                <p className="text-xs text-slate-400 mt-4">
                   Suggerimento: Prova ad espandere il raggio di ricerca o rimuovere alcuni filtri
                 </p>
               </div>
             ) : (
               filteredProfessionisti.map((p, index) => (
-                <div key={p.uid} className="bg-white rounded-xl shadow-sm hover:shadow-md transition overflow-hidden relative">
+                <div key={p.uid} className="surface relative overflow-hidden rounded-2xl transition hover:-translate-y-0.5 hover:shadow-lg">
                   <div className="p-6">
                     {/* Badge verifica documentazione - icona con tooltip */}
                     {p.profile.verificationInfo?.status !== 'approved' && (
@@ -497,12 +541,12 @@ export default function DashboardPage() {
                         <img
                           src={p.profile.photoURL}
                           alt={p.profile.nome}
-                          className="w-20 h-20 rounded-full object-cover border-4 border-gray-200"
+                          className="w-20 h-20 rounded-full object-cover border-4 border-white shadow-sm ring-1 ring-slate-200"
                           style={{ aspectRatio: '1/1' }}
                         />
                       ) : (
                         <div
-                          className={`w-20 h-20 ${getAvatarColor(index)} rounded-full flex items-center justify-center text-gray-700 font-bold text-2xl`}
+                          className={`w-20 h-20 ${getAvatarColor(index)} rounded-full flex items-center justify-center text-gray-700 font-bold text-2xl shadow-sm ring-1 ring-white`}
                           style={{ aspectRatio: '1/1' }}
                         >
                           {getInitials(p.profile.nome)}
@@ -518,12 +562,12 @@ export default function DashboardPage() {
                     {/* Badge Specializzazioni */}
                     <div className="flex flex-wrap justify-center gap-2 mb-4">
                       {[...new Set((p.profile.specializzazioni || []).map(spec => normalizeSpecialization(spec)))].slice(0, 2).map((spec, i) => (
-                        <span key={i} className="inline-block px-3 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">
+                        <span key={i} className="inline-block px-3 py-1 text-xs font-medium bg-blue-50 text-blue-800 rounded-full border border-blue-100">
                           {spec}
                         </span>
                       ))}
                       {[...new Set((p.profile.specializzazioni || []).map(spec => normalizeSpecialization(spec)))].length > 2 && (
-                        <span className="inline-block px-3 py-1 text-xs font-medium bg-gray-100 text-gray-600 rounded-full">
+                        <span className="inline-block px-3 py-1 text-xs font-medium bg-slate-100 text-slate-600 rounded-full">
                           +{[...new Set((p.profile.specializzazioni || []).map(spec => normalizeSpecialization(spec)))].length - 2}
                         </span>
                       )}
@@ -582,7 +626,7 @@ export default function DashboardPage() {
                     {/* Button */}
                     <button
                       onClick={() => navigate(`/profile/${p.uid}`)}
-                      className="w-full py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition"
+                      className="btn-primary w-full"
                     >
                       Vedi Profilo
                     </button>
@@ -593,14 +637,14 @@ export default function DashboardPage() {
           </div>
         ) : (
           // Lista equipe
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
             {filteredTeams.length === 0 ? (
-              <div className="col-span-full text-center py-12 text-gray-500">
+              <div className="surface col-span-full rounded-3xl px-6 py-14 text-center text-slate-500">
                 Nessuna equipe trovata con posti disponibili
               </div>
             ) : (
               filteredTeams.map((team, index) => (
-                <div key={team.teamId || team.id} className="bg-white rounded-xl shadow-sm hover:shadow-md transition overflow-hidden">
+                <div key={team.teamId || team.id} className="surface overflow-hidden rounded-2xl transition hover:-translate-y-0.5 hover:shadow-lg">
                   <div className="p-6">
                     {/* Avatar Team */}
                     <div className="flex justify-center mb-4">
@@ -608,12 +652,12 @@ export default function DashboardPage() {
                         <img
                           src={team.photoURL}
                           alt={`Foto ${team.name}`}
-                          className="w-20 h-20 rounded-full object-cover border-4 border-amber-200"
+                          className="w-20 h-20 rounded-full object-cover border-4 border-white shadow-sm ring-2 ring-amber-100"
                           style={{ aspectRatio: '1/1' }}
                         />
                       ) : (
                         <div
-                          className={`w-20 h-20 ${getAvatarColor(index)} rounded-full flex items-center justify-center text-gray-700 font-bold text-2xl`}
+                          className={`w-20 h-20 ${getAvatarColor(index)} rounded-full flex items-center justify-center text-gray-700 font-bold text-2xl shadow-sm ring-1 ring-white`}
                           style={{ aspectRatio: '1/1' }}
                         >
                           {getInitials(team.name || 'Team')}
@@ -632,7 +676,7 @@ export default function DashboardPage() {
                     </p>
 
                     {/* Composizione Team */}
-                    <div className="mb-4 border-t border-gray-200 pt-4">
+                    <div className="mb-4 border-t border-slate-200 pt-4">
                       {/* Membri Attuali */}
                       <div className="mb-3">
                         <div className="flex items-center justify-between mb-2">
@@ -730,7 +774,7 @@ export default function DashboardPage() {
                     {/* Button */}
                     <button
                       onClick={() => navigate(`/teams/${team.teamId || team.id}`)}
-                      className="w-full py-3 bg-blue-500 text-white font-medium rounded-lg hover:bg-blue-600 transition"
+                      className="btn-primary w-full"
                     >
                       Vedi equipe
                     </button>

@@ -87,19 +87,19 @@ export default function EnhancedSearch({ onSearch, availableSpecializations = []
     : equipeSpecs;
 
   return (
-    <div className="bg-white p-4 sm:p-6 rounded-lg shadow-md">
+    <div className="surface-lifted rounded-3xl p-4 sm:p-6">
       {/* Toggle Professionista/equipe */}
-      <div className="flex flex-col sm:flex-row gap-2 mb-4">
+      <div className="mb-5 grid grid-cols-2 gap-2 rounded-2xl bg-slate-100 p-1">
         <button
           onClick={() => {
             setSearchType('professionista');
             setSpecializzazione('');
             // La ricerca si aggiornerà automaticamente tramite useEffect
           }}
-          className={`flex-1 py-3 px-4 rounded-lg font-medium transition-colors text-sm sm:text-base ${
+          className={`py-3 px-4 rounded-xl font-semibold transition-colors text-sm sm:text-base ${
             searchType === 'professionista'
-              ? 'bg-blue-600 text-white'
-              : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+              ? 'bg-white text-blue-700 shadow-sm'
+              : 'text-slate-600 hover:bg-white/70 hover:text-slate-900'
           }`}
         >
           Professionista
@@ -110,10 +110,10 @@ export default function EnhancedSearch({ onSearch, availableSpecializations = []
             setSpecializzazione('');
             // La ricerca si aggiornerà automaticamente tramite useEffect
           }}
-          className={`flex-1 py-3 px-4 rounded-lg font-medium transition-colors text-sm sm:text-base ${
+          className={`py-3 px-4 rounded-xl font-semibold transition-colors text-sm sm:text-base ${
             searchType === 'equipe'
-              ? 'bg-blue-600 text-white'
-              : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+              ? 'bg-white text-blue-700 shadow-sm'
+              : 'text-slate-600 hover:bg-white/70 hover:text-slate-900'
           }`}
         >
           Equipe
@@ -133,8 +133,8 @@ export default function EnhancedSearch({ onSearch, availableSpecializations = []
               value={searchType === 'equipe' ? '' : specializzazione}
               onChange={(e) => setSpecializzazione(e.target.value)}
               disabled={searchType === 'equipe'}
-              className={`w-full border border-gray-300 rounded-lg px-3 py-3 text-base focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                searchType === 'equipe' ? 'bg-gray-100 cursor-not-allowed' : ''
+              className={`w-full border border-slate-200 rounded-xl px-3 py-3 text-base shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                searchType === 'equipe' ? 'bg-slate-100 cursor-not-allowed text-slate-400' : 'bg-white'
               }`}
             >
               <option value="">Tutte</option>
@@ -159,7 +159,7 @@ export default function EnhancedSearch({ onSearch, availableSpecializations = []
                 <select
                   value={areaInteresse}
                   onChange={(e) => setAreaInteresse(e.target.value)}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-3 text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full border border-slate-200 rounded-xl px-3 py-3 text-base shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="">Tutte le aree</option>
                   {tematiche.map((tema) => (
@@ -213,7 +213,7 @@ export default function EnhancedSearch({ onSearch, availableSpecializations = []
         {/* Right: map (only when a location is selected) */}
         {coordinate && (
           <div className="lg:w-1/2">
-            <div className="h-[280px] lg:h-full rounded-lg overflow-hidden border">
+            <div className="h-[280px] lg:h-full rounded-2xl overflow-hidden border border-slate-200 shadow-sm">
               <MapSelector
                 coordinate={coordinate}
                 raggioKm={raggioKm}
@@ -230,7 +230,7 @@ export default function EnhancedSearch({ onSearch, availableSpecializations = []
       <div className="mt-2">
         <button
           onClick={() => setShowAdvanced(v => !v)}
-          className="flex items-center gap-2 text-sm font-medium text-blue-600 hover:text-blue-800 transition-colors"
+          className="flex items-center gap-2 rounded-xl px-2 py-1.5 text-sm font-semibold text-blue-700 hover:bg-blue-50 transition-colors"
         >
           <svg
             className={`w-4 h-4 transition-transform ${showAdvanced ? 'rotate-180' : ''}`}
@@ -242,7 +242,7 @@ export default function EnhancedSearch({ onSearch, availableSpecializations = []
         </button>
 
         {showAdvanced && (
-          <div className="mt-4 space-y-4 border-t pt-4">
+          <div className="mt-4 space-y-4 border-t border-slate-200 pt-4">
             {/* Lingua parlata */}
             {searchType === 'professionista' && (
               <div>
@@ -252,7 +252,7 @@ export default function EnhancedSearch({ onSearch, availableSpecializations = []
                 <select
                   value={lingua}
                   onChange={(e) => setLingua(e.target.value)}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-3 text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full border border-slate-200 rounded-xl px-3 py-3 text-base shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="">Tutte le lingue</option>
                   {[
@@ -298,7 +298,7 @@ export default function EnhancedSearch({ onSearch, availableSpecializations = []
                   type="checkbox"
                   checked={remoto}
                   onChange={(e) => setRemoto(e.target.checked)}
-                  className="mr-3 h-5 w-5 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                  className="mr-3 h-5 w-5 text-blue-600 focus:ring-blue-500 border-slate-300 rounded"
                 />
                 <span className="text-sm sm:text-base font-medium text-gray-700">
                   Lavora da remoto

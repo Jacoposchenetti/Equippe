@@ -12,6 +12,9 @@ export { emettiFattura, rigeneraDownloadUrls, exportSTS, exportCommercialistaCSV
   creaFatturaBozza, segnaComePagata, inviaFatturaEmail,
   anteprimaFatturaPDF, exportSTSTracked, resetInvioSTS } from './fatturazione';
 
+// UX analytics
+export { recordUxEvent, getUxAnalytics } from './analytics';
+
 admin.initializeApp();
 
 // Lazy initialization di Resend per evitare errori durante il deploy

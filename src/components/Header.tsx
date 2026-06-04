@@ -237,6 +237,7 @@ export default function Header() {
               <p className="px-5 pb-1 text-xs font-semibold text-slate-400 uppercase tracking-wider">Admin</p>
               {[
                 { href: '/admin/verifications', label: 'Verifiche' },
+                { href: '/admin/analytics', label: 'Analytics UX' },
                 { href: '/admin/mailing-list', label: 'Mailing List' },
                 { href: '/admin/waitlist-email', label: 'Email WL' },
               ].map((link) => (

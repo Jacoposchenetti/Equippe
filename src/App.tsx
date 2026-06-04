@@ -2,6 +2,7 @@ import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { useEffect } from 'react'
 import { useAuth } from './contexts/AuthContext'
 import { SidebarProvider, useSidebar } from './contexts/SidebarContext'
+import { installUxAutoTracking, trackPageView } from './lib/uxAnalytics'
 import VerifyEmailPage from './pages/VerifyEmailPage'
 import PWAInstallPrompt from './components/PWAInstallPrompt'
 import WaitlistPage from './pages/WaitlistPage'
@@ -17,6 +18,20 @@ function ScrollToTop() {
   useEffect(() => {
     window.scrollTo(0, 0)
   }, [pathname])
+  return null
+}
+
+function UxAnalyticsTracker() {
+  const { pathname } = useLocation()
+
+  useEffect(() => {
+    return installUxAutoTracking()
+  }, [])
+
+  useEffect(() => {
+    trackPageView(pathname)
+  }, [pathname])
+
   return null
 }
 
@@ -46,6 +61,7 @@ import AdminVerificationsPage from './pages/AdminVerificationsPage'
 import AdminMailingListPage from './pages/AdminMailingListPage'
 import AdminWaitlistEmailPage from './pages/AdminWaitlistEmailPage'
 import AdminEmailGroupsPage from './pages/AdminEmailGroupsPage'
+import AdminAnalyticsPage from './pages/AdminAnalyticsPage'
 import DisiscrizioneWaitlistPage from './pages/DisiscrizioneWaitlistPage'
 import InvitaCollegaPage from './pages/InvitaCollegaPage'
 import ECMSearchPage from './pages/ECMSearchPage'
@@ -166,6 +182,7 @@ function App() {
     <SidebarProvider>
     <div className="App">
       <ScrollToTop />
+      <UxAnalyticsTracker />
       <PWAInstallPrompt />
       <Routes>
         {/* Public Routes */}
@@ -345,6 +362,13 @@ function App() {
         <Route path="/admin/email-groups" element={
           <ProtectedRoute>
             <AdminEmailGroupsPage />
+          </ProtectedRoute>
+        } />
+        <Route path="/admin/analytics" element={
+          <ProtectedRoute>
+            <AdminRoute>
+              <AdminAnalyticsPage />
+            </AdminRoute>
           </ProtectedRoute>
         } />
         

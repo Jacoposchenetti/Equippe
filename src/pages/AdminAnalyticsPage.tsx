@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { httpsCallable } from 'firebase/functions';
 import Header from '@/components/Header';
 import { useAuth } from '@/contexts/AuthContext';
+import { useSidebar } from '@/contexts/SidebarContext';
 import { functions } from '@/lib/firebase';
 
 const ADMIN_EMAILS = ['admin@tuaequipe.it', 'jschenetti@gmail.com', 'udemyteam2025@gmail.com', 'martinamaccara@icloud.com', 'martinamaccarana@icloud.com'];
@@ -130,8 +131,8 @@ function InfoTip({ text }: { text: string }) {
 
 function SectionTitle({ children, explanation }: { children: React.ReactNode; explanation: string }) {
   return (
-    <h2 className="mb-4 flex items-center text-lg font-bold text-slate-950">
-      {children}
+    <h2 className="mb-4 flex min-w-0 flex-wrap items-center gap-y-1 text-lg font-bold text-slate-950">
+      <span className="min-w-0">{children}</span>
       <InfoTip text={explanation} />
     </h2>
   );
@@ -210,6 +211,7 @@ function DataTable({ rows, columns }: { rows: MetricRow[]; columns: Array<{ key:
 
 export default function AdminAnalyticsPage() {
   const { user } = useAuth();
+  const { isOpen: isSidebarOpen } = useSidebar();
   const navigate = useNavigate();
   const [filters, setFilters] = useState<Filters>(() => defaultFilters());
   const [data, setData] = useState<AnalyticsResponse | null>(null);
@@ -261,6 +263,11 @@ export default function AdminAnalyticsPage() {
 
   if (!isAdmin) return null;
 
+  const filterGridClass = isSidebarOpen ? 'grid gap-3 md:grid-cols-2 2xl:grid-cols-6' : 'grid gap-3 md:grid-cols-2 lg:grid-cols-6';
+  const statGridClass = isSidebarOpen ? 'mb-6 grid gap-4 sm:grid-cols-2 2xl:grid-cols-5' : 'mb-6 grid gap-4 md:grid-cols-2 xl:grid-cols-5';
+  const twoColumnGridClass = isSidebarOpen ? 'mb-6 grid gap-6 2xl:grid-cols-2' : 'mb-6 grid gap-6 lg:grid-cols-2';
+  const journeyGridClass = isSidebarOpen ? 'mb-6 grid gap-6 2xl:grid-cols-[0.9fr_1.1fr]' : 'mb-6 grid gap-6 lg:grid-cols-[0.9fr_1.1fr]';
+
   return (
     <div className="min-h-screen app-shell">
       <Header />
@@ -281,7 +288,7 @@ export default function AdminAnalyticsPage() {
         </section>
 
         <section className="surface mb-6 rounded-2xl p-4">
-          <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-6">
+          <div className={filterGridClass}>
             <label className="text-sm font-medium text-slate-700">
               Da
               <input type="date" value={filters.startDate} onChange={(event) => setFilters({ ...filters, startDate: event.target.value })} className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2" />
@@ -357,7 +364,7 @@ export default function AdminAnalyticsPage() {
               </div>
             )}
 
-            <section className="mb-6 grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+            <section className={statGridClass}>
               <StatCard label="Visite" value={data.totals.visits} hint="page_view nel periodo" accent="bg-blue-700" explanation={explanations.visite} />
               <StatCard label="Sessioni" value={data.totals.sessions} hint="session_id anonimi unici" accent="bg-green-700" explanation={explanations.sessioni} />
               <StatCard label="Conversioni" value={data.totals.conversions} hint="eventi conversione" accent="bg-orange-500" explanation={explanations.conversioni} />
@@ -365,7 +372,7 @@ export default function AdminAnalyticsPage() {
               <StatCard label="Eventi" value={data.totals.events} hint="eventi totali analizzati" accent="bg-indigo-600" explanation={explanations.eventi} />
             </section>
 
-            <section className="mb-6 grid gap-6 lg:grid-cols-2">
+            <section className={twoColumnGridClass}>
               <div className="surface rounded-2xl p-5">
                 <SectionTitle explanation={explanations.funnel}>Funnel</SectionTitle>
                 <div className="space-y-4">
@@ -388,7 +395,7 @@ export default function AdminAnalyticsPage() {
               </div>
             </section>
 
-            <section className="mb-6 grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
+            <section className={journeyGridClass}>
               <div className="surface rounded-2xl p-5">
                 <SectionTitle explanation={explanations.journey}>Step verso obiettivo</SectionTitle>
                 <div className="grid gap-3 sm:grid-cols-2">
@@ -445,7 +452,7 @@ export default function AdminAnalyticsPage() {
               </div>
             </section>
 
-            <section className="mb-6 grid gap-6 lg:grid-cols-2">
+            <section className={twoColumnGridClass}>
               <div className="surface rounded-2xl p-5">
                 <SectionTitle explanation="Distribuzione degli step necessari per raggiungere l'obiettivo scelto.">Distribuzione step</SectionTitle>
                 <BarList rows={data.journey.distribution.map((row) => ({ step: `${row.steps} step`, count: row.sessions })) as MetricRow[]} labelKey="step" />
@@ -463,7 +470,7 @@ export default function AdminAnalyticsPage() {
               </div>
             </section>
 
-            <section className="mb-6 grid gap-6 lg:grid-cols-2">
+            <section className={twoColumnGridClass}>
               <div className="surface rounded-2xl p-5">
                 <SectionTitle explanation={explanations.topPages}>Pagine piu visitate</SectionTitle>
                 <BarList rows={data.topPages as MetricRow[]} labelKey="path" />
@@ -481,7 +488,7 @@ export default function AdminAnalyticsPage() {
               </div>
             </section>
 
-            <section className="mb-6 grid gap-6 lg:grid-cols-2">
+            <section className={twoColumnGridClass}>
               <div className="surface rounded-2xl p-5">
                 <SectionTitle explanation={explanations.commonPaths}>Percorsi piu comuni</SectionTitle>
                 <DataTable
@@ -506,7 +513,7 @@ export default function AdminAnalyticsPage() {
               </div>
             </section>
 
-            <section className="grid gap-6 lg:grid-cols-2">
+            <section className={isSidebarOpen ? 'grid gap-6 2xl:grid-cols-2' : 'grid gap-6 lg:grid-cols-2'}>
               <div className="surface rounded-2xl p-5">
                 <SectionTitle explanation={explanations.device}>Device</SectionTitle>
                 <BarList rows={data.devices as MetricRow[]} labelKey="device" />

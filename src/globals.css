@@ -76,12 +76,12 @@ select {
 }
 
 .sidebar-nav::-webkit-scrollbar-thumb {
-  background: #475569;
+  background: #56607c;
   border-radius: 4px;
 }
 
 .sidebar-nav::-webkit-scrollbar-thumb:hover {
-  background: #64748b;
+  background: #6a7594;
 }
 
 /* Animazioni smooth */

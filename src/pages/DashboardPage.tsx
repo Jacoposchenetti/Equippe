@@ -191,6 +191,15 @@ export default function DashboardPage() {
     return R * c; // Distanza in km
   };
 
+  const normalizeTextFilter = (value: string) => value.trim().toLowerCase();
+
+  const getExperienceYearsUpperBound = (value?: string): number => {
+    if (!value) return 0;
+    const matches = value.match(/\d+/g);
+    if (!matches || matches.length === 0) return 0;
+    return Math.max(...matches.map((match) => Number(match)).filter((year) => !Number.isNaN(year)));
+  };
+
   // Filtra professionisti
   const filteredProfessionisti = professionisti.filter(p => {
     // Specializzazione - controlla sia il nome originale che quello normalizzato
@@ -291,21 +300,24 @@ export default function DashboardPage() {
     // Lingua parlata
     if (currentFilters.lingua) {
       const lingue = (p.profile as any).lingue as Array<{ lingua: string; livello: string }> | undefined;
-      if (!lingue || !lingue.some(l => l.lingua === currentFilters.lingua)) {
+      const selectedLingua = normalizeTextFilter(currentFilters.lingua);
+      const hasImplicitItalian = selectedLingua === 'italiano' && (!lingue || lingue.length === 0);
+      const hasSelectedLingua = lingue?.some(l => normalizeTextFilter(l.lingua || '') === selectedLingua) ?? false;
+      if (!hasImplicitItalian && !hasSelectedLingua) {
         return false;
       }
     }
 
     // Anni di esperienza minimi (basato sul campo anniEsperienza delle professioni)
     if (currentFilters.anniEsperienzaMin && currentFilters.anniEsperienzaMin > 0) {
-      const profCoct = [
+      const profDocs = [
         ...(Array.isArray(p.profile.professioniConDocumenti) ? p.profile.professioniConDocumenti : []),
         ...(Array.isArray(p.profile.professioniPending) ? p.profile.professioniPending : []),
       ];
-      const maxAnni = profCoct.reduce((max, prof) => {
-        const anni = parseInt(prof.anniEsperienza || '0', 10);
-        return isNaN(anni) ? max : Math.max(max, anni);
-      }, 0);
+      const maxAnni = Math.max(
+        getExperienceYearsUpperBound((p.profile as any).esperienza),
+        ...profDocs.map((prof) => getExperienceYearsUpperBound(prof.anniEsperienza))
+      );
       if (maxAnni < currentFilters.anniEsperienzaMin) {
         return false;
       }

@@ -13,8 +13,10 @@ interface TrackEventInput {
 
 const SESSION_KEY = 'equippe_ux_session_id';
 const STARTED_FORMS_KEY = 'equippe_ux_started_forms';
+const RECENT_EVENTS_KEY = 'equippe_ux_recent_events';
 const SENSITIVE_RE = /(email|mail|phone|telefono|tel|name|nome|cognome|password|token|codice|address|indirizzo|iban|fiscal|cf)/i;
 const recordUxEvent = httpsCallable(functions, 'recordUxEvent');
+const DEDUPE_WINDOW_MS = 1200;
 
 function createSessionId(): string {
   const bytes = new Uint8Array(16);
@@ -48,6 +50,32 @@ function sanitizeMetadata(metadata: Record<string, unknown> = {}): Record<string
   return clean;
 }
 
+function stableMetadata(metadata: Record<string, unknown>): string {
+  return JSON.stringify(Object.keys(metadata).sort().reduce<Record<string, unknown>>((acc, key) => {
+    acc[key] = metadata[key];
+    return acc;
+  }, {}));
+}
+
+function shouldSkipDuplicate(event: TrackEventInput, metadata: Record<string, unknown>): boolean {
+  const path = event.path || window.location.pathname;
+  const key = `${event.event_type}|${path}|${stableMetadata(metadata)}`;
+  const now = Date.now();
+  let recent: Array<{ key: string; ts: number }> = [];
+  try {
+    recent = JSON.parse(sessionStorage.getItem(RECENT_EVENTS_KEY) || '[]') as Array<{ key: string; ts: number }>;
+  } catch {
+    recent = [];
+  }
+  recent = recent.filter((item) => now - item.ts < DEDUPE_WINDOW_MS);
+  const duplicate = recent.some((item) => item.key === key);
+  if (!duplicate) {
+    recent.push({ key, ts: now });
+    sessionStorage.setItem(RECENT_EVENTS_KEY, JSON.stringify(recent.slice(-30)));
+  }
+  return duplicate;
+}
+
 function currentReferrer(): string {
   const previousPath = sessionStorage.getItem('equippe_ux_previous_path');
   if (previousPath && previousPath !== window.location.pathname) return previousPath;
@@ -55,6 +83,8 @@ function currentReferrer(): string {
 }
 
 export async function trackUxEvent(input: TrackEventInput): Promise<void> {
+  const metadata = sanitizeMetadata(input.metadata);
+  if (shouldSkipDuplicate(input, metadata)) return;
   try {
     await recordUxEvent({
       session_id: getUxSessionId(),
@@ -62,7 +92,7 @@ export async function trackUxEvent(input: TrackEventInput): Promise<void> {
       referrer: currentReferrer(),
       device: getDevice(),
       event_type: input.event_type,
-      metadata: sanitizeMetadata(input.metadata),
+      metadata,
     });
   } catch (error) {
     if (import.meta.env.DEV) {
@@ -73,12 +103,15 @@ export async function trackUxEvent(input: TrackEventInput): Promise<void> {
 
 export function trackPageView(path: string): void {
   const previousPath = sessionStorage.getItem('equippe_ux_previous_path');
+  const lastTracked = sessionStorage.getItem('equippe_ux_last_page_view');
+  if (lastTracked === path) return;
   void trackUxEvent({
     event_type: 'page_view',
     path,
     metadata: previousPath && previousPath !== path ? { previous_path: previousPath } : {},
   });
   sessionStorage.setItem('equippe_ux_previous_path', path);
+  sessionStorage.setItem('equippe_ux_last_page_view', path);
 }
 
 function isLikelyCta(element: HTMLElement): boolean {

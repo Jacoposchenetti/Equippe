@@ -112,18 +112,18 @@ export default function Header() {
   return (
     <>
       {/* Mobile top bar */}
-      <div className="lg:hidden fixed top-0 left-0 right-0 h-14 bg-white/95 text-slate-900 flex items-center justify-between px-4 z-20 shadow-sm border-b border-slate-200 backdrop-blur">
-        <button onClick={toggle} className="p-2 rounded-xl hover:bg-slate-100 transition" aria-label="Menu">
+      <div className="lg:hidden fixed top-0 left-0 right-0 h-14 bg-slate-950 text-white flex items-center justify-between px-4 z-20 shadow-lg border-b border-slate-800">
+        <button onClick={toggle} className="p-2 rounded-xl hover:bg-slate-800 transition" aria-label="Menu">
           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
           </svg>
         </button>
         <Link to="/dashboard" className="flex items-center gap-2">
-          <div className="h-8 w-8 rounded-xl overflow-hidden bg-white p-1 shadow-sm ring-1 ring-slate-200">
+          <div className="h-8 w-8 rounded-xl overflow-hidden bg-white p-1">
             <img src="/logo_senza_scritta.png" alt="Logo" className="h-full w-full object-contain" />
           </div>
           <span className="font-bold text-sm">
-            <span className="text-blue-700">tua</span><span className="text-green-700">equipe</span><span className="text-orange-600">.it</span>
+            <span className="text-blue-400">tua</span><span className="text-green-400">equipe</span><span className="text-orange-400">.it</span>
           </span>
         </Link>
         <div className="flex items-center gap-2">
@@ -141,7 +141,7 @@ export default function Header() {
       {!isOpen && (
         <button
           onClick={toggle}
-          className="hidden lg:flex fixed top-1/2 -translate-y-1/2 left-0 z-50 p-2 bg-white text-slate-700 rounded-r-xl shadow-lg ring-1 ring-slate-200 hover:bg-blue-50 hover:text-blue-700 transition"
+          className="hidden lg:flex fixed top-1/2 -translate-y-1/2 left-0 z-50 p-2 bg-slate-950 text-white rounded-r-xl shadow-lg hover:bg-slate-800 transition"
           aria-label="Apri menu"
         >
           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -150,24 +150,24 @@ export default function Header() {
         </button>
       )}
 
-      <aside className={`fixed top-0 left-0 h-full w-72 bg-white text-slate-900 z-40 flex flex-col shadow-2xl shadow-slate-900/10 border-r border-slate-200 transition-transform duration-300 ${
+      <aside className={`fixed top-0 left-0 h-full w-72 bg-slate-950 text-white z-40 flex flex-col shadow-2xl border-r border-slate-800 transition-transform duration-300 ${
         isOpen ? 'translate-x-0' : '-translate-x-full'
       }`}>
       {/* Logo + toggle button */}
-      <div className="px-5 py-4 border-b border-slate-200 flex items-center justify-between">
+      <div className="px-5 py-4 border-b border-slate-800 flex items-center justify-between">
         <Link to="/dashboard" className="flex items-center gap-2 hover:opacity-80 transition">
-          <div className="h-9 w-9 rounded-xl overflow-hidden bg-white p-1 shadow-sm ring-1 ring-slate-200">
+          <div className="h-9 w-9 rounded-xl overflow-hidden bg-white p-1">
             <img src="/logo_senza_scritta.png" alt="tuaequipe.it Logo" className="h-full w-full object-contain" />
           </div>
           <span className="font-bold text-base">
-            <span className="text-blue-700">tua</span>
-            <span className="text-green-700">equipe</span>
-            <span className="text-orange-600">.it</span>
+            <span className="text-blue-400">tua</span>
+            <span className="text-green-400">equipe</span>
+            <span className="text-orange-400">.it</span>
           </span>
         </Link>
         <button
           onClick={toggle}
-          className="p-1.5 rounded-xl text-slate-500 hover:bg-slate-100 hover:text-slate-900 transition"
+          className="p-1.5 rounded-xl text-slate-400 hover:bg-slate-800 hover:text-white transition"
           aria-label="Chiudi menu"
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -177,19 +177,19 @@ export default function Header() {
       </div>
 
       {/* User info + token + bell */}
-      <div className="px-5 py-4 border-b border-slate-200 bg-slate-50/70">
+      <div className="px-5 py-4 border-b border-slate-800 bg-slate-900/70">
 
         <div className="flex items-center gap-3 mb-2">
           {userProfile?.profile?.photoURL ? (
-            <img src={userProfile.profile.photoURL} alt={userProfile.profile.nome} className="w-10 h-10 rounded-full object-cover border-2 border-white shadow-sm ring-2 ring-blue-100 shrink-0" />
+            <img src={userProfile.profile.photoURL} alt={userProfile.profile.nome} className="w-10 h-10 rounded-full object-cover border-2 border-blue-500 shrink-0" />
           ) : (
-            <div className="w-10 h-10 bg-blue-700 text-white rounded-full flex items-center justify-center font-bold text-sm shrink-0 shadow-sm">
+            <div className="w-10 h-10 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold text-sm shrink-0">
               {getInitials()}
             </div>
           )}
           <div className="overflow-hidden">
             <p className="text-sm font-semibold truncate">{userProfile?.profile?.nome || 'Utente'}</p>
-            <p className="text-xs text-slate-500 truncate">{user?.email}</p>
+            <p className="text-xs text-slate-400 truncate">{user?.email}</p>
           </div>
         </div>
         <div className="flex items-center gap-3 mt-1">
@@ -205,7 +205,7 @@ export default function Header() {
             const isDisabled = !canInteract && link.href === '/messages';
             if (isDisabled) {
               return (
-                <div key={link.href} className="mx-3 flex items-center gap-3 rounded-xl px-3 py-2.5 text-slate-400 opacity-60 cursor-not-allowed">
+                <div key={link.href} className="mx-3 flex items-center gap-3 rounded-xl px-3 py-2.5 text-slate-500 opacity-60 cursor-not-allowed">
                   {navIcons[link.href]}
                   <span className="text-sm font-medium">{link.label}</span>
                 </div>
@@ -217,7 +217,7 @@ export default function Header() {
                 to={link.href}
                 onClick={handleNavClick}
                 className={`mx-3 flex items-center gap-3 rounded-xl px-3 py-2.5 transition-colors relative ${
-                  isActive ? 'bg-blue-700 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-950'
+                  isActive ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-100 hover:bg-slate-800 hover:text-white'
                 }`}
               >
                 {navIcons[link.href]}
@@ -233,8 +233,8 @@ export default function Header() {
 
           {/* Admin links */}
           {isAdmin && (
-            <div className="mt-3 border-t border-slate-200 pt-3">
-              <p className="px-5 pb-1 text-xs font-semibold text-slate-400 uppercase tracking-wider">Admin</p>
+            <div className="mt-3 border-t border-slate-800 pt-3">
+              <p className="px-5 pb-1 text-xs font-semibold text-slate-500 uppercase tracking-wider">Admin</p>
               {[
                 { href: '/admin/verifications', label: 'Verifiche' },
                 { href: '/admin/analytics', label: 'Analytics UX' },
@@ -246,7 +246,7 @@ export default function Header() {
                   to={link.href}
                   onClick={handleNavClick}
                   className={`mx-3 flex items-center rounded-xl px-3 py-2.5 text-sm transition-colors ${
-                    pathname === link.href ? 'bg-amber-500 text-white' : 'text-amber-700 hover:bg-amber-50'
+                    pathname === link.href ? 'bg-yellow-600 text-white' : 'text-yellow-400 hover:bg-slate-800'
                   }`}
                 >
                   {link.label}
@@ -257,11 +257,11 @@ export default function Header() {
         </nav>
 
         {/* Bottom: profile + logout */}
-        <div className="border-t border-slate-200 bg-slate-50/70 p-3 space-y-1">
+        <div className="border-t border-slate-800 bg-slate-900/70 p-3 space-y-1">
           <Link
             to="/profile/edit"
             onClick={handleNavClick}
-            className="flex items-center gap-3 px-4 py-2 text-sm text-slate-700 hover:bg-white hover:text-blue-700 rounded-xl transition"
+            className="flex items-center gap-3 px-4 py-2 text-sm text-slate-100 hover:bg-slate-800 rounded-xl transition"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
@@ -271,7 +271,7 @@ export default function Header() {
           <Link
             to="/abbonamento"
             onClick={handleNavClick}
-            className="flex items-center gap-3 px-4 py-2 text-sm text-slate-700 hover:bg-white hover:text-blue-700 rounded-xl transition"
+            className="flex items-center gap-3 px-4 py-2 text-sm text-slate-100 hover:bg-slate-800 rounded-xl transition"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -280,7 +280,7 @@ export default function Header() {
           </Link>
           <button
             onClick={handleLogout}
-            className="flex items-center gap-3 w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 rounded-xl transition"
+            className="flex items-center gap-3 w-full px-4 py-2 text-sm text-red-400 hover:bg-slate-800 rounded-xl transition"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />

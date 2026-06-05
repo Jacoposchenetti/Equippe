@@ -5,6 +5,7 @@ import { SidebarProvider, useSidebar } from './contexts/SidebarContext'
 import { installUxAutoTracking, trackPageView } from './lib/uxAnalytics'
 import VerifyEmailPage from './pages/VerifyEmailPage'
 import PWAInstallPrompt from './components/PWAInstallPrompt'
+import DailyRewardLauncher from './components/DailyRewardLauncher'
 import WaitlistPage from './pages/WaitlistPage'
 import WaitlistPsichiatriPage from './pages/WaitlistPsichiatriPage'
 import WaitlistNutrPage from './pages/WaitlistNutrPage'
@@ -184,6 +185,7 @@ function App() {
       <ScrollToTop />
       <UxAnalyticsTracker />
       <PWAInstallPrompt />
+      <DailyRewardLauncher />
       <Routes>
         {/* Public Routes */}
         <Route path="/login" element={

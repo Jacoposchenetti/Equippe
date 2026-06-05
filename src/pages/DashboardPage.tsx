@@ -406,14 +406,6 @@ export default function DashboardPage() {
                 ? 'Filtra per competenza, area clinica e zona operativa per costruire collaborazioni mirate.'
                 : 'Individua gruppi multidisciplinari compatibili con il tuo profilo e la tua area di lavoro.'}
             </p>
-            <div className="mt-5 flex flex-wrap gap-3">
-              <button onClick={() => navigate('/teams/create')} className="btn-primary">
-                Crea equipe
-              </button>
-              <button onClick={() => navigate('/profile/edit')} className="btn-secondary">
-                Aggiorna profilo
-              </button>
-            </div>
           </div>
         </section>
         {!canInteract && (

@@ -35,6 +35,13 @@ interface AnalyticsResponse {
   devices: Array<{ device: string; count: number }>;
   referrers: Array<{ referrer: string; count: number }>;
   transitions: Array<{ from: string; to: string; count: number }>;
+  pageRoles: Array<{
+    path: string;
+    destinationSessions: number;
+    intermediateSessions: number;
+    destinationRate: number;
+    functionalEvents: number;
+  }>;
   journey: {
     target: string;
     reachedSessions: number;
@@ -92,6 +99,7 @@ const explanations: Record<string, string> = {
   commonPaths: 'Sequenze di pagine piu frequenti nelle sessioni. Aiuta a capire se il percorso reale coincide con quello progettato.',
   dropOff: 'Pagine con alta percentuale di uscita rispetto alle visite. Prioritizza qui le analisi UX.',
   transitions: 'Passaggi pagina -> pagina piu frequenti. Mostrano dove gli utenti si spostano davvero.',
+  pageRoles: 'Classifica le pagine in base al comportamento: destinazione funzionale se l utente compie azioni sulla pagina, step intermedio se passa oltre senza azioni.',
   journey: 'Misura quanti page_view servono tipicamente per raggiungere un obiettivo scelto: pagina target o evento target.',
   device: 'Distribuzione eventi per desktop, mobile e tablet. Drop-off alto su mobile spesso segnala problemi responsive.',
   referrer: 'Origine del traffico quando disponibile. direct significa accesso diretto o referrer non passato dal browser.',
@@ -413,6 +421,25 @@ export default function AdminAnalyticsPage() {
                     { key: 'from', label: 'Da' },
                     { key: 'to', label: 'A' },
                     { key: 'count', label: 'Volte' },
+                  ]}
+                />
+              </div>
+            </section>
+
+            <section className="mb-6">
+              <div className="surface rounded-2xl p-5">
+                <SectionTitle explanation={explanations.pageRoles}>Destinazione o step intermedio</SectionTitle>
+                <p className="mb-4 text-sm leading-6 text-slate-600">
+                  Una pagina viene considerata destinazione funzionale quando, prima di spostarsi altrove, l'utente clicca una CTA o interagisce con un form. Se passa alla pagina successiva senza azioni, viene conteggiata come step intermedio.
+                </p>
+                <DataTable
+                  rows={data.pageRoles as unknown as MetricRow[]}
+                  columns={[
+                    { key: 'path', label: 'Pagina' },
+                    { key: 'destinationSessions', label: 'Destinazione' },
+                    { key: 'intermediateSessions', label: 'Intermedio' },
+                    { key: 'destinationRate', label: 'Dest. %' },
+                    { key: 'functionalEvents', label: 'Azioni' },
                   ]}
                 />
               </div>

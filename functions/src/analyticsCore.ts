@@ -55,6 +55,13 @@ export interface AggregatedAnalytics {
   devices: Array<{ device: string; count: number }>;
   referrers: Array<{ referrer: string; count: number }>;
   transitions: Array<{ from: string; to: string; count: number }>;
+  pageRoles: Array<{
+    path: string;
+    destinationSessions: number;
+    intermediateSessions: number;
+    destinationRate: number;
+    functionalEvents: number;
+  }>;
   journey: {
     target: string;
     reachedSessions: number;
@@ -165,6 +172,11 @@ export function aggregateAnalytics(events: UxEventRecord[], options: Pick<Analyt
   const referrers = new Map<string, number>();
   const commonPaths = new Map<string, number>();
   const transitions = new Map<string, number>();
+  const pageRoleStats = new Map<string, {
+    destinationSessions: Set<string>;
+    intermediateSessions: Set<string>;
+    functionalEvents: number;
+  }>();
 
   for (const event of sorted) {
     if (!sessions.has(event.session_id)) sessions.set(event.session_id, []);
@@ -176,7 +188,8 @@ export function aggregateAnalytics(events: UxEventRecord[], options: Pick<Analyt
   }
 
   for (const sessionEvents of sessions.values()) {
-    const sessionPageViews = sessionEvents.filter((event) => event.event_type === 'page_view');
+    const orderedSessionEvents = [...sessionEvents].sort((a, b) => toMillis(a) - toMillis(b));
+    const sessionPageViews = orderedSessionEvents.filter((event) => event.event_type === 'page_view');
     const lastPage = sessionPageViews[sessionPageViews.length - 1];
     if (lastPage) increment(exits, lastPage.path);
     const sequence = sessionPageViews.map((event) => event.path);
@@ -185,6 +198,34 @@ export function aggregateAnalytics(events: UxEventRecord[], options: Pick<Analyt
     }
     if (sequence.length > 1) {
       increment(commonPaths, sequence.slice(0, 5).join(' -> '));
+    }
+
+    for (let pageIndex = 0; pageIndex < sessionPageViews.length; pageIndex += 1) {
+      const pageView = sessionPageViews[pageIndex];
+      const nextPageView = sessionPageViews[pageIndex + 1];
+      const pageStart = toMillis(pageView);
+      const pageEnd = nextPageView ? toMillis(nextPageView) : Number.POSITIVE_INFINITY;
+      const functionalEvents = orderedSessionEvents.filter((event) =>
+        event.path === pageView.path &&
+        toMillis(event) >= pageStart &&
+        toMillis(event) < pageEnd &&
+        ['click_cta', 'form_start', 'form_submit', 'conversion'].includes(event.event_type)
+      );
+
+      if (!pageRoleStats.has(pageView.path)) {
+        pageRoleStats.set(pageView.path, {
+          destinationSessions: new Set<string>(),
+          intermediateSessions: new Set<string>(),
+          functionalEvents: 0,
+        });
+      }
+      const stats = pageRoleStats.get(pageView.path)!;
+      if (functionalEvents.length > 0) {
+        stats.destinationSessions.add(pageView.session_id);
+        stats.functionalEvents += functionalEvents.length;
+      } else if (nextPageView) {
+        stats.intermediateSessions.add(pageView.session_id);
+      }
     }
   }
 
@@ -306,6 +347,21 @@ export function aggregateAnalytics(events: UxEventRecord[], options: Pick<Analyt
         const [from, to] = transition.split(' -> ');
         return { from, to, count };
       }),
+    pageRoles: [...pageRoleStats.entries()]
+      .map(([path, stats]) => {
+        const destinationSessions = stats.destinationSessions.size;
+        const intermediateSessions = stats.intermediateSessions.size;
+        const total = destinationSessions + intermediateSessions;
+        return {
+          path,
+          destinationSessions,
+          intermediateSessions,
+          destinationRate: total ? Math.round((destinationSessions / total) * 1000) / 10 : 0,
+          functionalEvents: stats.functionalEvents,
+        };
+      })
+      .sort((a, b) => b.destinationSessions - a.destinationSessions || b.functionalEvents - a.functionalEvents)
+      .slice(0, 15),
     journey: {
       target: journeyTarget,
       reachedSessions: journeyStepCounts.length,

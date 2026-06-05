@@ -46,6 +46,11 @@ assert.equal(aggregate.transitions[0].from, '/');
 assert.equal(aggregate.transitions[0].to, '/register');
 assert.equal(aggregate.journey.target, 'conversion');
 assert.equal(aggregate.journey.averageSteps, 1);
+const homeRole = aggregate.pageRoles.find((row) => row.path === '/');
+assert.equal(homeRole.intermediateSessions, 1);
+const registerRole = aggregate.pageRoles.find((row) => row.path === '/register');
+assert.equal(registerRole.destinationSessions, 1);
+assert.equal(registerRole.functionalEvents, 2);
 
 const registerJourney = aggregateAnalytics(events, { targetPath: '/register' });
 assert.equal(registerJourney.journey.target, '/register');

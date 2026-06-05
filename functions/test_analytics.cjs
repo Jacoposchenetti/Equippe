@@ -42,5 +42,14 @@ assert.equal(aggregate.totals.conversions, 1);
 assert.equal(aggregate.totals.conversionRate, 50);
 assert.equal(aggregate.topPages[0].path, '/');
 assert.equal(aggregate.funnel[3].sessions, 1);
+assert.equal(aggregate.transitions[0].from, '/');
+assert.equal(aggregate.transitions[0].to, '/register');
+assert.equal(aggregate.journey.target, 'conversion');
+assert.equal(aggregate.journey.averageSteps, 1);
+
+const registerJourney = aggregateAnalytics(events, { targetPath: '/register' });
+assert.equal(registerJourney.journey.target, '/register');
+assert.equal(registerJourney.journey.reachedSessions, 1);
+assert.equal(registerJourney.journey.averageSteps, 1);
 
 console.log('analytics tests passed');

@@ -34,6 +34,8 @@ export interface AnalyticsFilters {
   event_type?: string;
   device?: string;
   referrer?: string;
+  targetPath?: string;
+  targetEvent?: string;
 }
 
 export interface AggregatedAnalytics {
@@ -52,6 +54,16 @@ export interface AggregatedAnalytics {
   eventsByType: Array<{ event_type: string; count: number }>;
   devices: Array<{ device: string; count: number }>;
   referrers: Array<{ referrer: string; count: number }>;
+  transitions: Array<{ from: string; to: string; count: number }>;
+  journey: {
+    target: string;
+    reachedSessions: number;
+    averageSteps: number;
+    medianSteps: number;
+    averageIntermediateSteps: number;
+    distribution: Array<{ steps: number; sessions: number }>;
+    commonJourneys: Array<{ path: string; count: number; steps: number }>;
+  };
 }
 
 const MAX_STRING_LENGTH = 180;
@@ -131,11 +143,19 @@ function toList(map: Map<string, number>, keyName: string, limit = 10): Array<Re
     .map(([key, count]) => ({ [keyName]: key, count }));
 }
 
+function median(values: number[]): number {
+  if (values.length === 0) return 0;
+  const sorted = [...values].sort((a, b) => a - b);
+  const middle = Math.floor(sorted.length / 2);
+  if (sorted.length % 2) return sorted[middle];
+  return Math.round(((sorted[middle - 1] + sorted[middle]) / 2) * 10) / 10;
+}
+
 function toMillis(event: UxEventRecord): number {
   return event.timestamp?.toMillis?.() || 0;
 }
 
-export function aggregateAnalytics(events: UxEventRecord[]): AggregatedAnalytics {
+export function aggregateAnalytics(events: UxEventRecord[], options: Pick<AnalyticsFilters, 'targetPath' | 'targetEvent'> = {}): AggregatedAnalytics {
   const sorted = [...events].sort((a, b) => toMillis(a) - toMillis(b));
   const sessions = new Map<string, UxEventRecord[]>();
   const pageViews = new Map<string, number>();
@@ -144,6 +164,7 @@ export function aggregateAnalytics(events: UxEventRecord[]): AggregatedAnalytics
   const devices = new Map<string, number>();
   const referrers = new Map<string, number>();
   const commonPaths = new Map<string, number>();
+  const transitions = new Map<string, number>();
 
   for (const event of sorted) {
     if (!sessions.has(event.session_id)) sessions.set(event.session_id, []);
@@ -159,6 +180,9 @@ export function aggregateAnalytics(events: UxEventRecord[]): AggregatedAnalytics
     const lastPage = sessionPageViews[sessionPageViews.length - 1];
     if (lastPage) increment(exits, lastPage.path);
     const sequence = sessionPageViews.map((event) => event.path);
+    for (let index = 1; index < sequence.length; index += 1) {
+      increment(transitions, `${sequence[index - 1]} -> ${sequence[index]}`);
+    }
     if (sequence.length > 1) {
       increment(commonPaths, sequence.slice(0, 5).join(' -> '));
     }
@@ -200,6 +224,54 @@ export function aggregateAnalytics(events: UxEventRecord[]): AggregatedAnalytics
     { step: 'Conversione', sessions: conversionSessions.size },
   ];
   const firstStepSessions = Math.max(1, funnelSteps[0].sessions);
+  const targetPath = options.targetPath ? sanitizePath(options.targetPath) : '';
+  const targetEvent = options.targetEvent && UX_EVENT_TYPES.includes(options.targetEvent as UxEventType)
+    ? options.targetEvent
+    : '';
+  const journeyTarget = targetPath || targetEvent || 'conversion';
+  const journeyStepCounts: number[] = [];
+  const journeyDistribution = new Map<string, number>();
+  const journeyPaths = new Map<string, { count: number; steps: number }>();
+
+  for (const sessionEvents of sessions.values()) {
+    const ordered = [...sessionEvents].sort((a, b) => toMillis(a) - toMillis(b));
+    const pageSequence: string[] = [];
+    let targetPageIndex = -1;
+    let reachedTarget = false;
+
+    for (const event of ordered) {
+      if (event.event_type === 'page_view') {
+        pageSequence.push(event.path);
+        if (targetPath && event.path === targetPath && targetPageIndex === -1) {
+          targetPageIndex = pageSequence.length - 1;
+          reachedTarget = true;
+          break;
+        }
+      }
+
+      const isTargetEvent = targetEvent
+        ? event.event_type === targetEvent
+        : event.event_type === 'conversion' || event.metadata.conversion === true;
+      if (!targetPath && isTargetEvent) {
+        reachedTarget = true;
+        break;
+      }
+    }
+
+    if (!reachedTarget) continue;
+
+    const steps = targetPath && targetPageIndex >= 0
+      ? targetPageIndex
+      : Math.max(0, pageSequence.length - 1);
+    journeyStepCounts.push(steps);
+    increment(journeyDistribution, String(steps));
+    const compactJourney = pageSequence.slice(0, targetPath && targetPageIndex >= 0 ? targetPageIndex + 1 : undefined).slice(0, 8).join(' -> ') || '(nessuna pagina)';
+    const existing = journeyPaths.get(compactJourney);
+    journeyPaths.set(compactJourney, {
+      count: (existing?.count || 0) + 1,
+      steps,
+    });
+  }
 
   return {
     totals: {
@@ -227,6 +299,31 @@ export function aggregateAnalytics(events: UxEventRecord[]): AggregatedAnalytics
     eventsByType: toList(eventTypes, 'event_type') as Array<{ event_type: string; count: number }>,
     devices: toList(devices, 'device') as Array<{ device: string; count: number }>,
     referrers: toList(referrers, 'referrer') as Array<{ referrer: string; count: number }>,
+    transitions: [...transitions.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 15)
+      .map(([transition, count]) => {
+        const [from, to] = transition.split(' -> ');
+        return { from, to, count };
+      }),
+    journey: {
+      target: journeyTarget,
+      reachedSessions: journeyStepCounts.length,
+      averageSteps: journeyStepCounts.length
+        ? Math.round((journeyStepCounts.reduce((sum, value) => sum + value, 0) / journeyStepCounts.length) * 10) / 10
+        : 0,
+      medianSteps: median(journeyStepCounts),
+      averageIntermediateSteps: journeyStepCounts.length
+        ? Math.round((journeyStepCounts.reduce((sum, value) => sum + Math.max(0, value - 1), 0) / journeyStepCounts.length) * 10) / 10
+        : 0,
+      distribution: [...journeyDistribution.entries()]
+        .map(([steps, count]) => ({ steps: Number(steps), sessions: count }))
+        .sort((a, b) => a.steps - b.steps),
+      commonJourneys: [...journeyPaths.entries()]
+        .sort((a, b) => b[1].count - a[1].count)
+        .slice(0, 10)
+        .map(([path, value]) => ({ path, count: value.count, steps: value.steps })),
+    },
   };
 }
 

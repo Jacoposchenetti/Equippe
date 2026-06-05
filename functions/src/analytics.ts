@@ -86,6 +86,8 @@ export const getUxAnalytics = functions
       event_type: typeof data?.event_type === 'string' ? data.event_type : undefined,
       device: typeof data?.device === 'string' ? data.device : undefined,
       referrer: typeof data?.referrer === 'string' ? data.referrer : undefined,
+      targetPath: typeof data?.targetPath === 'string' ? data.targetPath : undefined,
+      targetEvent: typeof data?.targetEvent === 'string' ? data.targetEvent : undefined,
     };
 
     try {
@@ -104,7 +106,10 @@ export const getUxAnalytics = functions
       return {
         filters,
         limited: snap.size === MAX_ANALYTICS_EVENTS,
-        ...aggregateAnalytics(events),
+        ...aggregateAnalytics(events, {
+          targetPath: filters.targetPath,
+          targetEvent: filters.targetEvent,
+        }),
       };
     } catch (error) {
       console.error('getUxAnalytics failed', error);

@@ -34,6 +34,16 @@ interface AnalyticsResponse {
   eventsByType: Array<{ event_type: string; count: number }>;
   devices: Array<{ device: string; count: number }>;
   referrers: Array<{ referrer: string; count: number }>;
+  transitions: Array<{ from: string; to: string; count: number }>;
+  journey: {
+    target: string;
+    reachedSessions: number;
+    averageSteps: number;
+    medianSteps: number;
+    averageIntermediateSteps: number;
+    distribution: Array<{ steps: number; sessions: number }>;
+    commonJourneys: Array<{ path: string; count: number; steps: number }>;
+  };
   limited?: boolean;
 }
 
@@ -44,6 +54,8 @@ interface Filters {
   event_type: string;
   device: string;
   referrer: string;
+  targetPath: string;
+  targetEvent: string;
 }
 
 const eventOptions = ['', 'page_view', 'click_cta', 'form_start', 'form_submit', 'conversion'];
@@ -63,14 +75,68 @@ function defaultFilters(): Filters {
     event_type: '',
     device: '',
     referrer: '',
+    targetPath: '',
+    targetEvent: 'conversion',
   };
 }
 
-function StatCard({ label, value, hint, accent }: { label: string; value: string | number; hint: string; accent: string }) {
+const explanations: Record<string, string> = {
+  visite: 'Numero di page_view nel periodo. Misura quante pagine sono state viste, non quante persone diverse.',
+  sessioni: 'Numero di session_id anonimi unici. E una buona proxy delle visite utente/browser.',
+  conversioni: 'Eventi conversion tracciati, oppure form importanti inviati con metadata conversion=true.',
+  conversionRate: 'Conversioni divise per sessioni. Ti dice quanto traffico arriva a un esito utile.',
+  eventi: 'Tutti gli eventi raccolti: page_view, click CTA, form_start, form_submit e conversion.',
+  funnel: 'Sequenza sintetica dalle visite alla conversione. Il salto piu grande indica dove gli utenti si fermano.',
+  topPages: 'Pagine viste piu spesso. Utile per capire dove concentrare miglioramenti e CTA.',
+  exitPages: 'Ultima pagina vista in sessione. Se una pagina critica ha molte uscite, puo indicare frizione.',
+  commonPaths: 'Sequenze di pagine piu frequenti nelle sessioni. Aiuta a capire se il percorso reale coincide con quello progettato.',
+  dropOff: 'Pagine con alta percentuale di uscita rispetto alle visite. Prioritizza qui le analisi UX.',
+  transitions: 'Passaggi pagina -> pagina piu frequenti. Mostrano dove gli utenti si spostano davvero.',
+  journey: 'Misura quanti page_view servono tipicamente per raggiungere un obiettivo scelto: pagina target o evento target.',
+  device: 'Distribuzione eventi per desktop, mobile e tablet. Drop-off alto su mobile spesso segnala problemi responsive.',
+  referrer: 'Origine del traffico quando disponibile. direct significa accesso diretto o referrer non passato dal browser.',
+};
+
+function InfoTip({ text }: { text: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <span className="relative inline-flex">
+      <button
+        type="button"
+        onClick={() => setOpen((value) => !value)}
+        onMouseEnter={() => setOpen(true)}
+        onMouseLeave={() => setOpen(false)}
+        className="ml-2 inline-flex h-5 w-5 items-center justify-center rounded-full border border-slate-300 bg-white text-xs font-bold text-slate-500 hover:border-blue-300 hover:text-blue-700"
+        aria-label="Spiegazione metrica"
+      >
+        i
+      </button>
+      {open && (
+        <span className="absolute left-1/2 top-7 z-30 w-72 -translate-x-1/2 rounded-xl border border-slate-200 bg-white p-3 text-left text-xs font-medium leading-5 text-slate-600 shadow-xl">
+          {text}
+        </span>
+      )}
+    </span>
+  );
+}
+
+function SectionTitle({ children, explanation }: { children: React.ReactNode; explanation: string }) {
+  return (
+    <h2 className="mb-4 flex items-center text-lg font-bold text-slate-950">
+      {children}
+      <InfoTip text={explanation} />
+    </h2>
+  );
+}
+
+function StatCard({ label, value, hint, accent, explanation }: { label: string; value: string | number; hint: string; accent: string; explanation: string }) {
   return (
     <div className="surface rounded-2xl p-5">
       <div className={`mb-4 h-1 w-12 rounded-full ${accent}`} />
-      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</p>
+      <p className="flex items-center text-xs font-semibold uppercase tracking-wide text-slate-500">
+        {label}
+        <InfoTip text={explanation} />
+      </p>
       <p className="mt-2 text-3xl font-extrabold text-slate-950">{value}</p>
       <p className="mt-1 text-sm text-slate-500">{hint}</p>
     </div>
@@ -148,6 +214,10 @@ export default function AdminAnalyticsPage() {
     const paths = new Set<string>();
     data?.topPages.forEach((page) => paths.add(page.path));
     data?.exitPages.forEach((page) => paths.add(page.path));
+    data?.transitions.forEach((transition) => {
+      paths.add(transition.from);
+      paths.add(transition.to);
+    });
     return [...paths].sort();
   }, [data]);
 
@@ -236,6 +306,27 @@ export default function AdminAnalyticsPage() {
               <input value={filters.referrer} onChange={(event) => setFilters({ ...filters, referrer: event.target.value })} placeholder="direct, google..." className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2" />
             </label>
           </div>
+          <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+            <div className="mb-3 flex items-center text-sm font-bold text-slate-900">
+              Obiettivo percorso
+              <InfoTip text="Scegli una pagina o un evento finale per capire quanti passaggi intermedi servono tipicamente agli utenti per arrivarci." />
+            </div>
+            <div className="grid gap-3 md:grid-cols-2">
+              <label className="text-sm font-medium text-slate-700">
+                Pagina obiettivo
+                <input list="analytics-target-pages" value={filters.targetPath} onChange={(event) => setFilters({ ...filters, targetPath: event.target.value, targetEvent: event.target.value ? '' : filters.targetEvent })} placeholder="/register" className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2" />
+                <datalist id="analytics-target-pages">
+                  {pageOptions.map((path) => <option key={path} value={path} />)}
+                </datalist>
+              </label>
+              <label className="text-sm font-medium text-slate-700">
+                Evento obiettivo
+                <select value={filters.targetEvent} onChange={(event) => setFilters({ ...filters, targetEvent: event.target.value, targetPath: event.target.value ? '' : filters.targetPath })} className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2">
+                  {eventOptions.map((option) => <option key={option} value={option}>{option || 'Nessuno'}</option>)}
+                </select>
+              </label>
+            </div>
+          </div>
           <div className="mt-4 flex flex-wrap gap-3">
             <button onClick={loadAnalytics} disabled={loading} className="btn-primary">Applica filtri</button>
             <button onClick={() => setFilters(defaultFilters())} className="btn-secondary">Reset</button>
@@ -259,16 +350,16 @@ export default function AdminAnalyticsPage() {
             )}
 
             <section className="mb-6 grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-              <StatCard label="Visite" value={data.totals.visits} hint="page_view nel periodo" accent="bg-blue-700" />
-              <StatCard label="Sessioni" value={data.totals.sessions} hint="session_id anonimi unici" accent="bg-green-700" />
-              <StatCard label="Conversioni" value={data.totals.conversions} hint="eventi conversione" accent="bg-orange-500" />
-              <StatCard label="Conversion rate" value={`${data.totals.conversionRate}%`} hint="conversioni su sessioni" accent="bg-slate-800" />
-              <StatCard label="Eventi" value={data.totals.events} hint="eventi totali analizzati" accent="bg-indigo-600" />
+              <StatCard label="Visite" value={data.totals.visits} hint="page_view nel periodo" accent="bg-blue-700" explanation={explanations.visite} />
+              <StatCard label="Sessioni" value={data.totals.sessions} hint="session_id anonimi unici" accent="bg-green-700" explanation={explanations.sessioni} />
+              <StatCard label="Conversioni" value={data.totals.conversions} hint="eventi conversione" accent="bg-orange-500" explanation={explanations.conversioni} />
+              <StatCard label="Conversion rate" value={`${data.totals.conversionRate}%`} hint="conversioni su sessioni" accent="bg-slate-800" explanation={explanations.conversionRate} />
+              <StatCard label="Eventi" value={data.totals.events} hint="eventi totali analizzati" accent="bg-indigo-600" explanation={explanations.eventi} />
             </section>
 
             <section className="mb-6 grid gap-6 lg:grid-cols-2">
               <div className="surface rounded-2xl p-5">
-                <h2 className="mb-4 text-lg font-bold text-slate-950">Funnel</h2>
+                <SectionTitle explanation={explanations.funnel}>Funnel</SectionTitle>
                 <div className="space-y-4">
                   {data.funnel.map((step) => (
                     <div key={step.step}>
@@ -284,18 +375,74 @@ export default function AdminAnalyticsPage() {
                 </div>
               </div>
               <div className="surface rounded-2xl p-5">
-                <h2 className="mb-4 text-lg font-bold text-slate-950">Eventi</h2>
+                <SectionTitle explanation={explanations.eventi}>Eventi</SectionTitle>
                 <BarList rows={data.eventsByType as MetricRow[]} labelKey="event_type" />
+              </div>
+            </section>
+
+            <section className="mb-6 grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
+              <div className="surface rounded-2xl p-5">
+                <SectionTitle explanation={explanations.journey}>Step verso obiettivo</SectionTitle>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="rounded-2xl bg-blue-50 p-4">
+                    <p className="text-xs font-semibold uppercase text-blue-700">Obiettivo</p>
+                    <p className="mt-1 break-words text-lg font-bold text-blue-950">{data.journey.target}</p>
+                  </div>
+                  <div className="rounded-2xl bg-green-50 p-4">
+                    <p className="text-xs font-semibold uppercase text-green-700">Sessioni arrivate</p>
+                    <p className="mt-1 text-2xl font-extrabold text-green-950">{data.journey.reachedSessions}</p>
+                  </div>
+                  <div className="rounded-2xl bg-orange-50 p-4">
+                    <p className="text-xs font-semibold uppercase text-orange-700">Step medi</p>
+                    <p className="mt-1 text-2xl font-extrabold text-orange-950">{data.journey.averageSteps}</p>
+                  </div>
+                  <div className="rounded-2xl bg-slate-50 p-4">
+                    <p className="text-xs font-semibold uppercase text-slate-600">Intermedi medi</p>
+                    <p className="mt-1 text-2xl font-extrabold text-slate-950">{data.journey.averageIntermediateSteps}</p>
+                  </div>
+                </div>
+                <p className="mt-4 text-sm leading-6 text-slate-600">
+                  Se gli step intermedi medi sono alti per un'azione frequente, e un buon candidato per scorciatoie, CTA piu visibili o navigazione piu diretta.
+                </p>
+              </div>
+              <div className="surface rounded-2xl p-5">
+                <SectionTitle explanation={explanations.transitions}>Transizioni piu frequenti</SectionTitle>
+                <DataTable
+                  rows={data.transitions as unknown as MetricRow[]}
+                  columns={[
+                    { key: 'from', label: 'Da' },
+                    { key: 'to', label: 'A' },
+                    { key: 'count', label: 'Volte' },
+                  ]}
+                />
               </div>
             </section>
 
             <section className="mb-6 grid gap-6 lg:grid-cols-2">
               <div className="surface rounded-2xl p-5">
-                <h2 className="mb-4 text-lg font-bold text-slate-950">Pagine piu visitate</h2>
+                <SectionTitle explanation="Distribuzione degli step necessari per raggiungere l'obiettivo scelto.">Distribuzione step</SectionTitle>
+                <BarList rows={data.journey.distribution.map((row) => ({ step: `${row.steps} step`, count: row.sessions })) as MetricRow[]} labelKey="step" />
+              </div>
+              <div className="surface rounded-2xl p-5">
+                <SectionTitle explanation="Percorsi piu ricorrenti tra le sessioni che raggiungono l'obiettivo selezionato.">Percorsi verso obiettivo</SectionTitle>
+                <DataTable
+                  rows={data.journey.commonJourneys as unknown as MetricRow[]}
+                  columns={[
+                    { key: 'path', label: 'Percorso' },
+                    { key: 'steps', label: 'Step' },
+                    { key: 'count', label: 'Sessioni' },
+                  ]}
+                />
+              </div>
+            </section>
+
+            <section className="mb-6 grid gap-6 lg:grid-cols-2">
+              <div className="surface rounded-2xl p-5">
+                <SectionTitle explanation={explanations.topPages}>Pagine piu visitate</SectionTitle>
                 <BarList rows={data.topPages as MetricRow[]} labelKey="path" />
               </div>
               <div className="surface rounded-2xl p-5">
-                <h2 className="mb-4 text-lg font-bold text-slate-950">Pagine di uscita</h2>
+                <SectionTitle explanation={explanations.exitPages}>Pagine di uscita</SectionTitle>
                 <DataTable
                   rows={data.exitPages as MetricRow[]}
                   columns={[
@@ -309,7 +456,7 @@ export default function AdminAnalyticsPage() {
 
             <section className="mb-6 grid gap-6 lg:grid-cols-2">
               <div className="surface rounded-2xl p-5">
-                <h2 className="mb-4 text-lg font-bold text-slate-950">Percorsi piu comuni</h2>
+                <SectionTitle explanation={explanations.commonPaths}>Percorsi piu comuni</SectionTitle>
                 <DataTable
                   rows={data.commonPaths as MetricRow[]}
                   columns={[
@@ -319,7 +466,7 @@ export default function AdminAnalyticsPage() {
                 />
               </div>
               <div className="surface rounded-2xl p-5">
-                <h2 className="mb-4 text-lg font-bold text-slate-950">Drop-off</h2>
+                <SectionTitle explanation={explanations.dropOff}>Drop-off</SectionTitle>
                 <DataTable
                   rows={data.dropOff as unknown as MetricRow[]}
                   columns={[
@@ -334,11 +481,11 @@ export default function AdminAnalyticsPage() {
 
             <section className="grid gap-6 lg:grid-cols-2">
               <div className="surface rounded-2xl p-5">
-                <h2 className="mb-4 text-lg font-bold text-slate-950">Device</h2>
+                <SectionTitle explanation={explanations.device}>Device</SectionTitle>
                 <BarList rows={data.devices as MetricRow[]} labelKey="device" />
               </div>
               <div className="surface rounded-2xl p-5">
-                <h2 className="mb-4 text-lg font-bold text-slate-950">Referrer</h2>
+                <SectionTitle explanation={explanations.referrer}>Referrer</SectionTitle>
                 <BarList rows={data.referrers as MetricRow[]} labelKey="referrer" />
               </div>
             </section>

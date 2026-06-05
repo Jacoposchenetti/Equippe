@@ -397,11 +397,11 @@ export default function DashboardPage() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-0 pb-24 sm:pt-6 sm:pb-10">
         <section className="surface-lifted relative mb-6 overflow-hidden rounded-3xl">
           <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-blue-700 via-green-600 to-orange-500" />
-          <div className="flex flex-col gap-2 p-5 sm:flex-row sm:items-end sm:justify-between sm:gap-6 sm:p-7">
-            <h1 className="text-2xl font-extrabold tracking-normal text-slate-950 sm:text-4xl">
+          <div className="flex flex-col gap-2 p-5 md:flex-row md:items-end md:justify-between md:gap-6 sm:p-7">
+            <h1 className="text-2xl font-extrabold tracking-normal text-slate-950 md:text-4xl">
               {currentFilters.type === 'professionista' ? 'Professionisti' : 'Equipe'}
             </h1>
-            <p className="max-w-2xl text-sm leading-6 text-slate-500 sm:text-right sm:text-base">
+            <p className="max-w-2xl text-sm leading-6 text-slate-500 md:text-right md:text-base">
               {currentFilters.type === 'professionista'
                 ? 'Cerca il professionista perfetto con cui collaborare'
                 : 'Cerca equipe di lavoro a cui unirti nella tua zona'}

@@ -38,9 +38,17 @@ export default function DailyRewardModal({ status, onClose, onClaimed }: Props) 
     }
   };
 
-  // Visual state: how many days to show as "done" and which is "today"
-  const displayStreak = claimed && claimResult ? claimResult.newStreak : status.nextReward;
-  const completedDays = claimed && claimResult ? claimResult.newStreak : status.nextReward - 1;
+  // Visual state: when today's reward is already claimed, show the real completed streak.
+  const displayStreak = claimed && claimResult
+    ? claimResult.newStreak
+    : status.canClaim
+    ? status.nextReward
+    : status.currentStreak;
+  const completedDays = claimed && claimResult
+    ? claimResult.newStreak
+    : status.canClaim
+    ? status.nextReward - 1
+    : status.currentStreak;
 
   return (
     <div
